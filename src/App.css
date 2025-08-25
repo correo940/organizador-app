@@ -90,3 +90,8 @@
 .search-bar button:hover {
   background: var(--accent-color);
 }
+
+.folder-link {
+  text-decoration: none; /* Remove underline */
+  color: inherit; /* Inherit text color from parent */
+}
