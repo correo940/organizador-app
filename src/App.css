@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 .app-container {
   display: flex;
   gap: 60px;
@@ -17,10 +18,32 @@
   padding: 40px;
   width: 250px;
   height: 200px;
+=======
+
+.app-container {
+  display: flex;
+  gap: 40px; /* Increased gap for more space */
+  padding: 40px;
+  justify-content: center;
+  align-items: center; /* Center vertically */
+  height: 100vh; /* Make container full height */
+  box-sizing: border-box; /* Include padding in height calculation */
+}
+
+.folder {
+  background-color: rgba(255, 255, 255, 0.8); /* Slightly transparent background */
+  color: #333; /* Darker grey for text */
+  border: 1px solid #2E7D32; /* A more subtle, modern green border */
+  border-radius: 16px; /* Softer, more modern corners */
+  padding: 30px;
+  width: 220px; /* Larger width */
+  height: 180px; /* Larger height */
+>>>>>>> bb07756ae2c81add885b1793835c58fbf6ca5391
   display: flex;
   justify-content: center;
   align-items: center;
   cursor: pointer;
+<<<<<<< HEAD
   font-size: 1.8em;
   font-weight: 800;
   text-align: center;
@@ -66,4 +89,17 @@
 .folder:hover::after {
   opacity: 1;
   transform: rotate(45deg) translate(50%, 50%);
+=======
+  font-size: 1.5em; /* Larger font */
+  font-weight: 600; /* Bolder font from Poppins */
+  text-align: center;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.05); /* Softer, more diffused shadow */
+  transition: transform 0.3s ease, box-shadow 0.3s ease; /* Smoother transition */
+  backdrop-filter: blur(5px); /* Frosted glass effect */
+}
+
+.folder:hover {
+  transform: scale(1.08) translateY(-5px); /* More dynamic hover effect */
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.1); /* Lift the folder more on hover */
+>>>>>>> bb07756ae2c81add885b1793835c58fbf6ca5391
 }

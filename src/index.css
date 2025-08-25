@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;800&display=swap');
+=======
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap');
+>>>>>>> bb07756ae2c81add885b1793835c58fbf6ca5391
 
 :root {
   font-family: 'Poppins', sans-serif;
@@ -16,6 +20,7 @@ body {
   padding: 0;
   min-width: 320px;
   min-height: 100vh;
+<<<<<<< HEAD
   background: linear-gradient(to bottom right, #0A5F2C, #FFFFFF);
   background-size: 100% 100%;
 }
@@ -24,4 +29,7 @@ body {
   0% { background-position: 0% 50%; }
   50% { background-position: 100% 50%; }
   100% { background-position: 0% 50%; }
+=======
+  background: linear-gradient(to bottom right, #1B5E20, #FFFFFF); /* Dark green to white gradient */
+>>>>>>> bb07756ae2c81add885b1793835c58fbf6ca5391
 }
