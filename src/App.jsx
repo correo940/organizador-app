@@ -1,42 +1,90 @@
-import React from 'react';
-import { Routes, Route, Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
 import Folder from './components/Folder';
 import Tareas from './components/Tareas';
-import Contrasenas from './components/Contrasenas'; // Nuevo import
+import Contrasenas from './components/Contrasenas';
+import Calendario from './components/Calendario';
 import './App.css';
 
-function MainPage() {
+// Vista principal: QUOKKA, APLICACIONES, CALENDARIO
+function HomeView({ onNavigate }) {
   return (
     <div className="app-container">
       <Folder name="QUOKKA" />
-      <Link to="/aplicaciones" className="folder-link">
-        <Folder name="APLICACIONES" />
-      </Link>
+      <Folder name="APLICACIONES" onClick={() => onNavigate('aplicaciones')} />
+      <Folder name="CALENDARIO" onClick={() => onNavigate('calendario')} />
     </div>
   );
 }
 
-function AplicacionesPage() {
+// Vista de Aplicaciones: TAREAS, CONTRASEÑAS
+function AplicacionesView({ onNavigate }) {
   return (
     <div className="app-container">
-      <Link to="/tareas" className="folder-link">
-        <Folder name="TAREAS" />
-      </Link>
-      <Link to="/contrasenas" className="folder-link">
-        <Folder name="CONTRASEÑAS" />
-      </Link>
+      <Folder name="TAREAS" onClick={() => onNavigate('tareas')} />
+      <Folder name="CONTRASEÑAS" onClick={() => onNavigate('contrasenas')} />
     </div>
   );
 }
 
 function App() {
+  // Estado para saber qué vista mostrar: 'home', 'aplicaciones', 'tareas', 'calendario', 'contrasenas'
+  const [currentView, setCurrentView] = useState('home');
+  
+  // Estado centralizado para las tareas. Se carga desde localStorage.
+  const [tasks, setTasks] = useState(() => {
+    const savedTasks = localStorage.getItem('tasks');
+    return savedTasks ? JSON.parse(savedTasks) : [];
+  });
+
+  // Guardar tareas en localStorage cada vez que cambien
+  useEffect(() => {
+    localStorage.setItem('tasks', JSON.stringify(tasks));
+  }, [tasks]);
+
+  // Función para añadir una nueva tarea a la lista
+  const handleAddTask = (newTask) => {
+    setTasks(prevTasks => [newTask, ...prevTasks]);
+  };
+  
+  // Función para actualizar la lista de tareas (borrar, completar, etc.)
+  const handleUpdateTasks = (updatedTasks) => {
+    setTasks(updatedTasks);
+  }
+
+  // Lógica para el botón "Volver"
+  const handleBack = () => {
+    if (['tareas', 'contrasenas'].includes(currentView)) {
+      setCurrentView('aplicaciones');
+    } else {
+      setCurrentView('home');
+    }
+  };
+
+  // Navegación y renderizado
+  const renderContent = () => {
+    switch (currentView) {
+      case 'aplicaciones':
+        return <AplicacionesView onNavigate={setCurrentView} />;
+      case 'tareas':
+        return <Tareas tasks={tasks} onAddTask={handleAddTask} onUpdateTasks={handleUpdateTasks} />;
+      case 'calendario':
+        return <Calendario tasks={tasks} />;
+      case 'contrasenas':
+        return <Contrasenas />;
+      default:
+        return <HomeView onNavigate={setCurrentView} />;
+    }
+  };
+
   return (
-    <Routes>
-      <Route path="/" element={<MainPage />} />
-      <Route path="/aplicaciones" element={<AplicacionesPage />} />
-      <Route path="/tareas" element={<Tareas />} />
-      <Route path="/contrasenas" element={<Contrasenas />} /> {/* Nueva ruta */}
-    </Routes>
+    <div className="app-wrapper">
+      {currentView !== 'home' && (
+        <button onClick={handleBack} className="back-to-home">
+          ‹ Volver
+        </button>
+      )}
+      {renderContent()}
+    </div>
   );
 }
 

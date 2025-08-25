@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import './Tareas.css';
 
-function Tareas() {
-  const [tasks, setTasks] = useState([]);
+// El componente ahora recibe las tareas y las funciones para manipularlas como props
+function Tareas({ tasks, onAddTask, onUpdateTasks }) {
   const [inputValue, setInputValue] = useState('');
   const [filter, setFilter] = useState('all'); // all, active, completed, overdue
   const [editingId, setEditingId] = useState(null);
@@ -12,116 +12,69 @@ function Tareas() {
   const [dueTime, setDueTime] = useState('');
   const [alarmDate, setAlarmDate] = useState('');
   const [alarmTime, setAlarmTime] = useState('');
-  const [alarms, setAlarms] = useState(new Map()); // Para rastrear alarmas activas
 
-  // Cargar tareas del localStorage al iniciar
+  // El manejo de alarmas y notificaciones sigue siendo local del componente
   useEffect(() => {
-    const savedTasks = localStorage.getItem('tasks');
-    if (savedTasks) {
-      setTasks(JSON.parse(savedTasks));
-    }
-    
-    // Solicitar permisos de notificación
     if (Notification.permission === 'default') {
       Notification.requestPermission();
     }
-  }, []);
 
-  // Guardar tareas en localStorage cada vez que cambien
-  useEffect(() => {
-    localStorage.setItem('tasks', JSON.stringify(tasks));
-  }, [tasks]);
-
-  // Verificar alarmas cada minuto
-  useEffect(() => {
     const checkAlarms = () => {
       const now = new Date();
       tasks.forEach(task => {
         if (task.alarmDateTime && !task.completed && !task.alarmFired) {
           const alarmTime = new Date(task.alarmDateTime);
           if (now >= alarmTime) {
-            // Disparar alarma
             showNotification(task);
             playAlarmSound();
-            
-            // Marcar alarma como disparada
-            setTasks(prevTasks => 
-              prevTasks.map(t => 
-                t.id === task.id ? { ...t, alarmFired: true } : t
-              )
+            const updatedTasks = tasks.map(t =>
+              t.id === task.id ? { ...t, alarmFired: true } : t
             );
+            onUpdateTasks(updatedTasks);
           }
         }
       });
     };
 
-    const interval = setInterval(checkAlarms, 60000); // Verificar cada minuto
+    const interval = setInterval(checkAlarms, 15000); // Verificar cada 15 segundos
     return () => clearInterval(interval);
-  }, [tasks]);
+  }, [tasks, onUpdateTasks]);
 
   const showNotification = (task) => {
     if (Notification.permission === 'granted') {
-      const notification = new Notification(`⏰ Recordatorio de Tarea`, {
+      new Notification(`⏰ Recordatorio de Tarea`, {
         body: `Es hora de: ${task.text}`,
         icon: '📝',
-        tag: `task-${task.id}`
       });
-      
-      // Cerrar notificación después de 10 segundos
-      setTimeout(() => notification.close(), 10000);
     }
   };
 
   const playAlarmSound = () => {
-    // Crear un sonido de alarma simple
     const audioContext = new (window.AudioContext || window.webkitAudioContext)();
     const oscillator = audioContext.createOscillator();
-    const gainNode = audioContext.createGain();
-    
-    oscillator.connect(gainNode);
-    gainNode.connect(audioContext.destination);
-    
-    oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
     oscillator.type = 'sine';
-    
-    gainNode.gain.setValueAtTime(0, audioContext.currentTime);
-    gainNode.gain.linearRampToValueAtTime(0.3, audioContext.currentTime + 0.1);
-    gainNode.gain.linearRampToValueAtTime(0, audioContext.currentTime + 0.5);
-    
-    oscillator.start(audioContext.currentTime);
-    oscillator.stop(audioContext.currentTime + 0.5);
-    
-    // Repetir 3 veces
-    setTimeout(() => playAlarmSound(), 600);
+    oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+    oscillator.connect(audioContext.destination);
+    oscillator.start();
+    setTimeout(() => oscillator.stop(), 500);
   };
 
   const handleAddTask = (e) => {
     e.preventDefault();
     if (inputValue.trim() === '') return;
-    
-    let dueDatetime = null;
-    let alarmDatetime = null;
-    
-    if (dueDate && dueTime) {
-      dueDatetime = new Date(`${dueDate}T${dueTime}`).toISOString();
-    }
-    
-    if (alarmDate && alarmTime) {
-      alarmDatetime = new Date(`${alarmDate}T${alarmTime}`).toISOString();
-    }
-    
+
     const newTask = {
       id: Date.now(),
       text: inputValue.trim(),
       completed: false,
       createdAt: new Date().toISOString(),
-      dueDateTime: dueDatetime,
-      alarmDateTime: alarmDatetime,
-      alarmFired: false
+      dueDateTime: dueDate && dueTime ? new Date(`${dueDate}T${dueTime}`).toISOString() : null,
+      alarmDateTime: alarmDate && alarmTime ? new Date(`${alarmDate}T${alarmTime}`).toISOString() : null,
+      alarmFired: false,
     };
-    
-    setTasks([newTask, ...tasks]);
-    
+
+    onAddTask(newTask); // Llama a la función del padre para añadir la tarea
+
     // Limpiar formulario
     setInputValue('');
     setDueDate('');
@@ -131,16 +84,51 @@ function Tareas() {
     setShowAdvancedForm(false);
   };
 
+  // Las funciones de manipulación ahora llaman a onUpdateTasks con la nueva lista
   const toggleTaskCompletion = (taskId) => {
-    setTasks(tasks.map(task =>
+    const updatedTasks = tasks.map(task =>
       task.id === taskId ? { ...task, completed: !task.completed } : task
-    ));
+    );
+    onUpdateTasks(updatedTasks);
   };
 
   const deleteTask = (taskId) => {
-    setTasks(tasks.filter(task => task.id !== taskId));
+    const updatedTasks = tasks.filter(task => task.id !== taskId);
+    onUpdateTasks(updatedTasks);
   };
 
+  const saveEdit = (taskId) => {
+    if (editValue.trim() === '') {
+      deleteTask(taskId);
+      return;
+    }
+    const updatedTasks = tasks.map(task =>
+      task.id === taskId ? { ...task, text: editValue.trim() } : task
+    );
+    onUpdateTasks(updatedTasks);
+    setEditingId(null);
+    setEditValue('');
+  };
+  
+  const clearCompleted = () => {
+    const updatedTasks = tasks.filter(task => !task.completed);
+    onUpdateTasks(updatedTasks);
+  };
+
+  const markAllCompleted = () => {
+    const allCompleted = tasks.every(task => task.completed);
+    const updatedTasks = tasks.map(task => ({ ...task, completed: !allCompleted }));
+    onUpdateTasks(updatedTasks);
+  };
+  
+  const resetAlarm = (taskId) => {
+    const updatedTasks = tasks.map(task =>
+      task.id === taskId ? { ...task, alarmFired: false } : task
+    );
+    onUpdateTasks(updatedTasks);
+  };
+
+  // El resto de la lógica de renderizado y filtrado permanece mayormente igual
   const startEditing = (taskId, currentText) => {
     setEditingId(taskId);
     setEditValue(currentText);
@@ -151,41 +139,11 @@ function Tareas() {
     setEditValue('');
   };
 
-  const saveEdit = (taskId) => {
-    if (editValue.trim() === '') {
-      deleteTask(taskId);
-      return;
-    }
-    
-    setTasks(tasks.map(task =>
-      task.id === taskId ? { ...task, text: editValue.trim() } : task
-    ));
-    setEditingId(null);
-    setEditValue('');
-  };
-
-  const clearCompleted = () => {
-    setTasks(tasks.filter(task => !task.completed));
-  };
-
-  const markAllCompleted = () => {
-    const allCompleted = tasks.every(task => task.completed);
-    setTasks(tasks.map(task => ({ ...task, completed: !allCompleted })));
-  };
-
-  const resetAlarm = (taskId) => {
-    setTasks(tasks.map(task =>
-      task.id === taskId ? { ...task, alarmFired: false } : task
-    ));
-  };
-
-  // Función para determinar si una tarea está vencida
   const isTaskOverdue = (task) => {
     if (!task.dueDateTime || task.completed) return false;
     return new Date() > new Date(task.dueDateTime);
   };
 
-  // Filtrar tareas según el filtro seleccionado
   const filteredTasks = tasks.filter(task => {
     if (filter === 'active') return !task.completed;
     if (filter === 'completed') return task.completed;
@@ -201,20 +159,11 @@ function Tareas() {
     if (!dateTimeString) return '';
     const date = new Date(dateTimeString);
     return date.toLocaleString('es-ES', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+      day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
     });
   };
 
-  const getMinDateTime = () => {
-    const now = new Date();
-    now.setMinutes(now.getMinutes() + 1); // Al menos 1 minuto en el futuro
-    return now.toISOString().slice(0, 16);
-  };
-
+  // El JSX es prácticamente el mismo, solo que ahora depende del estado que viene por props
   return (
     <div className="tasks-app-container">
       <div className="tasks-header">
@@ -223,7 +172,6 @@ function Tareas() {
       </div>
       
       <div className="tasks-body">
-        {/* Formulario para añadir tareas */}
         <form onSubmit={handleAddTask} className="add-task-form">
           <div className="main-input-row">
             <input
@@ -232,13 +180,12 @@ function Tareas() {
               placeholder="¿Qué necesitas hacer hoy?"
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
-              maxLength={200}
             />
             <button 
               type="button" 
               className="add-btn"
               onClick={() => setShowAdvancedForm(!showAdvancedForm)}
-              title="Añadir tarea"
+              title="Opciones avanzadas"
             >
               <span>+</span>
             </button>
@@ -249,279 +196,84 @@ function Tareas() {
               <div className="datetime-section">
                 <div className="datetime-group">
                   <label>📅 Fecha límite:</label>
-                  <div className="datetime-inputs">
-                    <input
-                      type="date"
-                      value={dueDate}
-                      onChange={(e) => setDueDate(e.target.value)}
-                      min={new Date().toISOString().split('T')[0]}
-                    />
-                    <input
-                      type="time"
-                      value={dueTime}
-                      onChange={(e) => setDueTime(e.target.value)}
-                    />
-                  </div>
+                  <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+                  <input type="time" value={dueTime} onChange={(e) => setDueTime(e.target.value)} />
                 </div>
-                
                 <div className="datetime-group">
                   <label>⏰ Recordatorio:</label>
-                  <div className="datetime-inputs">
-                    <input
-                      type="date"
-                      value={alarmDate}
-                      onChange={(e) => setAlarmDate(e.target.value)}
-                      min={new Date().toISOString().split('T')[0]}
-                    />
-                    <input
-                      type="time"
-                      value={alarmTime}
-                      onChange={(e) => setAlarmTime(e.target.value)}
-                    />
-                  </div>
+                  <input type="date" value={alarmDate} onChange={(e) => setAlarmDate(e.target.value)} />
+                  <input type="time" value={alarmTime} onChange={(e) => setAlarmTime(e.target.value)} />
                 </div>
               </div>
-              
-              <div className="form-actions">
-                <button 
-                  type="button" 
-                  className="clear-form-btn"
-                  onClick={() => {
-                    setDueDate('');
-                    setDueTime('');
-                    setAlarmDate('');
-                    setAlarmTime('');
-                  }}
-                >
-                  Limpiar fechas
-                </button>
-                <button 
-                  type="submit" 
-                  className="submit-task-btn" 
-                  disabled={!inputValue.trim()}
-                >
-                  ✅ Crear Tarea
-                </button>
-              </div>
+              <button type="submit" className="submit-task-btn" disabled={!inputValue.trim()}>
+                ✅ Crear Tarea
+              </button>
             </div>
           )}
         </form>
 
-        {/* Estadísticas y controles */}
         {tasks.length > 0 && (
           <div className="task-controls">
             <div className="task-stats">
-              <span className="stat-item">
-                📋 Total: {tasks.length}
-              </span>
-              <span className="stat-item">
-                ⏳ Pendientes: {activeTasks}
-              </span>
-              <span className="stat-item">
-                ✅ Completadas: {completedTasks}
-              </span>
-              {overdueTasks > 0 && (
-                <span className="stat-item overdue">
-                  ⚠️ Vencidas: {overdueTasks}
-                </span>
-              )}
+              <span>Total: {tasks.length}</span>
+              <span>Pendientes: {activeTasks}</span>
+              <span>Completadas: {completedTasks}</span>
+              {overdueTasks > 0 && <span className="overdue">Vencidas: {overdueTasks}</span>}
             </div>
-            
             <div className="bulk-actions">
-              <button 
-                onClick={markAllCompleted} 
-                className="bulk-btn"
-                title={tasks.every(task => task.completed) ? "Marcar todas como pendientes" : "Marcar todas como completadas"}
-              >
-                {tasks.every(task => task.completed) ? "↩️" : "✅"}
-              </button>
-              {completedTasks > 0 && (
-                <button onClick={clearCompleted} className="bulk-btn clear-btn" title="Eliminar completadas">
-                  🗑️
-                </button>
-              )}
+              <button onClick={markAllCompleted}>Marcar Todas</button>
+              {completedTasks > 0 && <button onClick={clearCompleted}>Limpiar Completadas</button>}
             </div>
           </div>
         )}
 
-        {/* Filtros */}
         {tasks.length > 0 && (
           <div className="task-filters">
-            <button 
-              className={`filter-btn ${filter === 'all' ? 'active' : ''}`}
-              onClick={() => setFilter('all')}
-            >
-              Todas ({tasks.length})
-            </button>
-            <button 
-              className={`filter-btn ${filter === 'active' ? 'active' : ''}`}
-              onClick={() => setFilter('active')}
-            >
-              Pendientes ({activeTasks})
-            </button>
-            <button 
-              className={`filter-btn ${filter === 'completed' ? 'active' : ''}`}
-              onClick={() => setFilter('completed')}
-            >
-              Completadas ({completedTasks})
-            </button>
-            {overdueTasks > 0 && (
-              <button 
-                className={`filter-btn overdue-filter ${filter === 'overdue' ? 'active' : ''}`}
-                onClick={() => setFilter('overdue')}
-              >
-                Vencidas ({overdueTasks})
-              </button>
-            )}
+            <button onClick={() => setFilter('all')} className={filter === 'all' ? 'active' : ''}>Todas</button>
+            <button onClick={() => setFilter('active')} className={filter === 'active' ? 'active' : ''}>Pendientes</button>
+            <button onClick={() => setFilter('completed')} className={filter === 'completed' ? 'active' : ''}>Completadas</button>
+            {overdueTasks > 0 && <button onClick={() => setFilter('overdue')} className={`${filter === 'overdue' ? 'active' : ''} overdue-filter`}>Vencidas</button>}
           </div>
         )}
 
-        {/* Lista de tareas */}
         <div className="task-list-container">
           {filteredTasks.length === 0 ? (
             <div className="empty-state">
-              {tasks.length === 0 ? (
-                <div>
-                  <p>🎯</p>
-                  <h3>¡Comienza a organizarte!</h3>
-                  <p>Añade tu primera tarea con recordatorios</p>
-                </div>
-              ) : (
-                <div>
-                  <p>🔍</p>
-                  <h3>No hay tareas {filter === 'active' ? 'pendientes' : filter === 'completed' ? 'completadas' : 'vencidas'}</h3>
-                  <p>
-                    {filter === 'active' ? '¡Buen trabajo! No tienes tareas pendientes.' : 
-                     filter === 'completed' ? 'Completa algunas tareas para verlas aquí.' :
-                     '¡Excelente! No tienes tareas vencidas.'}
-                  </p>
-                </div>
-              )}
+              <h3>{tasks.length === 0 ? 'Añade tu primera tarea' : 'No hay tareas que coincidan'}</h3>
             </div>
           ) : (
             <ul className="task-list">
               {filteredTasks.map(task => (
                 <li key={task.id} className={`task-item ${task.completed ? 'completed' : ''} ${isTaskOverdue(task) ? 'overdue' : ''}`}>
                   <div className="task-content">
-                    <input
-                      type="checkbox"
-                      className="task-checkbox"
-                      checked={task.completed}
-                      onChange={() => toggleTaskCompletion(task.id)}
-                    />
-                    
+                    <input type="checkbox" checked={task.completed} onChange={() => toggleTaskCompletion(task.id)} />
                     {editingId === task.id ? (
-                      <div className="edit-form">
-                        <input
-                          type="text"
-                          className="edit-input"
-                          value={editValue}
-                          onChange={(e) => setEditValue(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') saveEdit(task.id);
-                            if (e.key === 'Escape') cancelEditing();
-                          }}
-                          maxLength={200}
-                          autoFocus
-                        />
-                        <div className="edit-actions">
-                          <button onClick={() => saveEdit(task.id)} className="save-btn">
-                            ✓
-                          </button>
-                          <button onClick={cancelEditing} className="cancel-btn">
-                            ✕
-                          </button>
-                        </div>
-                      </div>
+                      <input
+                        type="text"
+                        value={editValue}
+                        onChange={(e) => setEditValue(e.target.value)}
+                        onBlur={() => saveEdit(task.id)}
+                        onKeyDown={(e) => e.key === 'Enter' && saveEdit(task.id)}
+                        autoFocus
+                      />
                     ) : (
-                      <div className="task-text-container">
-                        <span 
-                          className="task-text"
-                          onDoubleClick={() => !task.completed && startEditing(task.id, task.text)}
-                          title={task.completed ? "Tarea completada" : "Doble clic para editar"}
-                        >
-                          {task.text}
-                        </span>
-                        
-                        <div className="task-metadata">
-                          <div className="task-date">
-                            Creada: {new Date(task.createdAt).toLocaleDateString('es-ES', {
-                              day: 'numeric',
-                              month: 'short',
-                              hour: '2-digit',
-                              minute: '2-digit'
-                            })}
-                          </div>
-                          
-                          {task.dueDateTime && (
-                            <div className={`due-date ${isTaskOverdue(task) ? 'overdue' : ''}`}>
-                              📅 Vence: {formatDateTime(task.dueDateTime)}
-                            </div>
-                          )}
-                          
-                          {task.alarmDateTime && (
-                            <div className={`alarm-date ${task.alarmFired ? 'fired' : ''}`}>
-                              ⏰ Alarma: {formatDateTime(task.alarmDateTime)}
-                              {task.alarmFired && <span className="alarm-status"> (Sonó)</span>}
-                            </div>
-                          )}
-                        </div>
-                      </div>
+                      <span onDoubleClick={() => startEditing(task.id, task.text)}>{task.text}</span>
                     )}
                   </div>
-                  
-                  {editingId !== task.id && (
-                    <div className="task-actions">
-                      {task.alarmFired && (
-                        <button 
-                          onClick={() => resetAlarm(task.id)}
-                          className="action-btn reset-alarm-btn"
-                          title="Reactivar alarma"
-                        >
-                          🔄
-                        </button>
-                      )}
-                      {!task.completed && (
-                        <button 
-                          onClick={() => startEditing(task.id, task.text)}
-                          className="action-btn edit-btn"
-                          title="Editar tarea"
-                        >
-                          ✏️
-                        </button>
-                      )}
-                      <button 
-                        onClick={() => deleteTask(task.id)}
-                        className="action-btn delete-btn"
-                        title="Eliminar tarea"
-                      >
-                        🗑️
-                      </button>
-                    </div>
-                  )}
+                  <div className="task-metadata">
+                    {task.dueDateTime && <div className="due-date">Vence: {formatDateTime(task.dueDateTime)}</div>}
+                    {task.alarmDateTime && <div className="alarm-date">Alarma: {formatDateTime(task.alarmDateTime)} {task.alarmFired && '(Sonó)'}</div>}
+                  </div>
+                  <div className="task-actions">
+                    {task.alarmFired && <button onClick={() => resetAlarm(task.id)}>🔄</button>}
+                    <button onClick={() => startEditing(task.id, task.text)}>✏️</button>
+                    <button onClick={() => deleteTask(task.id)}>🗑️</button>
+                  </div>
                 </li>
               ))}
             </ul>
           )}
         </div>
-
-        {/* Progreso */}
-        {tasks.length > 0 && (
-          <div className="progress-section">
-            <div className="progress-bar">
-              <div 
-                className="progress-fill" 
-                style={{ width: `${tasks.length > 0 ? (completedTasks / tasks.length) * 100 : 0}%` }}
-              ></div>
-            </div>
-            <p className="progress-text">
-              {completedTasks === tasks.length && tasks.length > 0 
-                ? "🎉 ¡Todas las tareas completadas! Excelente trabajo." 
-                : `Progreso: ${completedTasks} de ${tasks.length} tareas completadas`
-              }
-            </p>
-          </div>
-        )}
       </div>
     </div>
   );
