@@ -1,0 +1,30 @@
+.folder {
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin: 1rem;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 6px var(--shadow-color);
+}
+
+.folder:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 12px var(--shadow-color);
+}
+
+.folder-content {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.folder-icon {
+  font-size: 2rem;
+  color: var(--primary-color);
+}
+
+.folder-name {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-color);
+}
