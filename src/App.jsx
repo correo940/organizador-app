@@ -1,7 +1,8 @@
 import React from 'react';
 import { Routes, Route, Link } from 'react-router-dom';
 import Folder from './components/Folder';
-import Tareas from './components/Tareas'; // Importar el nuevo componente
+import Tareas from './components/Tareas';
+import Contrasenas from './components/Contrasenas'; // Nuevo import
 import './App.css';
 
 function MainPage() {
@@ -21,6 +22,9 @@ function AplicacionesPage() {
       <Link to="/tareas" className="folder-link">
         <Folder name="TAREAS" />
       </Link>
+      <Link to="/contrasenas" className="folder-link">
+        <Folder name="CONTRASEÑAS" />
+      </Link>
     </div>
   );
 }
@@ -30,7 +34,8 @@ function App() {
     <Routes>
       <Route path="/" element={<MainPage />} />
       <Route path="/aplicaciones" element={<AplicacionesPage />} />
-      <Route path="/tareas" element={<Tareas />} /> {/* Añadir la nueva ruta */}
+      <Route path="/tareas" element={<Tareas />} />
+      <Route path="/contrasenas" element={<Contrasenas />} /> {/* Nueva ruta */}
     </Routes>
   );
 }
