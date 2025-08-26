@@ -1,282 +1,151 @@
 import React, { useState, useEffect } from 'react';
 import './Tareas.css';
 
-// El componente ahora recibe las tareas y las funciones para manipularlas como props
-function Tareas({ tasks, onAddTask, onUpdateTasks }) {
+function DisneyTaskManager() {
+  const [tasks, setTasks] = useState([]);
   const [inputValue, setInputValue] = useState('');
-  const [filter, setFilter] = useState('all'); // all, active, completed, overdue
-  const [editingId, setEditingId] = useState(null);
-  const [editValue, setEditValue] = useState('');
-  const [showAdvancedForm, setShowAdvancedForm] = useState(false);
-  const [dueDate, setDueDate] = useState('');
-  const [dueTime, setDueTime] = useState('');
-  const [alarmDate, setAlarmDate] = useState('');
-  const [alarmTime, setAlarmTime] = useState('');
+  const [filter, setFilter] = useState('all');
+  const [showForm, setShowForm] = useState(false);
+  const [showCelebration, setShowCelebration] = useState(false);
+  const [magicPoints, setMagicPoints] = useState(0);
+  const [currentStreak, setCurrentStreak] = useState(0);
 
-  // El manejo de alarmas y notificaciones sigue siendo local del componente
+  const categories = {
+    personal: { emoji: '🌟', name: 'Personal', color: '#FF6B9D' },
+    work: { emoji: '💼', name: 'Trabajo', color: '#4ECDC4' },
+    health: { emoji: '💪', name: 'Salud', color: '#45B7D1' },
+    home: { emoji: '🏠', name: 'Hogar', color: '#96CEB4' },
+    learning: { emoji: '📚', name: 'Aprender', color: '#FFEAA7' },
+    fun: { emoji: '🎉', name: 'Diversión', color: '#FD79A8' }
+  };
+
+  // Cargar tareas guardadas
   useEffect(() => {
-    if (Notification.permission === 'default') {
-      Notification.requestPermission();
-    }
+    const saved = localStorage.getItem("magicTasks");
+    if (saved) setTasks(JSON.parse(saved));
+  }, []);
 
-    const checkAlarms = () => {
-      const now = new Date();
-      tasks.forEach(task => {
-        if (task.alarmDateTime && !task.completed && !task.alarmFired) {
-          const alarmTime = new Date(task.alarmDateTime);
-          if (now >= alarmTime) {
-            showNotification(task);
-            playAlarmSound();
-            const updatedTasks = tasks.map(t =>
-              t.id === task.id ? { ...t, alarmFired: true } : t
-            );
-            onUpdateTasks(updatedTasks);
-          }
-        }
-      });
-    };
+  // Guardar tareas
+  useEffect(() => {
+    localStorage.setItem("magicTasks", JSON.stringify(tasks));
+  }, [tasks]);
 
-    const interval = setInterval(checkAlarms, 15000); // Verificar cada 15 segundos
-    return () => clearInterval(interval);
-  }, [tasks, onUpdateTasks]);
-
-  const showNotification = (task) => {
-    if (Notification.permission === 'granted') {
-      new Notification(`⏰ Recordatorio de Tarea`, {
-        body: `Es hora de: ${task.text}`,
-        icon: '📝',
-      });
-    }
+  const triggerCelebration = () => {
+    setShowCelebration(true);
+    setMagicPoints(prev => prev + 10);
+    setCurrentStreak(prev => prev + 1);
+    setTimeout(() => setShowCelebration(false), 2000);
   };
 
-  const playAlarmSound = () => {
-    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-    const oscillator = audioContext.createOscillator();
-    oscillator.type = 'sine';
-    oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
-    oscillator.connect(audioContext.destination);
-    oscillator.start();
-    setTimeout(() => oscillator.stop(), 500);
-  };
-
-  const handleAddTask = (e) => {
-    e.preventDefault();
+  const handleAddTask = () => {
     if (inputValue.trim() === '') return;
-
     const newTask = {
       id: Date.now(),
       text: inputValue.trim(),
       completed: false,
       createdAt: new Date().toISOString(),
-      dueDateTime: dueDate && dueTime ? new Date(`${dueDate}T${dueTime}`).toISOString() : null,
-      alarmDateTime: alarmDate && alarmTime ? new Date(`${alarmDate}T${alarmTime}`).toISOString() : null,
-      alarmFired: false,
+      category: 'personal'
     };
-
-    onAddTask(newTask); // Llama a la función del padre para añadir la tarea
-
-    // Limpiar formulario
+    setTasks([...tasks, newTask]);
     setInputValue('');
-    setDueDate('');
-    setDueTime('');
-    setAlarmDate('');
-    setAlarmTime('');
-    setShowAdvancedForm(false);
+    setShowForm(false);
   };
 
-  // Las funciones de manipulación ahora llaman a onUpdateTasks con la nueva lista
   const toggleTaskCompletion = (taskId) => {
-    const updatedTasks = tasks.map(task =>
-      task.id === taskId ? { ...task, completed: !task.completed } : task
-    );
-    onUpdateTasks(updatedTasks);
+    const task = tasks.find(t => t.id === taskId);
+    if (!task.completed) triggerCelebration();
+    setTasks(tasks.map(task => task.id === taskId ? { ...task, completed: !task.completed } : task));
   };
 
-  const deleteTask = (taskId) => {
-    const updatedTasks = tasks.filter(task => task.id !== taskId);
-    onUpdateTasks(updatedTasks);
-  };
+  const deleteTask = (taskId) => setTasks(tasks.filter(task => task.id !== taskId));
 
-  const saveEdit = (taskId) => {
-    if (editValue.trim() === '') {
-      deleteTask(taskId);
-      return;
-    }
-    const updatedTasks = tasks.map(task =>
-      task.id === taskId ? { ...task, text: editValue.trim() } : task
-    );
-    onUpdateTasks(updatedTasks);
-    setEditingId(null);
-    setEditValue('');
-  };
-  
-  const clearCompleted = () => {
-    const updatedTasks = tasks.filter(task => !task.completed);
-    onUpdateTasks(updatedTasks);
-  };
-
-  const markAllCompleted = () => {
-    const allCompleted = tasks.every(task => task.completed);
-    const updatedTasks = tasks.map(task => ({ ...task, completed: !allCompleted }));
-    onUpdateTasks(updatedTasks);
-  };
-  
-  const resetAlarm = (taskId) => {
-    const updatedTasks = tasks.map(task =>
-      task.id === taskId ? { ...task, alarmFired: false } : task
-    );
-    onUpdateTasks(updatedTasks);
-  };
-
-  // El resto de la lógica de renderizado y filtrado permanece mayormente igual
-  const startEditing = (taskId, currentText) => {
-    setEditingId(taskId);
-    setEditValue(currentText);
-  };
-
-  const cancelEditing = () => {
-    setEditingId(null);
-    setEditValue('');
-  };
-
-  const isTaskOverdue = (task) => {
-    if (!task.dueDateTime || task.completed) return false;
-    return new Date() > new Date(task.dueDateTime);
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter') handleAddTask();
   };
 
   const filteredTasks = tasks.filter(task => {
     if (filter === 'active') return !task.completed;
     if (filter === 'completed') return task.completed;
-    if (filter === 'overdue') return isTaskOverdue(task);
     return true;
   });
 
-  const activeTasks = tasks.filter(task => !task.completed).length;
   const completedTasks = tasks.filter(task => task.completed).length;
-  const overdueTasks = tasks.filter(task => isTaskOverdue(task)).length;
+  const progressPercentage = tasks.length > 0 ? (completedTasks / tasks.length) * 100 : 0;
 
-  const formatDateTime = (dateTimeString) => {
-    if (!dateTimeString) return '';
-    const date = new Date(dateTimeString);
-    return date.toLocaleString('es-ES', {
-      day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
-    });
-  };
-
-  // El JSX es prácticamente el mismo, solo que ahora depende del estado que viene por props
   return (
-    <div className="tasks-app-container">
-      <div className="tasks-header">
-        <h1>📝 Gestor de Tareas</h1>
-        <p>Organiza tu día con recordatorios y fechas límite</p>
-      </div>
-      
-      <div className="tasks-body">
-        <form onSubmit={handleAddTask} className="add-task-form">
-          <div className="main-input-row">
-            <input
-              type="text"
-              className="add-task-input"
-              placeholder="¿Qué necesitas hacer hoy?"
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-            />
-            <button 
-              type="button" 
-              className="add-btn"
-              onClick={() => setShowAdvancedForm(!showAdvancedForm)}
-              title="Opciones avanzadas"
-            >
-              <span>+</span>
-            </button>
-          </div>
-          
-          {showAdvancedForm && (
-            <div className="advanced-form">
-              <div className="datetime-section">
-                <div className="datetime-group">
-                  <label>📅 Fecha límite:</label>
-                  <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
-                  <input type="time" value={dueTime} onChange={(e) => setDueTime(e.target.value)} />
-                </div>
-                <div className="datetime-group">
-                  <label>⏰ Recordatorio:</label>
-                  <input type="date" value={alarmDate} onChange={(e) => setAlarmDate(e.target.value)} />
-                  <input type="time" value={alarmTime} onChange={(e) => setAlarmTime(e.target.value)} />
-                </div>
-              </div>
-              <button type="submit" className="submit-task-btn" disabled={!inputValue.trim()}>
-                ✅ Crear Tarea
-              </button>
-            </div>
-          )}
-        </form>
+    <div className="disney-task-manager">
+      {/* Estrellitas decorativas */}
+      {[...Array(10)].map((_, i) => <div key={i} className="floating-star">✨</div>)}
 
-        {tasks.length > 0 && (
-          <div className="task-controls">
-            <div className="task-stats">
-              <span>Total: {tasks.length}</span>
-              <span>Pendientes: {activeTasks}</span>
-              <span>Completadas: {completedTasks}</span>
-              {overdueTasks > 0 && <span className="overdue">Vencidas: {overdueTasks}</span>}
-            </div>
-            <div className="bulk-actions">
-              <button onClick={markAllCompleted}>Marcar Todas</button>
-              {completedTasks > 0 && <button onClick={clearCompleted}>Limpiar Completadas</button>}
-            </div>
-          </div>
-        )}
-
-        {tasks.length > 0 && (
-          <div className="task-filters">
-            <button onClick={() => setFilter('all')} className={filter === 'all' ? 'active' : ''}>Todas</button>
-            <button onClick={() => setFilter('active')} className={filter === 'active' ? 'active' : ''}>Pendientes</button>
-            <button onClick={() => setFilter('completed')} className={filter === 'completed' ? 'active' : ''}>Completadas</button>
-            {overdueTasks > 0 && <button onClick={() => setFilter('overdue')} className={`${filter === 'overdue' ? 'active' : ''} overdue-filter`}>Vencidas</button>}
-          </div>
-        )}
-
-        <div className="task-list-container">
-          {filteredTasks.length === 0 ? (
-            <div className="empty-state">
-              <h3>{tasks.length === 0 ? 'Añade tu primera tarea' : 'No hay tareas que coincidan'}</h3>
-            </div>
-          ) : (
-            <ul className="task-list">
-              {filteredTasks.map(task => (
-                <li key={task.id} className={`task-item ${task.completed ? 'completed' : ''} ${isTaskOverdue(task) ? 'overdue' : ''}`}>
-                  <div className="task-content">
-                    <input type="checkbox" checked={task.completed} onChange={() => toggleTaskCompletion(task.id)} />
-                    {editingId === task.id ? (
-                      <input
-                        type="text"
-                        value={editValue}
-                        onChange={(e) => setEditValue(e.target.value)}
-                        onBlur={() => saveEdit(task.id)}
-                        onKeyDown={(e) => e.key === 'Enter' && saveEdit(task.id)}
-                        autoFocus
-                      />
-                    ) : (
-                      <span onDoubleClick={() => startEditing(task.id, task.text)}>{task.text}</span>
-                    )}
-                  </div>
-                  <div className="task-metadata">
-                    {task.dueDateTime && <div className="due-date">Vence: {formatDateTime(task.dueDateTime)}</div>}
-                    {task.alarmDateTime && <div className="alarm-date">Alarma: {formatDateTime(task.alarmDateTime)} {task.alarmFired && '(Sonó)'}</div>}
-                  </div>
-                  <div className="task-actions">
-                    {task.alarmFired && <button onClick={() => resetAlarm(task.id)}>🔄</button>}
-                    <button onClick={() => startEditing(task.id, task.text)}>✏️</button>
-                    <button onClick={() => deleteTask(task.id)}>🗑️</button>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
+      {/* HEADER */}
+      <div className="header">
+        <h1>✨ Tareas Mágicas</h1>
+        <div className="stats">
+          <span>⭐ {magicPoints} pts</span>
+          <span>🔥 {currentStreak} racha</span>
         </div>
       </div>
+
+      {/* LISTA DE TAREAS */}
+      <div className="task-list">
+        {filteredTasks.length === 0 ? (
+          <div className="no-tasks">
+            {tasks.length === 0 ? '🌟 ¡Tu aventura comienza aquí!' : '🔍 No hay tareas que coincidan'}
+          </div>
+        ) : filteredTasks.map(task => (
+          <div key={task.id} className={`task ${task.completed ? 'completed' : ''}`}>
+            <button onClick={() => toggleTaskCompletion(task.id)}>
+              {task.completed ? '✓' : '○'}
+            </button>
+            <span>{categories[task.category].emoji} {task.text}</span>
+            <button onClick={() => deleteTask(task.id)}>🗑️</button>
+          </div>
+        ))}
+      </div>
+
+      {/* PROGRESO */}
+      {tasks.length > 0 && (
+        <div className="progress">
+          <div className="bar" style={{ width: `${progressPercentage}%` }} />
+        </div>
+      )}
+
+      {/* FILTROS */}
+      {tasks.length > 0 && (
+        <div className="filters">
+          <button onClick={() => setFilter('all')}>🌍 Todas</button>
+          <button onClick={() => setFilter('active')}>⚡ Activas</button>
+          <button onClick={() => setFilter('completed')}>✅ Completadas</button>
+        </div>
+      )}
+
+      {/* BOTÓN FLOTANTE */}
+      <button className="add-task-btn" onClick={() => setShowForm(true)}>+</button>
+
+      {/* MODAL */}
+      {showForm && (
+        <div className="modal">
+          <div className="modal-content">
+            <button className="close" onClick={() => setShowForm(false)}>×</button>
+            <div className="task-form">
+              <input
+                type="text"
+                placeholder="¿Qué aventura te espera hoy?"
+                value={inputValue}
+                onChange={e => setInputValue(e.target.value)}
+                onKeyPress={handleKeyPress}
+              />
+              <button onClick={handleAddTask}>🌟 Crear Tarea</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* CONFETTI */}
+      {showCelebration && <div className="confetti">🎉🎊✨💫🌟</div>}
     </div>
   );
 }
 
-export default Tareas;
+export default DisneyTaskManager;
+

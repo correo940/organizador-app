@@ -3,6 +3,8 @@ import Folder from './components/Folder';
 import Tareas from './components/Tareas';
 import Contrasenas from './components/Contrasenas';
 import Calendario from './components/Calendario';
+import Casa from './components/Casa/Casa';
+import Manuales from './components/Casa/manuales/Manuales';
 import './App.css';
 
 // Vista principal: QUOKKA, APLICACIONES, CALENDARIO
@@ -16,18 +18,19 @@ function HomeView({ onNavigate }) {
   );
 }
 
-// Vista de Aplicaciones: TAREAS, CONTRASEÑAS
+// Vista de Aplicaciones: TAREAS, CONTRASEÑAS, CASA
 function AplicacionesView({ onNavigate }) {
   return (
     <div className="app-container">
       <Folder name="TAREAS" onClick={() => onNavigate('tareas')} />
       <Folder name="CONTRASEÑAS" onClick={() => onNavigate('contrasenas')} />
+      <Folder name="CASA" onClick={() => onNavigate('casa')} />
     </div>
   );
 }
 
 function App() {
-  // Estado para saber qué vista mostrar: 'home', 'aplicaciones', 'tareas', 'calendario', 'contrasenas'
+  // Estado para saber qué vista mostrar: 'home', 'aplicaciones', 'tareas', 'calendario', 'contrasenas', 'casa', 'manuales'
   const [currentView, setCurrentView] = useState('home');
   
   // Estado centralizado para las tareas. Se carga desde localStorage.
@@ -53,8 +56,10 @@ function App() {
 
   // Lógica para el botón "Volver"
   const handleBack = () => {
-    if (['tareas', 'contrasenas'].includes(currentView)) {
+    if (['tareas', 'contrasenas', 'casa'].includes(currentView)) {
       setCurrentView('aplicaciones');
+    } else if (currentView === 'manuales') {
+      setCurrentView('casa');
     } else {
       setCurrentView('home');
     }
@@ -71,6 +76,10 @@ function App() {
         return <Calendario tasks={tasks} />;
       case 'contrasenas':
         return <Contrasenas />;
+      case 'casa':
+        return <Casa onNavigate={setCurrentView} />;
+      case 'manuales':
+        return <Manuales />;
       default:
         return <HomeView onNavigate={setCurrentView} />;
     }
