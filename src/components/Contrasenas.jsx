@@ -7,6 +7,11 @@ function Contrasenas() {
   const [showForm, setShowForm] = useState(false);
   const [activeCategory, setActiveCategory] = useState('all');
   const [copyNotification, setCopyNotification] = useState('');
+  const [isUnlocked, setIsUnlocked] = useState(false);
+  const [hasVault, setHasVault] = useState(false);
+  const [masterPassword, setMasterPassword] = useState('');
+  const [masterPasswordConfirm, setMasterPasswordConfirm] = useState('');
+  const [unlockError, setUnlockError] = useState('');
 
   // Estado del formulario
   const [formData, setFormData] = useState({
@@ -44,22 +49,159 @@ function Contrasenas() {
     { id: 'entertainment', name: 'Entretenimiento', icon: '🎬' }
   ];
 
-  // Cargar contraseñas del almacenamiento local al inicio
+  // Utilidades de cifrado
+  const textEncoder = new TextEncoder();
+  const textDecoder = new TextDecoder();
+
+  const toBase64 = (arrayBuffer) => {
+    const bytes = new Uint8Array(arrayBuffer);
+    let binary = '';
+    for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
+    return btoa(binary);
+  };
+
+  const fromBase64 = (base64) => {
+    const binary = atob(base64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    return bytes.buffer;
+  };
+
+  async function deriveKey(password, salt) {
+    const keyMaterial = await window.crypto.subtle.importKey(
+      'raw',
+      textEncoder.encode(password),
+      'PBKDF2',
+      false,
+      ['deriveKey']
+    );
+    return window.crypto.subtle.deriveKey(
+      {
+        name: 'PBKDF2',
+        salt,
+        iterations: 150000,
+        hash: 'SHA-256'
+      },
+      keyMaterial,
+      { name: 'AES-GCM', length: 256 },
+      false,
+      ['encrypt', 'decrypt']
+    );
+  }
+
+  async function encryptVault(data, password) {
+    const salt = window.crypto.getRandomValues(new Uint8Array(16));
+    const iv = window.crypto.getRandomValues(new Uint8Array(12));
+    const key = await deriveKey(password, salt);
+    const encoded = textEncoder.encode(JSON.stringify(data));
+    const ciphertext = await window.crypto.subtle.encrypt(
+      { name: 'AES-GCM', iv },
+      key,
+      encoded
+    );
+    return {
+      salt: toBase64(salt),
+      iv: toBase64(iv),
+      ciphertext: toBase64(ciphertext)
+    };
+  }
+
+  async function decryptVault(payload, password) {
+    const salt = new Uint8Array(fromBase64(payload.salt));
+    const iv = new Uint8Array(fromBase64(payload.iv));
+    const key = await deriveKey(password, salt);
+    const decrypted = await window.crypto.subtle.decrypt(
+      { name: 'AES-GCM', iv },
+      key,
+      fromBase64(payload.ciphertext)
+    );
+    return JSON.parse(textDecoder.decode(decrypted));
+  }
+
+  // Carga inicial: detectar bóveda cifrada o migrar
   useEffect(() => {
-    const savedPasswords = JSON.parse(localStorage.getItem('passwords') || '[]');
-    setPasswords(savedPasswords);
-    
-    // Verificar si ya se mostró el banner de seguridad
-    const bannerShown = localStorage.getItem('securityBannerShown');
-    if (bannerShown) {
-      setShowSecurityBanner(false);
+    const encrypted = localStorage.getItem('passwords_encrypted');
+    setHasVault(!!encrypted);
+    if (!encrypted) {
+      // Migración opcional desde almacenamiento plano si existiera
+      const legacy = localStorage.getItem('passwords');
+      if (legacy) {
+        try {
+          const parsed = JSON.parse(legacy);
+          setPasswords(Array.isArray(parsed) ? parsed : []);
+        } catch { setPasswords([]); }
+      }
     }
+
+    const bannerShown = localStorage.getItem('securityBannerShown');
+    if (bannerShown) setShowSecurityBanner(false);
   }, []);
 
-  // Guardar contraseñas en el almacenamiento local cuando cambien
+  // Guardado cifrado automático cuando se modifica y está desbloqueado
   useEffect(() => {
-    localStorage.setItem('passwords', JSON.stringify(passwords));
+    async function persist() {
+      try {
+        if (isUnlocked) {
+          const payload = await encryptVault(passwords, masterPassword);
+          localStorage.setItem('passwords_encrypted', JSON.stringify(payload));
+          localStorage.removeItem('passwords');
+        }
+      } catch (e) {
+        console.error('Error cifrando bóveda:', e);
+      }
+    }
+    persist();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [passwords]);
+
+  const handleUnlock = async (e) => {
+    e?.preventDefault?.();
+    setUnlockError('');
+    try {
+      const encrypted = localStorage.getItem('passwords_encrypted');
+      if (!encrypted) return; // no hay bóveda aún
+      const payload = JSON.parse(encrypted);
+      const data = await decryptVault(payload, masterPassword);
+      if (!Array.isArray(data)) throw new Error('Formato inválido');
+      setPasswords(data);
+      setIsUnlocked(true);
+    } catch (err) {
+      console.error(err);
+      setUnlockError('Contraseña maestra incorrecta');
+    }
+  };
+
+  const handleCreateVault = async (e) => {
+    e?.preventDefault?.();
+    setUnlockError('');
+    if (!masterPassword || masterPassword.length < 8) {
+      setUnlockError('Usa al menos 8 caracteres');
+      return;
+    }
+    if (masterPassword !== masterPasswordConfirm) {
+      setUnlockError('Las contraseñas no coinciden');
+      return;
+    }
+    try {
+      // Si existen contraseñas cargadas (legado), se migran; si no, iniciar vacío
+      const initial = Array.isArray(passwords) ? passwords : [];
+      const payload = await encryptVault(initial, masterPassword);
+      localStorage.setItem('passwords_encrypted', JSON.stringify(payload));
+      localStorage.removeItem('passwords');
+      setIsUnlocked(true);
+      setHasVault(true);
+    } catch (err) {
+      console.error(err);
+      setUnlockError('Error creando bóveda');
+    }
+  };
+
+  const handleLock = () => {
+    setIsUnlocked(false);
+    setPasswords([]);
+    setMasterPassword('');
+    setMasterPasswordConfirm('');
+  };
 
   // Función para generar contraseñas ultra seguras
   const generateUltraSecurePassword = () => {
@@ -234,12 +376,89 @@ function Contrasenas() {
     return matchesSearch && matchesCategory;
   });
 
+  // Pantallas de bloqueo/desbloqueo
+  if (!isUnlocked && hasVault) {
+    return (
+      <div className="password-manager-container">
+        <div className="password-manager-content">
+          <div className="password-header">
+            <h1>🔐 Desbloquear Bóveda</h1>
+            <p className="subtitle">Introduce tu contraseña maestra</p>
+          </div>
+          <form onSubmit={handleUnlock} className="add-password-section" style={{ maxWidth: '480px', margin: '0 auto' }}>
+            <div className="form-group">
+              <label className="form-label">Contraseña maestra</label>
+              <input
+                type="password"
+                className="form-input"
+                placeholder="••••••••"
+                value={masterPassword}
+                onChange={(e) => setMasterPassword(e.target.value)}
+                required
+              />
+            </div>
+            {unlockError && <div style={{ color: '#ef4444', marginBottom: '1rem' }}>{unlockError}</div>}
+            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
+              <button type="submit" className="btn btn-primary">🔓 Desbloquear</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isUnlocked && !hasVault) {
+    return (
+      <div className="password-manager-container">
+        <div className="password-manager-content">
+          <div className="password-header">
+            <h1>🛡️ Crear Bóveda Segura</h1>
+            <p className="subtitle">Protege tus contraseñas con una contraseña maestra</p>
+          </div>
+          <form onSubmit={handleCreateVault} className="add-password-section" style={{ maxWidth: '480px', margin: '0 auto' }}>
+            <div className="form-group">
+              <label className="form-label">Contraseña maestra (mín. 8)</label>
+              <input
+                type="password"
+                className="form-input"
+                placeholder="••••••••"
+                value={masterPassword}
+                onChange={(e) => setMasterPassword(e.target.value)}
+                required
+                minLength={8}
+              />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Confirmar contraseña</label>
+              <input
+                type="password"
+                className="form-input"
+                placeholder="••••••••"
+                value={masterPasswordConfirm}
+                onChange={(e) => setMasterPasswordConfirm(e.target.value)}
+                required
+                minLength={8}
+              />
+            </div>
+            {unlockError && <div style={{ color: '#ef4444', marginBottom: '1rem' }}>{unlockError}</div>}
+            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
+              <button type="submit" className="btn btn-primary">🧰 Crear Bóveda</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="password-manager-container">
       <div className="password-manager-content">
         <div className="password-header">
           <h1>🔐 Gestor de Contraseñas</h1>
           <p className="subtitle">Administra tus contraseñas de forma segura</p>
+          <div style={{ marginTop: '0.5rem' }}>
+            <button className="btn btn-secondary" onClick={handleLock}>🔒 Bloquear</button>
+          </div>
         </div>
 
         {/* Barra de búsqueda */}
@@ -508,6 +727,7 @@ function Contrasenas() {
                       className="action-btn"
                       onClick={() => copyToClipboard(password.password)}
                       title="Copiar contraseña"
+                      aria-label={`Copiar contraseña de ${password.service}`}
                     >
                       📋
                     </button>
@@ -515,6 +735,8 @@ function Contrasenas() {
                       className="action-btn"
                       onClick={() => togglePasswordVisibility(password.id)}
                       title={showPasswords[password.id] ? "Ocultar" : "Mostrar"}
+                      aria-pressed={!!showPasswords[password.id]}
+                      aria-label={`${showPasswords[password.id] ? 'Ocultar' : 'Mostrar'} contraseña de ${password.service}`}
                     >
                       {showPasswords[password.id] ? '🙈' : '👁️'}
                     </button>
@@ -522,6 +744,7 @@ function Contrasenas() {
                       className="action-btn delete"
                       onClick={() => deletePassword(password.id)}
                       title="Eliminar"
+                      aria-label={`Eliminar ${password.service}`}
                     >
                       🗑️
                     </button>

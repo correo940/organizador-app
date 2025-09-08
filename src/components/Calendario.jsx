@@ -1,14 +1,14 @@
 import React, { useState, useCallback } from 'react';
-import { Calendar, momentLocalizer } from 'react-big-calendar';
-import moment from 'moment';
+import { Calendar, dayjsLocalizer } from 'react-big-calendar';
+import dayjs from 'dayjs';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 import './Calendario.css';
-import 'moment/locale/es';
+import 'dayjs/locale/es';
 
-// Configurar moment en español
-moment.locale('es');
+// Configurar dayjs en español
+dayjs.locale('es');
 
-const localizer = momentLocalizer(moment);
+const localizer = dayjsLocalizer(dayjs);
 
 // Componente personalizado para el evento del calendario
 const EventoCalendario = ({ event }) => {
@@ -60,13 +60,13 @@ const CustomToolbar = ({ label, onNavigate, onView, view }) => {
   return (
     <div className="rbc-toolbar">
       <div className="rbc-btn-group">
-        <button type="button" onClick={() => navigate('PREV')}>
+        <button type="button" className="btn btn-secondary" onClick={() => navigate('PREV')} aria-label="Mes anterior">
           ‹ Anterior
         </button>
-        <button type="button" onClick={() => navigate('TODAY')}>
+        <button type="button" className="btn btn-secondary" onClick={() => navigate('TODAY')} aria-label="Ir a hoy">
           Hoy
         </button>
-        <button type="button" onClick={() => navigate('NEXT')}>
+        <button type="button" className="btn btn-secondary" onClick={() => navigate('NEXT')} aria-label="Mes siguiente">
           Siguiente ›
         </button>
       </div>
@@ -78,7 +78,8 @@ const CustomToolbar = ({ label, onNavigate, onView, view }) => {
           <button
             key={name}
             type="button"
-            className={view === name ? 'rbc-active' : ''}
+            className={`btn btn-secondary ${view === name ? 'rbc-active' : ''}`}
+            aria-pressed={view === name}
             onClick={() => onView(name)}
           >
             {viewNamesObj[name]}
@@ -216,8 +217,8 @@ function Calendario({ tasks = [] }) {
           showMultiDayTimes
           step={60}
           timeslots={1}
-          min={new Date(2024, 0, 1, 6, 0, 0)}
-          max={new Date(2024, 0, 1, 23, 0, 0)}
+          min={(() => { const d = new Date(); d.setHours(6, 0, 0, 0); return d; })()}
+          max={(() => { const d = new Date(); d.setHours(23, 0, 0, 0); return d; })()}
         />
       </div>
       

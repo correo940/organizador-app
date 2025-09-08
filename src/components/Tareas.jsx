@@ -1,8 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import './Tareas.css';
 
-function DisneyTaskManager() {
-  const [tasks, setTasks] = useState([]);
+function Tareas({ tasks = [], onAddTask, onUpdateTasks }) {
   const [inputValue, setInputValue] = useState('');
   const [filter, setFilter] = useState('all');
   const [showForm, setShowForm] = useState(false);
@@ -19,16 +18,7 @@ function DisneyTaskManager() {
     fun: { emoji: '🎉', name: 'Diversión', color: '#FD79A8' }
   };
 
-  // Cargar tareas guardadas
-  useEffect(() => {
-    const saved = localStorage.getItem("magicTasks");
-    if (saved) setTasks(JSON.parse(saved));
-  }, []);
-
-  // Guardar tareas
-  useEffect(() => {
-    localStorage.setItem("magicTasks", JSON.stringify(tasks));
-  }, [tasks]);
+  // Las tareas vienen de App vía props y se persisten allí
 
   const triggerCelebration = () => {
     setShowCelebration(true);
@@ -46,7 +36,7 @@ function DisneyTaskManager() {
       createdAt: new Date().toISOString(),
       category: 'personal'
     };
-    setTasks([...tasks, newTask]);
+    onAddTask?.(newTask);
     setInputValue('');
     setShowForm(false);
   };
@@ -54,10 +44,14 @@ function DisneyTaskManager() {
   const toggleTaskCompletion = (taskId) => {
     const task = tasks.find(t => t.id === taskId);
     if (!task.completed) triggerCelebration();
-    setTasks(tasks.map(task => task.id === taskId ? { ...task, completed: !task.completed } : task));
+    const updated = tasks.map(task => task.id === taskId ? { ...task, completed: !task.completed } : task);
+    onUpdateTasks?.(updated);
   };
 
-  const deleteTask = (taskId) => setTasks(tasks.filter(task => task.id !== taskId));
+  const deleteTask = (taskId) => {
+    const updated = tasks.filter(task => task.id !== taskId);
+    onUpdateTasks?.(updated);
+  };
 
   const handleKeyPress = (e) => {
     if (e.key === 'Enter') handleAddTask();
@@ -94,11 +88,19 @@ function DisneyTaskManager() {
           </div>
         ) : filteredTasks.map(task => (
           <div key={task.id} className={`task ${task.completed ? 'completed' : ''}`}>
-            <button onClick={() => toggleTaskCompletion(task.id)}>
+            <button 
+              onClick={() => toggleTaskCompletion(task.id)}
+              aria-label={task.completed ? 'Marcar como pendiente' : 'Marcar como completada'}
+            >
               {task.completed ? '✓' : '○'}
             </button>
             <span>{categories[task.category].emoji} {task.text}</span>
-            <button onClick={() => deleteTask(task.id)}>🗑️</button>
+            <button 
+              onClick={() => deleteTask(task.id)}
+              aria-label="Eliminar tarea"
+            >
+              🗑️
+            </button>
           </div>
         ))}
       </div>
@@ -113,20 +115,20 @@ function DisneyTaskManager() {
       {/* FILTROS */}
       {tasks.length > 0 && (
         <div className="filters">
-          <button onClick={() => setFilter('all')}>🌍 Todas</button>
-          <button onClick={() => setFilter('active')}>⚡ Activas</button>
-          <button onClick={() => setFilter('completed')}>✅ Completadas</button>
+          <button onClick={() => setFilter('all')} aria-pressed={filter==='all'} aria-label="Mostrar todas las tareas">🌍 Todas</button>
+          <button onClick={() => setFilter('active')} aria-pressed={filter==='active'} aria-label="Mostrar tareas activas">⚡ Activas</button>
+          <button onClick={() => setFilter('completed')} aria-pressed={filter==='completed'} aria-label="Mostrar tareas completadas">✅ Completadas</button>
         </div>
       )}
 
       {/* BOTÓN FLOTANTE */}
-      <button className="add-task-btn" onClick={() => setShowForm(true)}>+</button>
+      <button className="add-task-btn" onClick={() => setShowForm(true)} aria-label="Añadir tarea">+</button>
 
       {/* MODAL */}
       {showForm && (
         <div className="modal">
           <div className="modal-content">
-            <button className="close" onClick={() => setShowForm(false)}>×</button>
+            <button className="close" onClick={() => setShowForm(false)} aria-label="Cerrar modal">×</button>
             <div className="task-form">
               <input
                 type="text"
@@ -134,8 +136,9 @@ function DisneyTaskManager() {
                 value={inputValue}
                 onChange={e => setInputValue(e.target.value)}
                 onKeyPress={handleKeyPress}
+                aria-label="Descripción de la tarea"
               />
-              <button onClick={handleAddTask}>🌟 Crear Tarea</button>
+              <button onClick={handleAddTask} className="btn btn-primary" aria-label="Crear tarea">🌟 Crear Tarea</button>
             </div>
           </div>
         </div>
@@ -147,5 +150,5 @@ function DisneyTaskManager() {
   );
 }
 
-export default DisneyTaskManager;
+export default Tareas;
 

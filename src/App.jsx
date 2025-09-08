@@ -1,98 +1,155 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import Folder from './components/Folder';
 import Tareas from './components/Tareas';
 import Contrasenas from './components/Contrasenas';
 import Calendario from './components/Calendario';
 import Casa from './components/Casa/Casa';
 import Manuales from './components/Casa/manuales/Manuales';
+import ToastContainer from './components/ToastContainer';
 import './App.css';
+import { useLocalStorage } from './hooks/useLocalStorage';
+import { useToast } from './hooks/useToast';
 
 // Vista principal: QUOKKA, APLICACIONES, CALENDARIO
 function HomeView({ onNavigate }) {
   return (
-    <div className="app-container">
-      <Folder name="QUOKKA" />
-      <Folder name="APLICACIONES" onClick={() => onNavigate('aplicaciones')} />
-      <Folder name="CALENDARIO" onClick={() => onNavigate('calendario')} />
+    <div className="home-view">
+      <div className="folder-container">
+        <Folder 
+          name="QUOKKA" 
+          color="#FF6B6B" 
+          onClick={() => onNavigate('/quokka')}
+        />
+        <Folder 
+          name="APLICACIONES" 
+          color="#4ECDC4"
+          onClick={() => onNavigate('/aplicaciones')}
+        />
+        <Folder 
+          name="CALENDARIO" 
+          color="#45B7D1"
+          onClick={() => onNavigate('/calendario')}
+        />
+      </div>
     </div>
   );
 }
 
-// Vista de Aplicaciones: TAREAS, CONTRASEÑAS, CASA
-function AplicacionesView({ onNavigate }) {
+// Vista de aplicaciones: TAREAS, CONTRASEÑAS, CASA
+function ApplicationsView({ onNavigate }) {
   return (
-    <div className="app-container">
-      <Folder name="TAREAS" onClick={() => onNavigate('tareas')} />
-      <Folder name="CONTRASEÑAS" onClick={() => onNavigate('contrasenas')} />
-      <Folder name="CASA" onClick={() => onNavigate('casa')} />
+    <div className="applications-view">
+      <div className="back-button" onClick={() => onNavigate('/')}>
+        ← Volver
+      </div>
+      <div className="folder-container">
+        <Folder 
+          name="TAREAS" 
+          color="#96CEB4"
+          onClick={() => onNavigate('/aplicaciones/tareas')}
+        />
+        <Folder 
+          name="CONTRASEÑAS" 
+          color="#FECA57"
+          onClick={() => onNavigate('/aplicaciones/contrasenas')}
+        />
+        <Folder 
+          name="CASA" 
+          color="#FF9FF3"
+          onClick={() => onNavigate('/casa')}
+        />
+      </div>
+    </div>
+  );
+}
+
+// Vista de casa: MANUALES
+function HouseView({ onNavigate }) {
+  return (
+    <div className="house-view">
+      <div className="back-button" onClick={() => onNavigate('/aplicaciones')}>
+        ← Volver a Aplicaciones
+      </div>
+      <div className="folder-container">
+        <Folder 
+          name="MANUALES" 
+          color="#A8E6CF"
+          onClick={() => onNavigate('/casa/manuales')}
+        />
+      </div>
     </div>
   );
 }
 
 function App() {
-  // Estado para saber qué vista mostrar: 'home', 'aplicaciones', 'tareas', 'calendario', 'contrasenas', 'casa', 'manuales'
-  const [currentView, setCurrentView] = useState('home');
-  
-  // Estado centralizado para las tareas. Se carga desde localStorage.
-  const [tasks, setTasks] = useState(() => {
-    const savedTasks = localStorage.getItem('tasks');
-    return savedTasks ? JSON.parse(savedTasks) : [];
-  });
+  const [view, setView] = useLocalStorage('current-view', '/');
+  const { toasts, addToast } = useToast();
+  const [tasks, setTasks] = useState([]);
 
-  // Guardar tareas en localStorage cada vez que cambien
-  useEffect(() => {
-    localStorage.setItem('tasks', JSON.stringify(tasks));
-  }, [tasks]);
-
-  // Función para añadir una nueva tarea a la lista
-  const handleAddTask = (newTask) => {
-    setTasks(prevTasks => [newTask, ...prevTasks]);
-  };
-  
-  // Función para actualizar la lista de tareas (borrar, completar, etc.)
-  const handleUpdateTasks = (updatedTasks) => {
-    setTasks(updatedTasks);
-  }
-
-  // Lógica para el botón "Volver"
-  const handleBack = () => {
-    if (['tareas', 'contrasenas', 'casa'].includes(currentView)) {
-      setCurrentView('aplicaciones');
-    } else if (currentView === 'manuales') {
-      setCurrentView('casa');
-    } else {
-      setCurrentView('home');
-    }
+  const handleNavigate = (path) => {
+    setView(path);
   };
 
-  // Navegación y renderizado
-  const renderContent = () => {
-    switch (currentView) {
-      case 'aplicaciones':
-        return <AplicacionesView onNavigate={setCurrentView} />;
-      case 'tareas':
-        return <Tareas tasks={tasks} onAddTask={handleAddTask} onUpdateTasks={handleUpdateTasks} />;
-      case 'calendario':
-        return <Calendario tasks={tasks} />;
-      case 'contrasenas':
-        return <Contrasenas />;
-      case 'casa':
-        return <Casa onNavigate={setCurrentView} />;
-      case 'manuales':
-        return <Manuales />;
+  const renderCurrentView = () => {
+    switch (view) {
+      case '/':
+        return <HomeView onNavigate={handleNavigate} />;
+      case '/aplicaciones':
+        return <ApplicationsView onNavigate={handleNavigate} />;
+      case '/aplicaciones/tareas':
+        return (
+          <div>
+            <div className="back-button" onClick={() => handleNavigate('/aplicaciones')}>
+              ← Volver a Aplicaciones
+            </div>
+            <Tareas 
+              tasks={tasks} 
+              setTasks={setTasks} 
+              addToast={addToast}
+            />
+          </div>
+        );
+      case '/aplicaciones/contrasenas':
+        return (
+          <div>
+            <div className="back-button" onClick={() => handleNavigate('/aplicaciones')}>
+              ← Volver a Aplicaciones
+            </div>
+            <Contrasenas addToast={addToast} />
+          </div>
+        );
+      case '/calendario':
+        return (
+          <div>
+            <div className="back-button" onClick={() => handleNavigate('/')}>
+              ← Volver al Inicio
+            </div>
+            <Calendario addToast={addToast} />
+          </div>
+        );
+      case '/casa':
+        return <HouseView onNavigate={handleNavigate} />;
+      case '/casa/manuales':
+        return (
+          <div>
+            <div className="back-button" onClick={() => handleNavigate('/casa')}>
+              ← Volver a Casa
+            </div>
+            <Manuales addToast={addToast} />
+          </div>
+        );
       default:
-        return <HomeView onNavigate={setCurrentView} />;
+        return <HomeView onNavigate={handleNavigate} />;
     }
   };
 
   return (
-    <div className="app-wrapper">
-      {currentView !== 'home' && (
-        <button onClick={handleBack} className="back-to-home">
-          ‹ Volver
-        </button>
-      )}
-      {renderContent()}
+    <div className="App">
+      <div className="app-container">
+        {renderCurrentView()}
+        <ToastContainer toasts={toasts} />
+      </div>
     </div>
   );
 }
