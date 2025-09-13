@@ -1,21 +1,30 @@
 import React from 'react';
+import { Card } from 'react-bootstrap';
 import './Folder.css';
 
-const Folder = ({ name, onClick }) => {
+const Folder = ({ name, color, onClick }) => {
   return (
-    <div
-      className="folder"
-      role="button"
-      tabIndex={0}
-      aria-label={`Abrir ${name}`}
+    <Card
+      className="folder-card shadow-lg"
       onClick={onClick}
-      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick?.(); } }}
+      style={{ backgroundColor: color, cursor: 'pointer', border: 'none', borderRadius: 'var(--radius-xl)' }}
     >
-      <div className="folder-content">
-        <span className="folder-icon">📁</span>
-        <span className="folder-name">{name}</span>
-      </div>
-    </div>
+      <Card.Body className="d-flex flex-column justify-content-center align-items-center">
+        <div className="folder-icon" style={{ fontSize: 'var(--font-size-3xl)', marginBottom: 'var(--space-2)' }}>📁</div>
+        <Card.Title 
+            className="folder-name" 
+            style={{ 
+                fontSize: 'var(--font-size-lg)', 
+                fontWeight: 'var(--font-weight-semibold)', 
+                color: 'var(--white)', 
+                textTransform: 'uppercase',
+                letterSpacing: '0.5px'
+            }}
+        >
+            {name}
+        </Card.Title>
+      </Card.Body>
+    </Card>
   );
 };
 

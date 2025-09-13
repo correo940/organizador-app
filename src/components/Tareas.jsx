@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Card, ListGroup, ProgressBar, ButtonGroup, Button, Badge, Form, Modal } from 'react-bootstrap';
 import './Tareas.css';
 
 function Tareas({ tasks = [], onAddTask, onUpdateTasks }) {
@@ -17,8 +18,6 @@ function Tareas({ tasks = [], onAddTask, onUpdateTasks }) {
     learning: { emoji: '📚', name: 'Aprender', color: '#FFEAA7' },
     fun: { emoji: '🎉', name: 'Diversión', color: '#FD79A8' }
   };
-
-  // Las tareas vienen de App vía props y se persisten allí
 
   const triggerCelebration = () => {
     setShowCelebration(true);
@@ -67,88 +66,90 @@ function Tareas({ tasks = [], onAddTask, onUpdateTasks }) {
   const progressPercentage = tasks.length > 0 ? (completedTasks / tasks.length) * 100 : 0;
 
   return (
-    <div className="disney-task-manager">
-      {/* Estrellitas decorativas */}
+    <Card className="disney-task-manager shadow-lg">
       {[...Array(10)].map((_, i) => <div key={i} className="floating-star">✨</div>)}
-
-      {/* HEADER */}
-      <div className="header">
-        <h1>✨ Tareas Mágicas</h1>
-        <div className="stats">
-          <span>⭐ {magicPoints} pts</span>
-          <span>🔥 {currentStreak} racha</span>
-        </div>
-      </div>
-
-      {/* LISTA DE TAREAS */}
-      <div className="task-list">
-        {filteredTasks.length === 0 ? (
-          <div className="no-tasks">
-            {tasks.length === 0 ? '🌟 ¡Tu aventura comienza aquí!' : '🔍 No hay tareas que coincidan'}
+      <Card.Body>
+        <div className="text-center mb-4">
+          <Card.Title as="h1">✨ Tareas Mágicas</Card.Title>
+          <div>
+            <Badge bg="warning" text="dark" className="me-2">⭐ {magicPoints} pts</Badge>
+            <Badge bg="danger">🔥 {currentStreak} racha</Badge>
           </div>
-        ) : filteredTasks.map(task => (
-          <div key={task.id} className={`task ${task.completed ? 'completed' : ''}`}>
-            <button 
-              onClick={() => toggleTaskCompletion(task.id)}
-              aria-label={task.completed ? 'Marcar como pendiente' : 'Marcar como completada'}
-            >
-              {task.completed ? '✓' : '○'}
-            </button>
-            <span>{categories[task.category].emoji} {task.text}</span>
-            <button 
-              onClick={() => deleteTask(task.id)}
-              aria-label="Eliminar tarea"
-            >
-              🗑️
-            </button>
-          </div>
-        ))}
-      </div>
-
-      {/* PROGRESO */}
-      {tasks.length > 0 && (
-        <div className="progress">
-          <div className="bar" style={{ width: `${progressPercentage}%` }} />
         </div>
-      )}
 
-      {/* FILTROS */}
-      {tasks.length > 0 && (
-        <div className="filters">
-          <button onClick={() => setFilter('all')} aria-pressed={filter==='all'} aria-label="Mostrar todas las tareas">🌍 Todas</button>
-          <button onClick={() => setFilter('active')} aria-pressed={filter==='active'} aria-label="Mostrar tareas activas">⚡ Activas</button>
-          <button onClick={() => setFilter('completed')} aria-pressed={filter==='completed'} aria-label="Mostrar tareas completadas">✅ Completadas</button>
-        </div>
-      )}
-
-      {/* BOTÓN FLOTANTE */}
-      <button className="add-task-btn" onClick={() => setShowForm(true)} aria-label="Añadir tarea">+</button>
-
-      {/* MODAL */}
-      {showForm && (
-        <div className="modal">
-          <div className="modal-content">
-            <button className="close" onClick={() => setShowForm(false)} aria-label="Cerrar modal">×</button>
-            <div className="task-form">
-              <input
-                type="text"
-                placeholder="¿Qué aventura te espera hoy?"
-                value={inputValue}
-                onChange={e => setInputValue(e.target.value)}
-                onKeyPress={handleKeyPress}
-                aria-label="Descripción de la tarea"
+        <ListGroup variant="flush">
+          {filteredTasks.length === 0 ? (
+            <ListGroup.Item className="text-center text-muted">
+              {tasks.length === 0 ? '🌟 ¡Tu aventura comienza aquí!' : '🔍 No hay tareas que coincidan'}
+            </ListGroup.Item>
+          ) : filteredTasks.map(task => (
+            <ListGroup.Item key={task.id} className={`d-flex justify-content-between align-items-center ${task.completed ? 'completed' : ''}`}>
+              <Form.Check
+                type="checkbox"
+                checked={task.completed}
+                onChange={() => toggleTaskCompletion(task.id)}
+                aria-label={task.completed ? 'Marcar como pendiente' : 'Marcar como completada'}
               />
-              <button onClick={handleAddTask} className="btn btn-primary" aria-label="Crear tarea">🌟 Crear Tarea</button>
-            </div>
-          </div>
-        </div>
-      )}
+              <span className="ms-2 me-auto">{categories[task.category].emoji} {task.text}</span>
+              <Button variant="link" onClick={() => deleteTask(task.id)} aria-label="Eliminar tarea">
+                🗑️
+              </Button>
+            </ListGroup.Item>
+          ))}
+        </ListGroup>
 
-      {/* CONFETTI */}
-      {showCelebration && <div className="confetti">🎉🎊✨💫🌟</div>}
-    </div>
+        {tasks.length > 0 && (
+          <div className="mt-4">
+            <ProgressBar now={progressPercentage} style={{ height: '10px' }} />
+          </div>
+        )}
+
+        {tasks.length > 0 && (
+          <div className="d-flex justify-content-center mt-3">
+            <ButtonGroup>
+              <Button variant={filter === 'all' ? 'primary' : 'outline-primary'} onClick={() => setFilter('all')}>🌍 Todas</Button>
+              <Button variant={filter === 'active' ? 'primary' : 'outline-primary'} onClick={() => setFilter('active')}>⚡ Activas</Button>
+              <Button variant={filter === 'completed' ? 'primary' : 'outline-primary'} onClick={() => setFilter('completed')}>✅ Completadas</Button>
+            </ButtonGroup>
+          </div>
+        )}
+
+        <Button
+          className="add-task-btn"
+          onClick={() => setShowForm(true)}
+          aria-label="Añadir tarea"
+        >
+          +
+        </Button>
+
+        <Modal show={showForm} onHide={() => setShowForm(false)} centered>
+          <Modal.Header closeButton>
+            <Modal.Title>🌟 Crear Tarea</Modal.Title>
+          </Modal.Header>
+          <Modal.Body>
+            <Form.Control
+              type="text"
+              placeholder="¿Qué aventura te espera hoy?"
+              value={inputValue}
+              onChange={e => setInputValue(e.target.value)}
+              onKeyPress={handleKeyPress}
+              aria-label="Descripción de la tarea"
+            />
+          </Modal.Body>
+          <Modal.Footer>
+            <Button variant="secondary" onClick={() => setShowForm(false)}>
+              Cerrar
+            </Button>
+            <Button variant="primary" onClick={handleAddTask}>
+              Crear Tarea
+            </Button>
+          </Modal.Footer>
+        </Modal>
+
+        {showCelebration && <div className="confetti">🎉🎊✨💫🌟</div>}
+      </Card.Body>
+    </Card>
   );
 }
 
 export default Tareas;
-

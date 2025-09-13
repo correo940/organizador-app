@@ -1,251 +1,29 @@
-/* Reset global y fondo blanco */
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
+/* Añadir al final de App.css - Solo cambio de fondo a verde suave */
 
-body {
-  font-family: 'Arial', sans-serif;
-  background-color: #ffffff;
-  color: #333;
+.App {
+  background: linear-gradient(135deg, #f0f8f0 0%, #e8f5e8 100%);
   min-height: 100vh;
-}
-
-/* Contenedor principal de la aplicación */
-.app-wrapper {
-  background-color: #ffffff;
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  padding: 20px;
 }
 
 .app-container {
-  background-color: #ffffff;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 20px;
-  justify-content: center;
-  align-items: center;
-  padding: 40px 20px;
+  background: linear-gradient(135deg, #f8fcf8 0%, #e8f5e8 100%);
+  min-height: 100vh;
 }
 
-/* Recuadros/Carpetas con fondo verde */
-.folder, .folder-card {
-  background-color: #28a745; /* Verde vibrante */
-  color: #ffffff;
-  padding: 24px;
-  margin: 12px;
-  border-radius: 12px;
+/* Opcional: Mejorar el botón de volver con tema verde */
+.back-button {
+  background: linear-gradient(135deg, #2d5a2d, #1a4a1a) !important;
+  color: white !important;
   border: none;
-  font-size: 1.2rem;
-  font-weight: bold;
-  text-align: center;
+  padding: 0.8rem 1.5rem;
+  border-radius: 8px;
   cursor: pointer;
-  min-width: 200px;
-  min-height: 120px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+  font-weight: 500;
   transition: all 0.3s ease;
+  margin-bottom: 1rem;
 }
 
-.folder:hover, .folder-card:hover {
-  background-color: #218838; /* Verde más oscuro al hover */
+.back-button:hover {
+  background: linear-gradient(135deg, #1a4a1a, #2d5a2d) !important;
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(40, 167, 69, 0.4);
-}
-
-/* Botón "Volver" */
-.back-to-home, .back-button {
-  background-color: #1e7e34;
-  color: #ffffff;
-  border: none;
-  padding: 12px 24px;
-  border-radius: 8px;
-  font-size: 1rem;
-  font-weight: bold;
-  cursor: pointer;
-  margin: 0 0 20px 20px;
-  transition: background-color 0.3s ease;
-}
-
-.back-to-home:hover, .back-button:hover {
-  background-color: #155724;
-}
-
-/* Contenedores de vistas */
-.home-view, .applications-view, .house-view {
-  background-color: #ffffff;
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.folder-container {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 20px;
-  justify-content: center;
-  margin-top: 20px;
-}
-
-/* Estilos para formularios y inputs */
-.form-container {
-  background-color: #f8f9fa;
-  padding: 24px;
-  border-radius: 12px;
-  border-left: 4px solid #28a745;
-  margin: 20px;
-}
-
-.input-group {
-  margin-bottom: 16px;
-}
-
-.input-group label {
-  display: block;
-  font-weight: bold;
-  color: #333;
-  margin-bottom: 8px;
-}
-
-.input-group input,
-.input-group textarea {
-  width: 100%;
-  padding: 12px;
-  border: 2px solid #e9ecef;
-  border-radius: 6px;
-  font-size: 1rem;
-  transition: border-color 0.3s ease;
-}
-
-.input-group input:focus,
-.input-group textarea:focus {
-  outline: none;
-  border-color: #28a745;
-}
-
-/* Botones de acción */
-.btn-primary {
-  background-color: #28a745;
-  color: white;
-  border: none;
-  padding: 12px 24px;
-  border-radius: 6px;
-  font-size: 1rem;
-  font-weight: bold;
-  cursor: pointer;
-  transition: background-color 0.3s ease;
-}
-
-.btn-primary:hover {
-  background-color: #218838;
-}
-
-.btn-secondary {
-  background-color: #6c757d;
-  color: white;
-  border: none;
-  padding: 10px 20px;
-  border-radius: 6px;
-  font-size: 0.9rem;
-  cursor: pointer;
-  margin-left: 10px;
-  transition: background-color 0.3s ease;
-}
-
-.btn-secondary:hover {
-  background-color: #5a6268;
-}
-
-/* Cards/Tarjetas de contenido */
-.card {
-  background-color: #ffffff;
-  border: 2px solid #28a745;
-  border-radius: 12px;
-  padding: 20px;
-  margin: 16px 0;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.card-header {
-  background-color: #28a745;
-  color: white;
-  padding: 12px 20px;
-  border-radius: 10px 10px 0 0;
-  margin: -20px -20px 20px -20px;
-  font-weight: bold;
-  font-size: 1.1rem;
-}
-
-/* Listas */
-.list-item {
-  background-color: #f8f9fa;
-  border-left: 4px solid #28a745;
-  padding: 16px;
-  margin: 12px 0;
-  border-radius: 0 8px 8px 0;
-}
-
-/* Toast/Notificaciones */
-.toast-container {
-  position: fixed;
-  top: 20px;
-  right: 20px;
-  z-index: 1000;
-}
-
-.toast {
-  background-color: #28a745;
-  color: white;
-  padding: 16px 24px;
-  border-radius: 8px;
-  margin-bottom: 12px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-  animation: slideIn 0.3s ease;
-}
-
-.toast.success {
-  background-color: #28a745;
-}
-
-.toast.error {
-  background-color: #dc3545;
-}
-
-.toast.info {
-  background-color: #17a2b8;
-}
-
-@keyframes slideIn {
-  from {
-    transform: translateX(100%);
-    opacity: 0;
-  }
-  to {
-    transform: translateX(0);
-    opacity: 1;
-  }
-}
-
-/* Responsive */
-@media (max-width: 768px) {
-  .app-container {
-    padding: 20px 10px;
-  }
-  
-  .folder, .folder-card {
-    min-width: 160px;
-    min-height: 100px;
-    font-size: 1rem;
-  }
-  
-  .folder-container {
-    flex-direction: column;
-    align-items: center;
-  }
 }
