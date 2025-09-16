@@ -27,3 +27,9 @@
   background: linear-gradient(135deg, #1a4a1a, #2d5a2d) !important;
   transform: translateY(-2px);
 }
+
+.view-title {
+  color: #333;
+  margin-bottom: 2rem;
+  font-weight: 600;
+}
