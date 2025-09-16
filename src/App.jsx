@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Container, Row, Col, Button } from 'react-bootstrap';
 import Folder from './components/Folder';
 import Tareas from './components/Tareas';
@@ -8,11 +8,12 @@ import Casa from './components/Casa/Casa';
 import Manuales from './components/Casa/manuales/Manuales';
 import ToastContainer from './components/ToastContainer';
 import './App.css';
-import { useLocalStorage } from './hooks/useLocalStorage';
 import { useToast } from './hooks/useToast';
+import { Outlet, useNavigate } from 'react-router-dom';
 
 // Vista principal: QUOKKA, APLICACIONES, CALENDARIO
-function HomeView({ onNavigate }) {
+export function HomeView() {
+  const navigate = useNavigate();
   return (
     <Container className="home-view text-center mt-5">
       <Row>
@@ -20,21 +21,21 @@ function HomeView({ onNavigate }) {
           <Folder
             name="QUOKKA"
             color="#2d5a2d"
-            onClick={() => onNavigate('/quokka')}
+            onClick={() => navigate('/quokka')}
           />
         </Col>
         <Col>
           <Folder
             name="APLICACIONES"
             color="#90ee90"
-            onClick={() => onNavigate('/aplicaciones')}
+            onClick={() => navigate('/aplicaciones')}
           />
         </Col>
         <Col>
           <Folder
             name="CALENDARIO"
             color="#1a4a1a"
-            onClick={() => onNavigate('/calendario')}
+            onClick={() => navigate('/calendario')}
           />
         </Col>
       </Row>
@@ -43,10 +44,11 @@ function HomeView({ onNavigate }) {
 }
 
 // Vista de aplicaciones: TAREAS, CONTRASEÑAS, CASA
-function ApplicationsView({ onNavigate }) {
+export function ApplicationsView() {
+  const navigate = useNavigate();
   return (
     <Container className="applications-view mt-5">
-      <Button variant="light" onClick={() => onNavigate('/')} className="mb-3">
+      <Button variant="light" onClick={() => navigate('/')} className="mb-3">
         ← Volver
       </Button>
       <Row className="text-center">
@@ -54,21 +56,21 @@ function ApplicationsView({ onNavigate }) {
           <Folder
             name="TAREAS"
             color="#4a7c59"
-            onClick={() => onNavigate('/aplicaciones/tareas')}
+            onClick={() => navigate('/aplicaciones/tareas')}
           />
         </Col>
         <Col>
           <Folder
             name="CONTRASEÑAS"
             color="#66bb6a"
-            onClick={() => onNavigate('/aplicaciones/contrasenas')}
+            onClick={() => navigate('/aplicaciones/contrasenas')}
           />
         </Col>
         <Col>
           <Folder
             name="CASA"
             color="#81c784"
-            onClick={() => onNavigate('/casa')}
+            onClick={() => navigate('/casa')}
           />
         </Col>
       </Row>
@@ -77,10 +79,11 @@ function ApplicationsView({ onNavigate }) {
 }
 
 // Vista de casa: MANUALES
-function HouseView({ onNavigate }) {
+export function HouseView() {
+  const navigate = useNavigate();
   return (
     <Container className="house-view mt-5">
-      <Button variant="light" onClick={() => onNavigate('/aplicaciones')} className="mb-3">
+      <Button variant="light" onClick={() => navigate('/aplicaciones')} className="mb-3">
         ← Volver a Aplicaciones
       </Button>
       <Row className="text-center">
@@ -88,7 +91,7 @@ function HouseView({ onNavigate }) {
           <Folder
             name="MANUALES"
             color="#a5d6a7"
-            onClick={() => onNavigate('/casa/manuales')}
+            onClick={() => navigate('/casa/manuales')}
           />
         </Col>
       </Row>
@@ -97,70 +100,11 @@ function HouseView({ onNavigate }) {
 }
 
 function App() {
-  const [view, setView] = useLocalStorage('current-view', '/');
-  const { toasts, addToast } = useToast();
-  const [tasks, setTasks] = useState([]);
-
-  const handleNavigate = (path) => {
-    setView(path);
-  };
-
-  const renderCurrentView = () => {
-    switch (view) {
-      case '/':
-        return <HomeView onNavigate={handleNavigate} />;
-      case '/aplicaciones':
-        return <ApplicationsView onNavigate={handleNavigate} />;
-      case '/aplicaciones/tareas':
-        return (
-          <Container className="mt-5">
-            <Button variant="light" onClick={() => handleNavigate('/aplicaciones')} className="mb-3">
-              ← Volver a Aplicaciones
-            </Button>
-            <Tareas
-              tasks={tasks}
-              setTasks={setTasks}
-              addToast={addToast}
-            />
-          </Container>
-        );
-      case '/aplicaciones/contrasenas':
-        return (
-          <Container className="mt-5">
-            <Button variant="light" onClick={() => handleNavigate('/aplicaciones')} className="mb-3">
-              ← Volver a Aplicaciones
-            </Button>
-            <Contrasenas addToast={addToast} />
-          </Container>
-        );
-      case '/calendario':
-        return (
-          <Container className="mt-5">
-            <Button variant="light" onClick={() => handleNavigate('/')} className="mb-3">
-              ← Volver al Inicio
-            </Button>
-            <Calendario addToast={addToast} />
-          </Container>
-        );
-      case '/casa':
-        return <HouseView onNavigate={handleNavigate} />;
-      case '/casa/manuales':
-        return (
-          <Container className="mt-5">
-            <Button variant="light" onClick={() => handleNavigate('/casa')} className="mb-3">
-              ← Volver a Casa
-            </Button>
-            <Manuales addToast={addToast} />
-          </Container>
-        );
-      default:
-        return <HomeView onNavigate={handleNavigate} />;
-    }
-  };
+  const { toasts } = useToast();
 
   return (
     <div className="App">
-      {renderCurrentView()}
+      <Outlet />
       <ToastContainer toasts={toasts} />
     </div>
   );
