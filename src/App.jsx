@@ -10,6 +10,7 @@ import ToastContainer from './components/ToastContainer';
 import './App.css';
 import { useToast } from './hooks/useToast';
 import { Outlet, useNavigate } from 'react-router-dom';
+import Header from './components/Header';
 
 // Vista principal: QUOKKA, APLICACIONES, CALENDARIO
 export function HomeView() {
@@ -19,22 +20,22 @@ export function HomeView() {
       <Row>
         <Col>
           <Folder
-            name="QUOKKA"
-            color="#2d5a2d"
+            name="Quiova"
+            color="#4A7C59"
             onClick={() => navigate('/quokka')}
           />
         </Col>
         <Col>
           <Folder
             name="APLICACIONES"
-            color="#90ee90"
+            color="#6A994E"
             onClick={() => navigate('/aplicaciones')}
           />
         </Col>
         <Col>
           <Folder
             name="CALENDARIO"
-            color="#1a4a1a"
+            color="#84A98C"
             onClick={() => navigate('/calendario')}
           />
         </Col>
@@ -48,28 +49,29 @@ export function ApplicationsView() {
   const navigate = useNavigate();
   return (
     <Container className="applications-view mt-5">
-      <Button variant="light" onClick={() => navigate('/')} className="mb-3">
+      <Button onClick={() => navigate('/')} className="back-button mb-4">
         ← Volver
       </Button>
+      <h2 className="view-title">Aplicaciones</h2>
       <Row className="text-center">
         <Col>
           <Folder
             name="TAREAS"
-            color="#4a7c59"
+            color="#4A7C59"
             onClick={() => navigate('/aplicaciones/tareas')}
           />
         </Col>
         <Col>
           <Folder
             name="CONTRASEÑAS"
-            color="#66bb6a"
+            color="#6A994E"
             onClick={() => navigate('/aplicaciones/contrasenas')}
           />
         </Col>
         <Col>
           <Folder
             name="CASA"
-            color="#81c784"
+            color="#84A98C"
             onClick={() => navigate('/casa')}
           />
         </Col>
@@ -83,14 +85,15 @@ export function HouseView() {
   const navigate = useNavigate();
   return (
     <Container className="house-view mt-5">
-      <Button variant="light" onClick={() => navigate('/aplicaciones')} className="mb-3">
+      <Button onClick={() => navigate('/aplicaciones')} className="back-button mb-4">
         ← Volver a Aplicaciones
       </Button>
+      <h2 className="view-title">Casa</h2>
       <Row className="text-center">
         <Col>
           <Folder
             name="MANUALES"
-            color="#a5d6a7"
+            color="#4A7C59"
             onClick={() => navigate('/casa/manuales')}
           />
         </Col>
@@ -104,6 +107,7 @@ function App() {
 
   return (
     <div className="App">
+      <Header />
       <Outlet />
       <ToastContainer toasts={toasts} />
     </div>
