@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git -C \"C:\\\\Users\\\\jacho\\\\OneDrive\\\\Escritorio\\\\apk\\\\Quiova\\\\.claude\\\\worktrees\\\\vigilant-antonelli-6d444f\" add src/components/layout/header.tsx)",
+      "Bash(git -C 'C:\\\\Users\\\\jacho\\\\OneDrive\\\\Escritorio\\\\apk\\\\Quiova\\\\.claude\\\\worktrees\\\\vigilant-antonelli-6d444f' commit -m 'fix: prevent logo text from being clipped in header *)",
+      "Bash(git -C \"C:\\\\Users\\\\jacho\\\\OneDrive\\\\Escritorio\\\\apk\\\\Quiova\\\\.claude\\\\worktrees\\\\vigilant-antonelli-6d444f\" push origin claude/vigilant-antonelli-6d444f)",
+      "Bash(git -C 'C:\\\\Users\\\\jacho\\\\OneDrive\\\\Escritorio\\\\apk\\\\Quiova\\\\.claude\\\\worktrees\\\\vigilant-antonelli-6d444f' commit -m 'fix: hide logo text on md screens to prevent overflow when logged in *)",
+      "Bash(git -C \"C:\\\\Users\\\\jacho\\\\OneDrive\\\\Escritorio\\\\apk\\\\Quiova\\\\.claude\\\\worktrees\\\\vigilant-antonelli-6d444f\" push)",
+      "Bash(npm run *)",
+      "Bash(Get-Content \"C:\\\\Users\\\\jacho\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--Users-jacho-OneDrive-Escritorio-apk-Quiova--claude-worktrees-vigilant-antonelli-6d444f\\\\211ba19c-50e1-4142-b08f-db3805d6c6d9\\\\tasks\\\\bflzskaw9.output\" -Wait)",
+      "Bash(Select-String --line-buffered \"localhost|ready|Ready|error|Error|FAILED\")",
+      "Bash(npx tsc *)",
+      "Bash(Select-Object -First 30)",
+      "PowerShell(npx tsc --noEmit -p tsconfig.json 2>&1)",
+      "Bash(xargs sed -i 's|href=\"/apps/mi-hogar\"|href=\"/desktop\"|g')"
+    ]
+  }
+}

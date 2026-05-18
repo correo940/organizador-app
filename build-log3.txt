@@ -1,0 +1,85 @@
+﻿  Ôû▓ Next.js 14.2.33
+  - Environments: .env.local
+  - Experiments (use with caution):
+    ┬À missingSuspenseWithCSRBailout
+
+   Creating an optimized production build ...
+node.exe : Browserslist: 
+caniuse-lite is outdated. 
+Please run:
+En C:\Program 
+Files\nodejs\npx.ps1: 29 
+Carácter: 3
++   & $NODE_EXE 
+$NPX_CLI_JS $args
++   ~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~
+    + CategoryInfo        
+      : NotSpecified: (B  
+  rowserslist: c...ed.    
+ Please run::String) [    
+], RemoteException
+    + FullyQualifiedError 
+   Id : NativeCommandErr  
+  or
+ 
+  npx update-browserslist-
+db@latest
+  Why you should do it 
+regularly: https://github.
+com/browserslist/update-db
+#readme
+ Ô£ô Compiled successfully
+   Skipping validation of types
+   Skipping linting
+   Collecting page data ...
+
+> Build error occurred
+Error: Page 
+"/api/auth/[...nextauth]" 
+is missing 
+"generateStaticParams()" 
+so it cannot be used with 
+"output: export" config.
+    at C:\Users\jacho\OneD
+rive\Escritorio\apk\Quiova
+\node_modules\next\dist\bu
+ild\index.js:1297:59
+    at process.processTick
+sAndRejections (node:inter
+nal/process/task_queues:10
+5:5)
+    at async 
+Span.traceAsyncFn (C:\User
+s\jacho\OneDrive\Escritori
+o\apk\Quiova\node_modules\
+next\dist\trace\trace.js:1
+54:20)
+    at async Promise.all 
+(index 15)
+    at async C:\Users\jach
+o\OneDrive\Escritorio\apk\
+Quiova\node_modules\next\d
+ist\build\index.js:1175:17
+    at async 
+Span.traceAsyncFn (C:\User
+s\jacho\OneDrive\Escritori
+o\apk\Quiova\node_modules\
+next\dist\trace\trace.js:1
+54:20)
+    at async C:\Users\jach
+o\OneDrive\Escritorio\apk\
+Quiova\node_modules\next\d
+ist\build\index.js:1098:12
+4
+    at async 
+Span.traceAsyncFn (C:\User
+s\jacho\OneDrive\Escritori
+o\apk\Quiova\node_modules\
+next\dist\trace\trace.js:1
+54:20)
+    at async build (C:\Use
+rs\jacho\OneDrive\Escritor
+io\apk\Quiova\node_modules
+\next\dist\build\index.js:
+368:9)

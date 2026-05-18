@@ -1,0 +1,29 @@
+﻿­ƒÜÇ Iniciando build optimizado para M├│vil...
+­ƒôª Ocultando temporalmente la carpeta API...
+node : ÔØî Error 
+durante el build: 
+EPERM: operation not 
+permitted, rename 'C:\U
+sers\jacho\OneDrive\Esc
+ritorio\apk\Quiova\src\
+app\api' -> 'C:\Users\j
+acho\OneDrive\Escritori
+o\apk\Quiova\src\app\_a
+pi'
+En línea: 1 Carácter: 1
++ node scripts/mobile-b
+uild.js 2>&1 | 
+Out-File -FilePath 
+C:\Users\jacho ...
++ ~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~
+    + CategoryInfo     
+         : NotSpecifi  
+  ed: (ÔØî Error dur   
+ an...a\src\app\_ap    
+i':String) [], Rem    
+oteException
+    + FullyQualifiedEr 
+   rorId : NativeComm  
+  andError
+ 

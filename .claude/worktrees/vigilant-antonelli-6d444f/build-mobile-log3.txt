@@ -1,0 +1,303 @@
+﻿
+> nextn@1.0.1 build:mobile
+> node scripts/mobile-build.js
+
+­ƒÜÇ Iniciando build optimizado para M├│vil...
+­ƒôª Ocultando temporalmente la carpeta API...
+­ƒôª Ocultando temporalmente la carpeta ADMIN...
+­ƒøá´©Å Ejecutando next build...
+  Ôû▓ Next.js 14.2.33
+  - Environments: .env.local
+  - Experiments (use with caution):
+    ┬À missingSuspenseWithCSRBailout
+
+   Creating an optimized production build ...
+node.exe : Browserslist: 
+caniuse-lite is outdated. 
+Please run:
+En C:\Program 
+Files\nodejs\npm.ps1: 29 
+Carácter: 3
++   & $NODE_EXE 
+$NPM_CLI_JS $args
++   ~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~
+    + CategoryInfo        
+      : NotSpe    cified: 
+(Browser    slist: 
+c...ed. P    lease 
+run::Strin    g) [], 
+RemoteExc    eption
+    + FullyQualified    
+ErrorId : Native    
+CommandError
+ 
+  npx update-browserslist-
+db@latest
+  Why you should do it 
+regularly: https://github.
+com/browserslist/update-db
+#readme
+ Ô£ô Compiled successfully
+   Skipping validation of types
+   Skipping linting
+   Collecting page data ...
+Error listing articles: R 
+[HttpError]: Not Found - h
+ttps://docs.github.com/res
+t/repos/contents#get-repos
+itory-content
+    at L (C:\Users\jacho\O
+neDrive\Escritorio\apk\Qui
+ova\.next\server\chunks\38
+32.js:1:232130)
+    at process.processTick
+sAndRejections (node:inter
+nal/process/task_queues:10
+5:5)
+    at async eK (C:\Users\
+jacho\OneDrive\Escritorio\
+apk\Quiova\.next\server\ch
+unks\3832.js:2:88002)
+    at async a.doExecute (
+C:\Users\jacho\OneDrive\Es
+critorio\apk\Quiova\.next\
+server\chunks\3832.js:1:51
+29) {
+  status: 404,
+  request: {
+    method: 'GET',
+    url: 'https://api.gith
+ub.com/repos/correo940/qui
+oba/contents/content%2Fart
+icles',
+    headers: {
+      accept: 'application
+/vnd.github.v3+json',
+      'user-agent': 'octok
+it.js/0.0.0-development 
+octokit-core.js/7.0.5 
+Node.js/22',
+      authorization: 
+'token [REDACTED]'
+    },
+    request: { hook: 
+[Function: bound bound i] 
+}
+  },
+  response: {
+    url: 'https://api.gith
+ub.com/repos/correo940/qui
+oba/contents/content%2Fart
+icles',
+    status: 404,
+    headers: {
+      'access-control-allo
+w-origin': '*',
+      'access-control-expo
+se-headers': 'ETag, Link, 
+Location, Retry-After, 
+X-GitHub-OTP, 
+X-RateLimit-Limit, 
+X-RateLimit-Remaining, 
+X-RateLimit-Used, 
+X-RateLimit-Resource, 
+X-RateLimit-Reset, 
+X-OAuth-Scopes, 
+X-Accepted-OAuth-Scopes, 
+X-Poll-Interval, 
+X-GitHub-Media-Type, 
+X-GitHub-SSO, 
+X-GitHub-Request-Id, 
+Deprecation, Sunset',
+      'content-length': 
+'127',
+      'content-security-po
+licy': "default-src 
+'none'",
+      'content-type': 
+'application/json; 
+charset=utf-8',
+      date: 'Fri, 13 Feb 
+2026 12:48:36 GMT',
+      'referrer-policy': '
+origin-when-cross-origin, 
+strict-origin-when-cross-o
+rigin',
+      server: 
+'github.com',
+      vary: 
+'Accept-Encoding, Accept, 
+X-Requested-With',
+      'x-accepted-oauth-sc
+opes': 'repo',
+      
+'x-content-type-options': 
+'nosniff',
+      'x-frame-options': 
+'deny',
+      'x-github-api-versio
+n-selected': '2022-11-28',
+      
+'x-github-media-type': 
+'github.v3; format=json',
+      
+'x-github-request-id': 'E3
+84:251AC:205E6C8:1DA5FA9:6
+98F1DA4',
+      'x-oauth-scopes': 
+'repo, user',
+      
+'x-ratelimit-limit': 
+'5000',
+      
+'x-ratelimit-remaining': 
+'4992',
+      
+'x-ratelimit-reset': 
+'1770987147',
+      
+'x-ratelimit-resource': 
+'core',
+      'x-ratelimit-used': 
+'8',
+      'x-xss-protection': 
+'0'
+    },
+    data: {
+      message: 'Not 
+Found',
+      documentation_url: '
+https://docs.github.com/re
+st/repos/contents#get-repo
+sitory-content',
+      status: '404'
+    }
+  }
+}
+   Generating static pages (0/36) ...
+   Generating static pages (9/36) 
+   Generating static pages (18/36) 
+   Generating static pages (27/36) 
+ÔØî Error al obtener 
+art├¡culos de GitHub 404 
+{"message":"Not Found","do
+cumentation_url":"https://
+docs.github.com/rest/repos
+/contents#get-repository-c
+ontent","status":"404"}
+ÔØî Error al obtener 
+art├¡culos de GitHub 404 
+{"message":"Not Found","do
+cumentation_url":"https://
+docs.github.com/rest/repos
+/contents#get-repository-c
+ontent","status":"404"}
+ÔØî Error al obtener 
+art├¡culos de GitHub 404 
+{"message":"Not Found","do
+cumentation_url":"https://
+docs.github.com/rest/repos
+/contents#get-repository-c
+ontent","status":"404"}
+ÔØî Error al obtener 
+art├¡culos de GitHub 404 
+{"message":"Not Found","do
+cumentation_url":"https://
+docs.github.com/rest/repos
+/contents#get-repository-c
+ontent","status":"404"}
+==================================================
+­ƒôÜ TOTAL ART├ìCULOS: 0
+­ƒôï CATEGOR├ìAS: 
+==================================================
+­ƒöì Buscando categor├¡a: "salud f├¡sica"
+­ƒôï Categor├¡as disponibles: []
+Ô£à Encontrados: 0 art├¡culos
+==================================================
+­ƒôÜ TOTAL ART├ìCULOS: 0
+­ƒôï CATEGOR├ìAS: 
+==================================================
+­ƒöì Buscando categor├¡a: "salud f├¡sica"
+­ƒôï Categor├¡as disponibles: []
+Ô£à Encontrados: 0 art├¡culos
+ Ô£ô Generating static pages (36/36)
+   Finalizing page optimization ...
+   Collecting build traces ...
+ ÔÜá Statically exporting 
+a Next.js application via 
+`next export` disables 
+API routes and middleware.
+This command is meant for 
+static-only hosts, and is 
+not necessary to make 
+your application static.
+Pages in your application 
+without server-side data 
+dependencies will be 
+automatically statically 
+exported by `next build`, 
+including pages powered 
+by `getStaticProps`.
+Learn more: https://nextjs
+.org/docs/messages/api-rou
+tes-static-export
+
+Route (app)                                   Size     First Load JS
+Ôöî Ôùï /                                         40.5 kB         376 kB
+Ôö£ Ôùï /_not-found                               880 B          88.8 kB
+Ôö£ Ôùï /apps                                     1.26 kB        97.9 kB
+Ôö£ Ôùï /apps/cuadrante                           7.81 kB         115 kB
+Ôö£ Ôùï /apps/debate                              21.8 kB         249 kB
+Ôö£ Ôùï /apps/debate/admin                        5.46 kB         180 kB
+Ôö£ Ôùï /apps/mi-hogar                            5.78 kB         201 kB
+Ôö£ Ôùï /apps/mi-hogar/asistente                  6.08 kB         259 kB
+Ôö£ Ôùï /apps/mi-hogar/confessions                13.2 kB         275 kB
+Ôö£ ÔùÅ /apps/mi-hogar/confessions/[id]           8.19 kB         257 kB
+Ôö£   Ôöö /apps/mi-hogar/confessions/placeholder
+Ôö£ Ôùï /apps/mi-hogar/documents                  8.47 kB         220 kB
+Ôö£ Ôùï /apps/mi-hogar/expenses                   14.1 kB         326 kB
+Ôö£ Ôùï /apps/mi-hogar/garage                     10.6 kB         226 kB
+Ôö£ Ôùï /apps/mi-hogar/insurance                  6.17 kB         197 kB
+Ôö£ Ôùï /apps/mi-hogar/login                      2.83 kB         189 kB
+Ôö£ Ôùï /apps/mi-hogar/manuals                    112 kB          356 kB
+Ôö£ Ôùï /apps/mi-hogar/passwords                  18.9 kB         199 kB
+Ôö£ Ôùï /apps/mi-hogar/pharmacy                   7.42 kB         201 kB
+Ôö£ Ôùï /apps/mi-hogar/recipes                    5.28 kB         174 kB
+Ôö£ Ôùï /apps/mi-hogar/roster                     37.8 kB         277 kB
+Ôö£ Ôùï /apps/mi-hogar/savings                    27.9 kB         380 kB
+Ôö£ Ôùï /apps/mi-hogar/shopping                   10.9 kB         197 kB
+Ôö£ Ôùï /apps/mi-hogar/tasks                      20.2 kB         236 kB
+Ôö£ Ôùï /apps/mi-hogar/warranties                 14.5 kB         231 kB
+Ôö£ Ôùï /apps/organizador-vital                   17.1 kB         217 kB
+Ôö£ Ôùï /apps/resumen-diario                      12 kB           179 kB
+Ôö£ ÔùÅ /articles/[slug]                          4.99 kB         179 kB
+Ôö£   Ôöö /articles/placeholder
+Ôö£ Ôùï /docs                                     1.42 kB        89.3 kB
+Ôö£ Ôùï /icon.png                                 0 B                0 B
+Ôö£ Ôùï /journal                                  20.1 kB         225 kB
+Ôö£ Ôùï /login                                    2.85 kB         189 kB
+Ôö£ Ôùï /profile                                  11.3 kB         187 kB
+Ôö£ Ôùï /salud-fisica                             2.83 kB         112 kB
+Ôöö ÔùÅ /thought/[token]                          5.66 kB         258 kB
+    Ôöö /thought/placeholder
++ First Load JS shared by all                 87.9 kB
+  Ôö£ chunks/2117-28aa7823d2f30469.js           32 kB
+  Ôö£ chunks/fd9d1056-175135dbaad28189.js       53.6 kB
+  Ôöö other shared chunks (total)               2.33 kB
+
+Route (pages)                                 Size     First Load JS
+Ôöî ãÆ /api/list                                 0 B            81.5 kB
+Ôöö ãÆ /api/upload                               0 B            81.5 kB
++ First Load JS shared by all                 81.5 kB
+  Ôö£ chunks/framework-8e0e0f4a6b83a956.js      44.9 kB
+  Ôö£ chunks/main-d392efce7a0cd076.js           34.4 kB
+  Ôöö other shared chunks (total)               2.3 kB
+
+Ôùï  (Static)   prerendered as static content
+ÔùÅ  (SSG)      prerendered as static HTML (uses getStaticProps)
+ãÆ  (Dynamic)  server-rendered on demand
+
+Ô£à Build completado con ├®xito.
+­ƒôé Restaurando carpeta API...
+­ƒôé Restaurando carpeta ADMIN...

@@ -1,0 +1,30 @@
+﻿
+> nextn@1.0.1 build:mobile
+> node scripts/mobile-build.js
+
+­ƒÜÇ Iniciando build optimizado para M├│vil...
+­ƒôª Ocultando temporalmente la carpeta API...
+node.exe : ÔØî Error 
+durante el build: EPERM: 
+operation not permitted, 
+rename 'C:\Users\jacho\One
+Drive\Escritorio\apk\Quiov
+a\src\app\api' -> 'C:\User
+s\jacho\OneDrive\Escritori
+o\apk\Quiova\src\app\_api'
+En C:\Program 
+Files\nodejs\npm.ps1: 29 
+Carácter: 3
++   & $NODE_EXE 
+$NPM_CLI_JS $args
++   ~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~
+    + CategoryInfo        
+      : NotSpecified: (Ô  
+  Øî Error duran...a\sr   
+ c\app\_api':String) [    
+], RemoteException
+    + FullyQualifiedError 
+   Id : NativeCommandErr  
+  or
+ 

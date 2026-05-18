@@ -1,0 +1,14 @@
+﻿ÔêÜ Copying web assets from out to android\app\src\main\assets\public in 159.93ms
+ÔêÜ Creating capacitor.config.json in android\app\src\main\assets in 1.02ms
+ÔêÜ copy android in 234.09ms
+ÔêÜ Updating Android plugins in 20.31ms
+[info] Found 7 Capacitor plugins for android:
+       @capacitor-mlkit/barcode-scanning@8.0.0
+       @capacitor/app@8.0.0
+       @capacitor/camera@8.0.0
+       @capacitor/haptics@7.0.2
+       @capacitor/local-notifications@7.0.3
+       @capacitor/preferences@8.0.0
+       @capgo/capacitor-speech-recognition@8.0.4
+ÔêÜ update android in 148.54ms
+[info] Sync finished in 0.485s

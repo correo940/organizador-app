@@ -1,0 +1,64 @@
+{
+  "placeholderImages": [
+    {
+      "id": "hero-1",
+      "description": "A serene landscape representing balance and well-being",
+      "imageUrl": "https://images.unsplash.com/photo-1721886561322-854c44c2535a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwzfHxzZXJlbmUlMjBsYW5kc2NhcGV8ZW58MHx8fHwxNzU4Njg0MTcyfDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "serene landscape"
+    },
+    {
+      "id": "article-1",
+      "description": "Healthy food on a table",
+      "imageUrl": "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw2fHxoZWFsdGh5JTIwZm9vZHxlbnwwfHx8fDE3NTg1ODU0ODR8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "healthy food"
+    },
+    {
+      "id": "article-2",
+      "description": "Person meditating peacefully",
+      "imageUrl": "https://images.unsplash.com/photo-1736622303988-a16067f1bf26?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw5fHxtZWRpdGF0aW9uJTIwcGVhY2V8ZW58MHx8fHwxNzU4NjE3MDMwfDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "meditation peace"
+    },
+    {
+      "id": "article-3",
+      "description": "Family managing their budget with calculator and papers",
+      "imageUrl": "https://images.unsplash.com/photo-1706438230048-ec7ec2347184?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw0fHxmYW1pbHklMjBidWRnZXR8ZW58MHx8fHwxNzU4NjkwMDY0fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "family budget"
+    },
+    {
+      "id": "article-4",
+      "description": "Person running outdoors",
+      "imageUrl": "https://images.unsplash.com/photo-1758520706103-41d01f815640?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw5fHxvdXRkb29yJTIwcnVubmluZ3xlbnwwfHx8fDE3NTg1OTU1NTl8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "outdoor running"
+    },
+    {
+      "id": "article-5",
+      "description": "A piggy bank with coins",
+      "imageUrl": "https://images.unsplash.com/photo-1580508174046-170816f65662?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw0fHxwaWdneSUyMGJhbmt8ZW58MHx8fHwxNzU4NjkwMDY0fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "piggy bank"
+    },
+    {
+      "id": "article-6",
+      "description": "A journal and a pen on a desk",
+      "imageUrl": "https://images.unsplash.com/photo-1588338949261-659fc6fed20b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw0fHxqb3VybmFsJTIwd3JpdGluZ3xlbnwwfHx8fDE3NTg2MDM3Njh8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "journal writing"
+    },
+    {
+      "id": "author-1",
+      "description": "Portrait of a smiling woman",
+      "imageUrl": "https://images.unsplash.com/flagged/photo-1559855603-ce4c8f480d76?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw0fHx3b21hbiUyMHNtaWxpbmd8ZW58MHx8fHwxNzU4NjU1Mzc5fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "woman smiling"
+    },
+    {
+      "id": "author-2",
+      "description": "Portrait of a thoughtful man",
+      "imageUrl": "https://images.unsplash.com/photo-1624395213043-fa2e123b2656?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw1fHxtYW4lMjBwb3J0cmFpdHxlbnwwfHx8fDE3NTg1ODI4MTZ8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "man portrait"
+    },
+    {
+      "id": "author-3",
+      "description": "Portrait of a person with glasses",
+      "imageUrl": "https://images.unsplash.com/photo-1567803641348-95489fa13cc1?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw3fHxwZXJzb24lMjBnbGFzc2VzfGVufDB8fHx8MTc1ODY4MDczNnww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "person glasses"
+    }
+  ]
+}

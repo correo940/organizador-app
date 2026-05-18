@@ -1,0 +1,244 @@
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 32px 16px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 48px;
+}
+
+.header h1 {
+  font-size: 2.5rem;
+  color: #1B5E20;
+  margin-bottom: 8px;
+  font-weight: 700;
+}
+
+.header p {
+  font-size: 1.1rem;
+  color: #666;
+}
+
+.uploadSection {
+  margin-bottom: 48px;
+}
+
+.uploadArea {
+  border: 2px dashed #43A047;
+  border-radius: 12px;
+  padding: 40px;
+  text-align: center;
+  background-color: #F5F5F5;
+  transition: all 0.3s ease;
+  margin-bottom: 24px;
+  cursor: pointer;
+}
+
+.uploadArea:hover, .uploadArea.drag-over {
+  background-color: #E8F5E9;
+  border-color: #2E7D32;
+}
+
+.uploadArea h3 {
+  color: #1B5E20;
+  margin-bottom: 8px;
+  font-size: 1.3rem;
+}
+
+.uploadArea p {
+  color: #666;
+  margin-bottom: 16px;
+}
+
+.filesList {
+  margin-bottom: 24px;
+}
+
+.filesList h3 {
+  color: #1A1A1A;
+  margin-bottom: 12px;
+  font-size: 1.1rem;
+}
+
+.fileItem {
+  background-color: #F5F5F5;
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin-bottom: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.fileItem span {
+  color: #1A1A1A;
+  font-weight: 500;
+}
+
+.removeBtn {
+  background: none;
+  border: none;
+  color: #D32F2F;
+  cursor: pointer;
+  font-weight: 600;
+  transition: color 0.3s ease;
+}
+
+.removeBtn:hover {
+  color: #B71C1C;
+}
+
+.analyzeBtn {
+  width: 100%;
+  background-color: #FF6B35;
+  color: #FFFFFF;
+  padding: 16px;
+  border: none;
+  border-radius: 8px;
+  font-size: 1.1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-bottom: 16px;
+}
+
+.analyzeBtn:hover:not(:disabled) {
+  background-color: #E55A24;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(255, 107, 53, 0.4);
+}
+
+.analyzeBtn:disabled {
+  background-color: #999;
+  cursor: not-allowed;
+}
+
+.error {
+  background-color: #FFEBEE;
+  border: 2px solid #D32F2F;
+  color: #D32F2F;
+  padding: 16px;
+  border-radius: 8px;
+  margin-top: 16px;
+}
+
+.loader {
+  text-align: center;
+  padding: 20px;
+  font-size: 1.2rem;
+  color: #1B5E20;
+}
+
+.results {
+  background-color: #F5F5F5;
+  padding: 32px;
+  border-radius: 16px;
+}
+
+.results h2 {
+  color: #1B5E20;
+  font-size: 2rem;
+  margin-bottom: 32px;
+  font-weight: 700;
+}
+
+.section {
+  background-color: #FFFFFF;
+  border-left: 4px solid #43A047;
+  padding: 24px;
+  border-radius: 8px;
+  margin-bottom: 24px;
+}
+
+.section h3 {
+  color: #1B5E20;
+  margin-bottom: 16px;
+  font-size: 1.3rem;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.grid p, .charges p, .budget p, .profitability p, .recommendation p {
+  color: #1A1A1A;
+  line-height: 1.6;
+}
+
+.description {
+  color: #666;
+  line-height: 1.8;
+  font-style: italic;
+}
+
+.charges, .budget, .profitability {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.total, .roi {
+  font-size: 1.1em;
+  color: #43A047;
+  font-weight: 700;
+}
+
+.warning {
+  border-left-color: #F57C00;
+  background-color: #FFF3E0;
+}
+
+.warning h3 { color: #E65100; }
+
+.warning ul, .success ul {
+  list-style: none;
+  padding-left: 0;
+}
+
+.warning li, .success li {
+  padding-left: 24px;
+  position: relative;
+  margin-bottom: 8px;
+  line-height: 1.6;
+}
+
+.warning li:before { content: '⚠️'; position: absolute; left: 0; }
+.success li:before { content: '✅'; position: absolute; left: 0; }
+
+.success {
+  border-left-color: #43A047;
+  background-color: #E8F5E9;
+}
+
+.success h3 { color: #1B5E20; }
+
+.recommendation {
+  border-left-color: #2196F3;
+  background-color: #E3F2FD;
+}
+
+.recommendation h3 { color: #1565C0; }
+
+.rawText {
+  background-color: #1A1A1A;
+  color: #4CAF50;
+  padding: 16px;
+  border-radius: 8px;
+  overflow-x: auto;
+  font-family: 'Courier New', monospace;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+@media (max-width: 768px) {
+  .container { padding: 16px; }
+  .header h1 { font-size: 1.8rem; }
+  .grid { grid-template-columns: 1fr; }
+  .results { padding: 16px; }
+}

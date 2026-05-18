@@ -1,0 +1,13 @@
+[1mdiff --git a/src/app/login/page.tsx b/src/app/login/page.tsx[m
+[1mindex 6d5ec1f..c1be68e 100644[m
+[1m--- a/src/app/login/page.tsx[m
+[1m+++ b/src/app/login/page.tsx[m
+[36m@@ -86,7 +86,7 @@[m [mexport default function LoginPage() {[m
+                         setTimeout(() => reject(new Error('Tiempo de espera agotado al iniciar sesión')), AUTH_TIMEOUT_MS)[m
+                     ),[m
+                 ])[m
+[31m-                const { error } = result[m
+[32m+[m[32m                console.log('[LOGIN] result:', JSON.stringify(result)); const { error } = result[m
+                 if (error) throw error[m
+ [m
+                 router.replace('/')[m

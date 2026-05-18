@@ -1,0 +1,110 @@
+﻿
+> nextn@1.0.1 build
+> next build
+
+  Ôû▓ Next.js 14.2.33
+  - Environments: .env.local
+
+   Creating an optimized production build ...
+node.exe : Browserslist: caniuse-lite is outdated. Please run:
+En C:\Program Files\nodejs\npm.ps1: 29 Carácter: 3
++   & $NODE_EXE $NPM_CLI_JS $args
++   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Browserslist: c...ed. Pl 
+   ease run::String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+  npx update-browserslist-db@latest
+  Why you should do it regularly: 
+https://github.com/browserslist/update-db#readme
+ Ô£ô Compiled successfully
+   Skipping validation of types
+   Skipping linting
+   Collecting page data ...
+   Generating static pages (0/33) ...
+   Generating static pages (8/33) 
+   Generating static pages (16/33) 
+ÔØî Error al obtener art├¡culos de GitHub 404 {"message":"Not Found","
+documentation_url":"https://docs.github.com/rest/repos/contents#get-re
+pository-content","status":"404"}
+ÔØî Error al obtener art├¡culos de GitHub 404 {"message":"Not Found","
+documentation_url":"https://docs.github.com/rest/repos/contents#get-re
+pository-content","status":"404"}
+==================================================
+­ƒôÜ TOTAL ART├ìCULOS: 0
+­ƒôï CATEGOR├ìAS: 
+==================================================
+­ƒöì Buscando categor├¡a: "salud f├¡sica"
+­ƒôï Categor├¡as disponibles: []
+Ô£à Encontrados: 0 art├¡culos
+   Generating static pages (24/33) 
+ÔØî Error al obtener art├¡culos de GitHub 404 {"message":"Not Found","
+documentation_url":"https://docs.github.com/rest/repos/contents#get-re
+pository-content","status":"404"}
+ÔØî Error al obtener art├¡culos de GitHub 404 {"message":"Not Found","
+documentation_url":"https://docs.github.com/rest/repos/contents#get-re
+pository-content","status":"404"}
+==================================================
+­ƒôÜ TOTAL ART├ìCULOS: 0
+­ƒôï CATEGOR├ìAS: 
+==================================================
+­ƒöì Buscando categor├¡a: "salud f├¡sica"
+­ƒôï Categor├¡as disponibles: []
+Ô£à Encontrados: 0 art├¡culos
+ Ô£ô Generating static pages (33/33)
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                               Size     First Load JS
+Ôöî Ôùï /                                     31.3 kB         311 kB
+Ôö£ Ôùï /_not-found                           880 B          89.2 kB
+Ôö£ ãÆ /admin                                7.7 kB          169 kB
+Ôö£ ãÆ /admin/articles/[slug]/edit           3.59 kB         138 kB
+Ôö£ ãÆ /admin/articles/new                   1.58 kB        89.9 kB
+Ôö£ Ôùï /admin/login                          3.73 kB         109 kB
+Ôö£ Ôùï /apps                                 1.26 kB        98.3 kB
+Ôö£ Ôùï /apps/debate                          19.4 kB         250 kB
+Ôö£ Ôùï /apps/debate/admin                    5.33 kB         180 kB
+Ôö£ Ôùï /apps/mi-hogar                        5.68 kB         201 kB
+Ôö£ Ôùï /apps/mi-hogar/confessions            13.3 kB         275 kB
+Ôö£ ãÆ /apps/mi-hogar/confessions/[id]       8.23 kB         258 kB
+Ôö£ Ôùï /apps/mi-hogar/documents              8.6 kB          220 kB
+Ôö£ Ôùï /apps/mi-hogar/expenses               20.9 kB         327 kB
+Ôö£ Ôùï /apps/mi-hogar/garage                 10.7 kB         226 kB
+Ôö£ Ôùï /apps/mi-hogar/insurance              6.17 kB         197 kB
+Ôö£ Ôùï /apps/mi-hogar/login                  2.83 kB         189 kB
+Ôö£ Ôùï /apps/mi-hogar/manuals                112 kB          356 kB
+Ôö£ Ôùï /apps/mi-hogar/passwords              18.9 kB         200 kB
+Ôö£ Ôùï /apps/mi-hogar/pharmacy               7.6 kB          201 kB
+Ôö£ Ôùï /apps/mi-hogar/recipes                5.22 kB         174 kB
+Ôö£ Ôùï /apps/mi-hogar/roster                 51.4 kB         290 kB
+Ôö£ Ôùï /apps/mi-hogar/savings                19.9 kB         329 kB
+Ôö£ Ôùï /apps/mi-hogar/shopping               11 kB           197 kB
+Ôö£ Ôùï /apps/mi-hogar/tasks                  20.2 kB         236 kB
+Ôö£ Ôùï /apps/mi-hogar/warranties             11.5 kB         241 kB
+Ôö£ Ôùï /apps/organizador-vital               17.3 kB         217 kB
+Ôö£ Ôùï /apps/resumen-diario                  11.9 kB         179 kB
+Ôö£ ÔùÅ /articles/[slug]                      4.99 kB         179 kB
+Ôö£ Ôùï /docs                                 1.42 kB        89.8 kB
+Ôö£ Ôùï /icon.png                             0 B                0 B
+Ôö£ Ôùï /journal                              20.2 kB         226 kB
+Ôö£ Ôùï /profile                              9.28 kB         185 kB
+Ôö£ Ôùï /salud-fisica                         2.83 kB         112 kB
+Ôöö ÔùÅ /thought/[token]                      5.59 kB         258 kB
++ First Load JS shared by all             88.3 kB
+  Ôö£ chunks/2117-ac9db96e53ff12dd.js       31.9 kB
+  Ôö£ chunks/fd9d1056-175135dbaad28189.js   53.6 kB
+  Ôöö other shared chunks (total)           2.82 kB
+
+Route (pages)                             Size     First Load JS
+Ôöî ãÆ /api/list                             0 B              82 kB
+Ôöö ãÆ /api/upload                           0 B              82 kB
++ First Load JS shared by all             82 kB
+  Ôö£ chunks/framework-8e0e0f4a6b83a956.js  44.9 kB
+  Ôö£ chunks/main-f76a6d44f361de80.js       34.4 kB
+  Ôöö other shared chunks (total)           2.8 kB
+
+Ôùï  (Static)   prerendered as static content
+ÔùÅ  (SSG)      prerendered as static HTML (uses getStaticProps)
+ãÆ  (Dynamic)  server-rendered on demand
+
