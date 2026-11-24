@@ -9,7 +9,9 @@ var current := ""
 var horse: Node3D
 var horse_anim: AnimationPlayer
 var body: Node3D
-const SADDLE := 1.05
+const SEAT_OFF := Vector3(0, -0.12, 0.55)
+var seat: BoneAttachment3D
+var ride_pose: Node
 const RIDE := {"Jog_Fwd": "Gallop", "Sprint": "Gallop", "Walk": "Walk", "Death01": "Death", "Hit_Chest": "Idle_HitReact_Left"}
 
 
@@ -96,9 +98,19 @@ func mount(coat: Color) -> void:
 	horse_anim = horse.find_child("AnimationPlayer", true, false)
 	for n in ["Idle", "Gallop", "Walk"]:
 		horse_anim.get_animation("AnimalArmature|" + n).loop_mode = Animation.LOOP_LINEAR
-	body.position = Vector3(0, SADDLE, -0.1)
+	var hs: Skeleton3D = horse.find_child("Skeleton3D", true, false)
+	seat = BoneAttachment3D.new()
+	seat.bone_name = "Torso"
+	hs.add_child(seat)
+	ride_pose = load("res://scripts/ride_pose.gd").new()
+	skel.add_child(ride_pose)
 	current = ""
 	play("Idle")
+
+
+func _process(_d: float) -> void:
+	if horse != null and body.position.x == 0.0:
+		body.global_position = seat.global_position + global_basis * SEAT_OFF
 
 
 func _rider(anim_name: String) -> String:
@@ -107,8 +119,11 @@ func _rider(anim_name: String) -> String:
 	horse_anim.play("AnimalArmature|" + RIDE.get(anim_name, "Idle"), 0.2)
 	if anim_name == "Death01":
 		body.position = Vector3(0.9, 0, 0)
+		ride_pose.active = false
 		return anim_name
-	return anim_name if anim_name in ["Sword_Attack", "Hit_Chest", "Spell_Simple_Shoot"] else "Driving"
+	var r := anim_name if anim_name in ["Sword_Attack", "Hit_Chest", "Spell_Simple_Shoot"] else "Driving"
+	ride_pose.seated = r == "Driving"
+	return r
 
 
 func play(anim_name: String, blend := 0.2) -> void:
