@@ -16,6 +16,8 @@ Juego de estrategia medieval para PC (Windows) en 3D, hecho con Godot 4.3. Model
 
 **Mapa de la región (tecla M):** marcha con tu ejército entre pueblos (viajar consume días). Cuatro señores con sus pueblos que crecen y fundan aldeas nuevas. Puedes fundar tus propias aldeas en lugares libres, darles empalizada o murallas, guarnición y colonos; atacar pueblos y, si ganas, saquearlos, conquistarlos o hacerlos vasallos. Los señores enemistados asaltan tus aldeas mal defendidas.
 
+**Señores, guerra, comercio y corte:** los señores se declaran guerras, firman paces y alianzas, y levantan ejércitos que marchan por el mapa y conquistan pueblos (también los tuyos). Puedes interceptarlos o sufrir emboscadas. Cada pueblo tiene mercado con productos baratos y buscados; las caravanas los recorren. En la corte de cada señor: visitas, banquetes, cacerías, ajedrez, torneos y bodas entre casas. Tecla D: diplomacia.
+
 **Próximas fases:** gobernar el pueblo y dirigir ejércitos (fase 2), y un mapa del mundo para viajar y combatir (fase 3).
 
 ## Controles

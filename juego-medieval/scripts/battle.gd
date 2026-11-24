@@ -127,7 +127,9 @@ func _ready() -> void:
 	for k in ARMY.ORDER:
 		for n in int(d["army"][k]):
 			mine.append(k)
-	if mine.is_empty() and int(d["title"]) == 1:
+	if siege.get("kind", "") == "torneo":
+		mine.clear()
+	elif mine.is_empty() and int(d["title"]) == 1:
 		for n in 6:
 			mine.append("milicia_local")
 	if siege.is_empty():
@@ -149,6 +151,8 @@ func _ready() -> void:
 	enemy_total = 6 + mini(8, (int(d["year"]) - 1100) / 2) + randi_range(0, 2) + int(ARMY.total() * 0.7)
 	if not siege.is_empty():
 		enemy_total = maxi(3, int(siege["troops"]) - 1)
+		if siege["kind"] == "torneo":
+			enemy_total = 0
 	var foes := []
 	for i in enemy_total:
 		var roll := randf()
@@ -579,8 +583,41 @@ func _end(victory: bool) -> void:
 ## Final de un ataque a un pueblo: si ganas, eliges qué hacer con él.
 func _end_siege(victory: bool, losses: int) -> void:
 	var d = GS.data
-	var id: int = siege["town"]
+	var id: int = siege.get("town", -1)
 	d.erase("battle")
+	if siege["kind"] == "torneo":
+		var lord: int = siege["lord"]
+		if victory:
+			d["gold"] = int(d["gold"]) + 100
+			d["prestige"] += 25
+			GS.REGION.NOBLES.add_rel(-1, lord, 10)
+			result_label.text = "¡CAMPEÓN DEL TORNEO!\n\nHas derrotado al campeón de %s.\nPremio: 100 de oro · +25 de prestigio · mejora tu relación con su señor." % enemy_name
+			GS.say("Ganas el torneo de %s. (+100 oro, +25 prestigio)" % enemy_name)
+		else:
+			d["player"]["health"] = maxf(pl["hp"], 30.0)
+			result_label.text = "DERROTA EN EL TORNEO\n\nEl campeón te ha descabalgado. Sin heridas graves, solo el orgullo."
+		GS.next_day()
+		GS.save_game()
+		result_panel.visible = true
+		return
+	if siege["kind"] == "campo":
+		if victory:
+			var loot := GS.REGION.army_defeated(int(siege["army"]))
+			d["prestige"] += 15 + 2 * kills
+			d["player"]["health"] = maxf(pl["hp"], 10.0)
+			result_label.text = "¡VICTORIA!\n\nHas derrotado al ejército de %s.\nBotín: +%d oro · Bajas de tus tropas: %d" % [enemy_name, loot, losses]
+			GS.say("Derrotas al ejército de %s. +%d oro." % [enemy_name, loot])
+		else:
+			var a := GS.REGION.army_by_id(int(siege["army"]))
+			if not a.is_empty():
+				a["troops"] = maxi(1, int(a["troops"]) - enemy_dead)
+			d["player"]["health"] = 15.0
+			result_label.text = "DERROTA\n\nTus tropas huyen del campo de batalla.\nBajas: %d · Enemigos caídos: %d" % [losses, enemy_dead]
+			GS.say("Derrota contra el ejército de %s." % enemy_name)
+		GS.next_day()
+		GS.save_game()
+		result_panel.visible = true
+		return
 	if victory:
 		d["prestige"] += 10 + 2 * kills
 		d["player"]["health"] = maxf(pl["hp"], 10.0)

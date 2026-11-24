@@ -6,6 +6,8 @@ const M := preload("res://scripts/models.gd")
 const ACTOR := preload("res://scripts/actor.gd")
 const R := preload("res://scripts/region_sim.gd")
 const ARMY := preload("res://scripts/army.gd")
+const N := preload("res://scripts/nobles.gd")
+const COURT := preload("res://scripts/court_ui.gd")
 const SPEED := 14.0
 const HOUSES := ["village/House_1.glb", "village/House_2.glb", "village/House_3.glb", "village/House_4.glb"]
 
@@ -17,6 +19,9 @@ var party
 var target: Vector3
 var towns_node: Node3D
 var towns_sig := ""
+var moving_node: Node3D
+var moving_sig := ""
+var last_day := -1
 var inter := {}
 var lbl_top: Label
 var lbl_prompt: Label
@@ -49,6 +54,8 @@ func _ready() -> void:
 		M.recolor(M.put(self, "nature/Rock_%d.glb" % (1 + i % 7), p, r.randf() * TAU, r.randf_range(20, 32)), Color(0.42, 0.44, 0.4))
 	towns_node = Node3D.new()
 	add_child(towns_node)
+	moving_node = Node3D.new()
+	add_child(moving_node)
 	party = ACTOR.new()
 	add_child(party)
 	var helm := "Helmet2" if int(d["armor"]) >= 2 else ""
@@ -153,7 +160,7 @@ func _build_hud() -> void:
 	lbl_prompt.add_theme_constant_override("outline_size", 6)
 	layer.add_child(lbl_prompt)
 	var help := Label.new()
-	help.text = "Clic izquierdo: marchar · Rueda: zoom · E: entrar / interactuar · Esc: menú"
+	help.text = "Clic izquierdo: marchar · Rueda: zoom · E: entrar / interactuar · D: diplomacia · Esc: menú"
 	help.add_theme_font_size_override("font_size", 13)
 	help.add_theme_color_override("font_outline_color", Color.BLACK)
 	help.add_theme_constant_override("outline_size", 4)
@@ -211,6 +218,23 @@ func _open_panel(title: String, text: String, options: Array) -> void:
 		first.grab_focus.call_deferred()
 
 
+func _open_custom(title: String, content: Control) -> void:
+	for c in box.get_children():
+		c.queue_free()
+	var t := Label.new()
+	t.text = title
+	t.add_theme_font_size_override("font_size", 26)
+	t.add_theme_color_override("font_color", Color(0.9, 0.75, 0.4))
+	box.add_child(t)
+	box.add_child(content)
+	var close := Button.new()
+	close.text = "Cerrar"
+	close.custom_minimum_size.y = 34
+	close.pressed.connect(_close_panel)
+	box.add_child(close)
+	panel.visible = true
+
+
 func _close_panel() -> void:
 	panel.visible = false
 
@@ -223,7 +247,14 @@ func _say(text: String) -> void:
 
 func _process(delta: float) -> void:
 	var d = GS.data
-	var ts := str(R.region()["towns"]) + str(d["tier"]) + str(R.free_sites())
+	var ms := str(R.region()["armies"]) + str(R.region()["caravans"])
+	if ms != moving_sig:
+		moving_sig = ms
+		_rebuild_moving()
+	if int(d["total_days"]) != last_day:
+		last_day = int(d["total_days"])
+		_check_ambush()
+	var ts := str(R.region()["towns"]) + str(d["tier"]) + str(R.free_sites()) + str(R.region()["events"])
 	if ts != towns_sig:
 		towns_sig = ts
 		_rebuild_towns()
@@ -259,6 +290,11 @@ func _process(delta: float) -> void:
 
 func _find_interaction() -> Dictionary:
 	var pp := Vector2(party.position.x, party.position.z)
+	for a in R.region()["armies"]:
+		if pp.distance_to(Vector2(a["x"], a["z"])) < 14.0:
+			var li: int = a["lord"]
+			var lbl := ("Atacar al ejército de %s (%d soldados)" if N.at_war(-1, li) else "Ejército de %s (%d soldados)") % [N.full(N.lord(li)), int(a["troops"])]
+			return {"type": "army", "id": int(a["id"]), "label": lbl}
 	for t in R.region()["towns"]:
 		if pp.distance_to(Vector2(t["x"], t["z"])) < 16.0:
 			return {"type": "town", "id": int(t["id"]), "label": ("Entrar en " if t.get("home", false) else "") + t["name"]}
@@ -286,6 +322,9 @@ func _unhandled_input(ev: InputEvent) -> void:
 			KEY_E:
 				if not panel.visible:
 					_interact()
+			KEY_D:
+				if not panel.visible:
+					COURT.diplomacy(self)
 			KEY_ESCAPE:
 				if panel.visible:
 					_close_panel()
@@ -303,6 +342,8 @@ func _interact() -> void:
 			_town_panel(inter["id"])
 		"site":
 			_site_panel(inter["i"])
+		"army":
+			_army_panel(inter["id"])
 
 
 func _site_panel(si: int) -> void:
@@ -353,6 +394,7 @@ func _town_panel(id: int) -> void:
 				d["army"]["milicia"] = int(d["army"]["milicia"]) + int(t["garrison"])
 				t["garrison"] = 0
 				_town_panel(id), int(t["garrison"]) > 0],
+			["Mercado de %s" % t["name"], func(): COURT.market(self, id)],
 			["Enviar %d colonos de tu pueblo" % R.SETTLERS, func():
 				d["commons"] = int(d["commons"]) - R.SETTLERS
 				t["pop"] = int(t["pop"]) + R.SETTLERS
@@ -362,9 +404,21 @@ func _town_panel(id: int) -> void:
 	var lord = R.region()["lords"][int(t["lord"])]
 	var defenders := int(t["troops"])
 	var text := "%s de %s · %d habitantes · %s.\nDefensores: unos %d soldados. Relación con su señor: %d/100.%s" % [R.tier_name(tier), lord["name"], int(t["pop"]), walls, defenders, int(lord["rel"]), "\nEs tu vasallo: te paga tributo cada estación." if t["vassal"] else ""]
+	var li: int = t["lord"]
+	var war := N.at_war(-1, li)
+	text += "\n%s está %s." % [N.full(lord), COURT.status_text(li)]
+	if not N.tournament_at(id).is_empty():
+		text += "\n¡Hay un torneo en este pueblo! Entra en la corte para participar."
 	var opts := []
+	if not war:
+		opts.append(["Mercado de %s" % t["name"], func(): COURT.market(self, id)])
+		opts.append(["Corte de %s" % N.full(lord), func(): COURT.court(self, li, id)])
+	else:
+		opts.append(["Negociar con %s" % N.full(lord), func(): COURT.court(self, li, id)])
 	if not t["vassal"]:
-		opts.append(["Atacar (%d tropas tuyas contra %d)" % [ARMY.total(), defenders], func():
+		opts.append(["Atacar (%d tropas tuyas contra %d)%s" % [ARMY.total(), defenders, "" if war else " — declara la guerra"], func():
+			if not N.at_war(-1, li):
+				N.declare_war(-1, li)
 			d["battle"] = {"kind": "asedio", "town": id, "enemy": "%s (%s)" % [t["name"], lord["name"]], "troops": defenders, "wall": int(t["wall"])}
 			GS.save_game()
 			main.start_battle()])
@@ -374,3 +428,85 @@ func _town_panel(id: int) -> void:
 		_town_panel(id), int(d["gold"]) >= 50])
 	opts.append(["Cerrar", _close_panel])
 	_open_panel(t["name"], text, opts)
+
+
+# ---------------- Ejércitos y caravanas en movimiento ----------------
+
+func _rebuild_moving() -> void:
+	for c in moving_node.get_children():
+		c.queue_free()
+	var reg := R.region()
+	for a in reg["armies"]:
+		var li: int = a["lord"]
+		var c: Array = reg["lords"][li]["color"]
+		var col := Color(c[0], c[1], c[2])
+		var p := Vector3(a["x"], 0, a["z"])
+		var act := ACTOR.new()
+		moving_node.add_child(act)
+		act.build(["ubc/Superhero_Male_FullBody", "out/Male_Ranger"], {"faction": "rojo", "hide_hood": true, "sword": true, "shield": true, "helmet": "Helmet3"})
+		act.scale = Vector3.ONE * 3.2
+		act.position = p
+		var tgt := R.town(int(a["target"]))
+		if not tgt.is_empty():
+			act.rotation.y = atan2(float(tgt["x"]) - p.x, float(tgt["z"]) - p.z)
+		act.play("Walk")
+		M.recolor(M.put(moving_node, "castle/Banner.glb", p + Vector3(2, 0, -1.5), 0.0, 2.5), col)
+		var l := _map_label("Ejército de %s · %d soldados%s" % [N.full(reg["lords"][li]), int(a["troops"]), "  ⚔" if N.at_war(-1, li) else ""], 20)
+		l.modulate = col.lightened(0.5)
+		l.position = p + Vector3(0, 8, 0)
+		moving_node.add_child(l)
+	for cv in reg["caravans"]:
+		var p := Vector3(cv["x"], 0, cv["z"])
+		var tgt := R.town(int(cv["to"]))
+		var rot := 0.0
+		if not tgt.is_empty():
+			rot = atan2(float(tgt["x"]) - p.x, float(tgt["z"]) - p.z)
+		M.put(moving_node, "village/Cart.glb", p, rot, 2.2)
+		M.put(moving_node, "animals/Horse.glb", p + Vector3(sin(rot), 0, cos(rot)) * 3.0, rot, 0.5)
+		var l := _map_label("Caravana", 16)
+		l.position = p + Vector3(0, 5, 0)
+		moving_node.add_child(l)
+
+
+## Un ejército enemigo cerca de ti al pasar el día te sorprende.
+func _check_ambush() -> void:
+	var pp := Vector2(party.position.x, party.position.z)
+	for a in R.region()["armies"]:
+		if N.at_war(-1, int(a["lord"])) and pp.distance_to(Vector2(a["x"], a["z"])) < 18.0:
+			var id: int = a["id"]
+			var lname := N.full(N.lord(int(a["lord"])))
+			_open_panel("¡Emboscada!", "El ejército de %s (%d soldados) os ha alcanzado en el camino." % [lname, int(a["troops"])], [
+				["¡A las armas!", func(): _fight_army(id)],
+				["Huir (pierdes algunos soldados)", func():
+					for k in GS.data["army"]:
+						GS.data["army"][k] = int(int(GS.data["army"][k]) * 0.9)
+					var away := Vector2(party.position.x, party.position.z) - Vector2(a["x"], a["z"])
+					away = away.normalized() * 30.0
+					party.position += Vector3(away.x, 0, away.y)
+					target = party.position
+					_close_panel()]])
+			return
+
+
+func _army_panel(id: int) -> void:
+	var a := R.army_by_id(id)
+	if a.is_empty():
+		return
+	var li: int = a["lord"]
+	var tgt := R.town(int(a["target"]))
+	var text := "Ejército de %s: %d soldados. Marcha hacia %s.\nTu ejército: %d soldados." % [N.full(N.lord(li)), int(a["troops"]), tgt.get("name", "?"), ARMY.total()]
+	var opts := []
+	if N.at_war(-1, li):
+		opts.append(["Atacar al ejército", func(): _fight_army(id)])
+	opts.append(["Cerrar", _close_panel])
+	_open_panel("Ejército en marcha", text, opts)
+
+
+func _fight_army(id: int) -> void:
+	var a := R.army_by_id(id)
+	if a.is_empty():
+		_close_panel()
+		return
+	GS.data["battle"] = {"kind": "campo", "army": id, "enemy": N.full(N.lord(int(a["lord"]))), "troops": int(a["troops"]), "wall": 0}
+	GS.save_game()
+	main.start_battle()

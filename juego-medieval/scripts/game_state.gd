@@ -251,6 +251,7 @@ func new_year() -> void:
 	for v in data["villagers"]:
 		v["age"] += 1
 	SIM.year()
+	REGION.year()
 	var s = data["spouse"]
 	if s != null:
 		s["age"] += 1
