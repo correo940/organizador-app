@@ -125,6 +125,12 @@ static func ensure() -> void:
 		d["player_land"] = -1
 	if not d.has("prosperity"):
 		d["prosperity"] = 50
+	if not d.has("commons"):
+		d["commons"] = 0
+	if not d.has("tier"):
+		d["tier"] = 0
+	if not d.has("town"):
+		d["town"] = TOWN_NAMES.pick_random()
 
 
 # ---------------- Comercio entre aldeanos ----------------
@@ -230,6 +236,7 @@ static func day() -> void:
 				v["mood"] = mini(100, int(v["mood"]) + 2)
 	_social()
 	_update_prosperity(produced)
+	_grow_commons()
 	_lands_and_settlers()
 
 
@@ -241,7 +248,7 @@ static func _update_prosperity(produced: float) -> void:
 		wealth += int(v["gold"])
 		mood += int(v["mood"])
 	var pop: int = d["villagers"].size()
-	var target: float = wealth / 14.0 + pop * 5.0 + d["buildings"].size() * 8.0 + (mood / maxf(pop, 1)) / 2.0 + produced / 6.0
+	var target: float = wealth / 14.0 + pop * 5.0 + int(d["commons"]) / 4.0 + d["buildings"].size() * 8.0 + (mood / maxf(pop, 1)) / 2.0 + produced / 6.0
 	d["prosperity"] = int(lerpf(float(d["prosperity"]), target, 0.25))
 
 
@@ -458,3 +465,71 @@ static func _old_age() -> void:
 		elif not v["kids"].is_empty():
 			GS.say("Los hijos de %s se van a vivir con parientes de fuera." % v["name"])
 		GS.say("Ha fallecido %s %s a los %d años." % [v["name"], v["surname"], int(v["age"])])
+
+
+# ---------------- Población y crecimiento de aldea a ciudad ----------------
+
+const TIERS := [
+	{"name": "Aldea", "cap": 100},
+	{"name": "Villa", "cap": 400},
+	{"name": "Ciudad", "cap": 1200},
+]
+const TOWN_NAMES := ["Peñalba", "Valdemora", "Torrecilla", "Fuenterrobles", "Villanueva del Río", "Castrojeriz", "Montealegre", "Robledo", "Arroyofrío", "Navalosa", "Tordesillas", "Peñafiel"]
+
+
+static func total_pop() -> int:
+	return _population() + int(GS.data["commons"])
+
+
+static func town_title() -> String:
+	return "%s de %s" % [TIERS[int(GS.data["tier"])]["name"], GS.data["town"]]
+
+
+## Requisitos del siguiente nivel: [población, prosperidad, edificios] o [] si ya es ciudad.
+static func next_tier_req() -> Array:
+	match int(GS.data["tier"]):
+		0:
+			return [90, 150, 2]
+		1:
+			return [360, 400, 5]
+	return []
+
+
+static func next_tier_text() -> String:
+	var r := next_tier_req()
+	if r.is_empty():
+		return "Ya es una ciudad."
+	return "Para ser %s: %d habitantes, %d de prosperidad y %d edificios tuyos (tienes %d, %d y %d)." % [TIERS[int(GS.data["tier"]) + 1]["name"].to_lower(), r[0], r[1], r[2], total_pop(), int(GS.data["prosperity"]), GS.data["buildings"].size()]
+
+
+## Llega gente de fuera según lo atractivo que sea el pueblo y el sitio que quede.
+static func _grow_commons() -> void:
+	var d = GS.data
+	var cap: int = TIERS[int(d["tier"])]["cap"]
+	var free := cap - total_pop()
+	if free > 0:
+		var mood := 0.0
+		for v in d["villagers"]:
+			mood += int(v["mood"])
+		mood /= maxf(d["villagers"].size(), 1)
+		var appeal: float = clampf(mood / 60.0, 0.2, 1.6) * (1.0 + d["buildings"].size() * 0.05)
+		if int(d["season"]) == 3:
+			appeal *= 0.4
+		if int(d["taxed"]) == GS.season_index():
+			appeal *= 0.8
+		var g: float = free * 0.03 * appeal
+		var n := int(floor(g)) + (1 if randf() < g - floor(g) else 0)
+		d["commons"] = int(d["commons"]) + n
+	var r := next_tier_req()
+	if not r.is_empty() and total_pop() >= r[0] and int(d["prosperity"]) >= r[1] and d["buildings"].size() >= r[2]:
+		d["tier"] = int(d["tier"]) + 1
+		var t: int = d["tier"]
+		var text := "%s ha crecido tanto que ahora es una %s.\n\n" % [d["town"], TIERS[t]["name"].to_lower()]
+		if t == 1:
+			text += "Se abre un barrio nuevo al este, se levanta una empalizada, llegan más mercaderes y se construye un cuartel."
+		else:
+			text += "Se abren barrios al norte, se levantan murallas de piedra y se alza una catedral."
+		text += "\nCabe hasta %d habitantes." % int(TIERS[t]["cap"])
+		GS.popups.append({"title": "¡%s!" % town_title(), "text": text, "button": "Continuar"})
+		GS.say("%s es ahora %s. (+%d prestigio)" % [d["town"], "una villa" if t == 1 else "una ciudad", 40 * t])
+		d["prestige"] += 40 * t

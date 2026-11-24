@@ -10,6 +10,8 @@ Juego de estrategia medieval para PC (Windows) en 3D, hecho con Godot 4.3. Model
 
 **Pueblo vivo:** cada aldeano tiene su oficio (leñador, cantero, agricultor, pescador, cazador, pastor, minero, panadero, tejedor, herrero), su oro y su inventario; trabajan de día, comercian entre ellos y con mercaderes, y cambian de oficio si les va mal. Puedes comerciar con ellos (comprar, vender o trueque). La prosperidad del pueblo abre terrenos en el barrio sur: cómpralos para levantar una Casona o una Casa fuerte, o llegarán forasteros a vivir en ellos.
 
+**De aldea a ciudad:** además de los vecinos con nombre, el pueblo llano crece por inmigración según el ánimo, la comida y los edificios. Aldea (hasta 100 habitantes) → Villa (barrio este, empalizada, cuartel; hasta 400) → Ciudad (barrios del norte, murallas de piedra, catedral; hasta 1.200). Las casas se dibujan según la población.
+
 **Próximas fases:** gobernar el pueblo y dirigir ejércitos (fase 2), y un mapa del mundo para viajar y combatir (fase 3).
 
 ## Controles

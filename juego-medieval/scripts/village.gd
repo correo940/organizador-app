@@ -9,8 +9,8 @@ const FARM := preload("res://scripts/farm.gd")
 const BLD := preload("res://scripts/buildings.gd")
 const SIM := preload("res://scripts/village_sim.gd")
 const TRADE := preload("res://scripts/trade_ui.gd")
+const TOWN := preload("res://scripts/town.gd")
 
-const SIZE := Vector2(120, 97)
 const PLAZA := Vector3(60, 0, 40)
 const PLOT := Vector3(52, 0, 31)
 const MARKET := Vector3(69, 0, 46)
@@ -42,6 +42,9 @@ var vsig := ""
 var lands_node: Node3D
 var lands_sig := ""
 var house_land := -2
+var town
+var built_tier := 0
+var bnd: Rect2
 var family: Array = []
 var family_sig := ""
 var house_node: Node3D
@@ -60,7 +63,9 @@ var box: VBoxContainer
 
 
 func _ready() -> void:
-	env = M.make_env(self, Vector3(SIZE.x / 2, 0, SIZE.y / 2), 400)
+	built_tier = int(GS.data["tier"])
+	bnd = TOWN.bounds(built_tier)
+	env = M.make_env(self, Vector3(80, 0, 40), 500)
 	var r := RandomNumberGenerator.new()
 	r.seed = 1234
 	for i in 70:
@@ -73,7 +78,7 @@ func _ready() -> void:
 		trees.append({"p": p, "k": i % 3, "i": r.randi_range(1, 5), "s": r.randf_range(2.5, 3.5), "r": r.randf() * TAU})
 	for i in 22:
 		rocks.append({"p": Vector3(r.randf_range(8, 32), 0, r.randf_range(55, 70)), "i": r.randi_range(1, 7), "s": r.randf_range(1.3, 2.4), "r": r.randf() * TAU})
-	trees = trees.filter(func(t): return BLD.SLOTS.all(func(sl): return t["p"].distance_to(sl) > 7.0) and t["p"].distance_to(BLD.MINE) > 6.0 and SIM.LANDS.all(func(l): return Vector2(t["p"].x, t["p"].z).distance_to(l) > 9.0))
+	trees = trees.filter(func(t): return BLD.SLOTS.all(func(sl): return t["p"].distance_to(sl) > 7.0) and t["p"].distance_to(BLD.MINE) > 6.0 and SIM.LANDS.all(func(l): return Vector2(t["p"].x, t["p"].z).distance_to(l) > 9.0) and TOWN.clear_rects(built_tier).all(func(r): return not r.has_point(Vector2(t["p"].x, t["p"].z))))
 	_build_static()
 	farm = FARM.new()
 	farm.v = self
@@ -83,6 +88,10 @@ func _ready() -> void:
 	bld.v = self
 	add_child(bld)
 	obstacles.append_array(bld.obstacles)
+	town = TOWN.new()
+	town.v = self
+	add_child(town)
+	obstacles.append_array(town.obstacles)
 	_build_hud()
 	_reset_villagers()
 	cam = CAM.new()
@@ -504,7 +513,7 @@ func _update_hud() -> void:
 	else:
 		lines.append("Soltero" if p["male"] else "Soltera")
 	lines.append("Hijos: %d · Generación %d" % [d["children"].size(), int(d["generation"])])
-	lines.append("Pueblo: %d habitantes · Prosperidad %d" % [d["villagers"].size(), int(d["prosperity"])])
+	lines.append("%s: %d habitantes · Prosperidad %d" % [SIM.town_title(), SIM.total_pop(), int(d["prosperity"])])
 	lines.append("%s, día %d · Año %d · %02d:00" % [GS.SEASONS[int(d["season"])], int(d["day"]), int(d["year"]), int(d["time"] * 24.0)])
 	if d["summons"] != null:
 		var left: int = int(d["summons"]["deadline"]) - int(d["total_days"])
@@ -580,6 +589,11 @@ func _process(delta: float) -> void:
 	var d = GS.data
 	if season != int(d["season"]):
 		_build_nature(int(d["season"]))
+	if int(d["tier"]) != built_tier:
+		GS.save_game()
+		main.start_village.call_deferred()
+		set_process(false)
+		return
 	if house_level != int(d["house_level"]) or house_land != int(d["player_land"]):
 		_rebuild_house()
 	if _villager_sig() != vsig:
@@ -623,8 +637,8 @@ func _move_player(delta: float) -> void:
 		return
 	var sprint := Input.is_key_pressed(KEY_SHIFT)
 	var p: Vector3 = player.position + dir * (SPRINT_SPEED if sprint else RUN_SPEED) * delta
-	p.x = clampf(p.x, 1, SIZE.x - 1)
-	p.z = clampf(p.z, 1, SIZE.y - 1)
+	p.x = clampf(p.x, bnd.position.x, bnd.end.x)
+	p.z = clampf(p.z, bnd.position.y, bnd.end.y)
 	var hp := house_pos()
 	var obs := obstacles + ([[Vector2(hp.x, hp.z), 3.6 if house_level < 4 else 6.0]] if house_level > 0 else [])
 	for li in GS.data["lands"].size():
@@ -909,7 +923,7 @@ func _hall_panel() -> void:
 	else:
 		var can_tax: bool = int(d["taxed"]) != GS.season_index()
 		text = "Eres el jefe del pueblo.\nCuando el rey llame a las armas, llevarás a la milicia contigo.\n\n(Próxima fase: gobernar la aldea, reclutar y dirigir ejércitos.)"
-		var tax := 0
+		var tax := int(d["commons"]) / 4
 		for vv in d["villagers"]:
 			tax += mini(5, int(vv["gold"]))
 		opts.append(["Cobrar impuestos (una vez por estación, +%d oro)" % tax, func():
@@ -918,6 +932,7 @@ func _hall_panel() -> void:
 				vv["gold"] -= t
 				vv["mood"] = maxi(0, int(vv["mood"]) - 5)
 				d["gold"] += t
+			d["gold"] += int(d["commons"]) / 4
 			d["taxed"] = GS.season_index()
 			GS.say("Cobras los impuestos del pueblo.")
 			_hall_panel(), can_tax])
@@ -940,7 +955,7 @@ func _town_report() -> String:
 		if not d["lands"][i]["open"]:
 			next = "Próximo terreno al llegar a %d de prosperidad." % SIM.LAND_THRESH[i]
 			break
-	return "Prosperidad del pueblo: %d · Habitantes: %d\nOficios: %s\n%s" % [int(d["prosperity"]), d["villagers"].size(), ", ".join(parts), next]
+	return "%s · Prosperidad: %d\nHabitantes: %d (%d vecinos con nombre y %d del pueblo llano) de %d que caben\nOficios de los vecinos: %s\n%s\n%s" % [SIM.town_title(), int(d["prosperity"]), SIM.total_pop(), SIM._population(), int(d["commons"]), int(SIM.TIERS[int(d["tier"])]["cap"]), ", ".join(parts), SIM.next_tier_text(), next]
 
 
 func _land_panel(i: int) -> void:
@@ -996,4 +1011,4 @@ func _show_popup(pp: Dictionary) -> void:
 	if GS.data.get("game_over", false):
 		_open_panel(pp["title"], pp["text"], [["Volver al menú", func(): main.show_menu()]])
 	else:
-		_open_panel(pp["title"], pp["text"], [["Continuar con el heredero", _close_panel]])
+		_open_panel(pp["title"], pp["text"], [[pp.get("button", "Continuar con el heredero"), _close_panel]])
