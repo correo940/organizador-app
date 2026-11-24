@@ -341,7 +341,7 @@ func _update_player_model() -> void:
 	var d = GS.data
 	var p = d["player"]
 	var armor := int(d["armor"])
-	var sig := "%s-%d-%d-%s" % [p["male"], mini(armor, 2), mini(int(d["weapon"]), 1), p["name"]]
+	var sig := "%s-%d-%d-%s-%s" % [p["male"], mini(armor, 2), mini(int(d["weapon"]), 1), p["name"], _riding()]
 	if sig == player_sig:
 		return
 	player_sig = sig
@@ -367,10 +367,16 @@ func _update_player_model() -> void:
 		if not male:
 			opts["faction"] = "bandido"
 	player = _actor(parts, opts)
+	if _riding():
+		player.mount(Color(1.3, 0.9, 0.7))
 	player.position = pos
 	player.rotation.y = rot
 	if cam:
 		cam.target = player
+
+
+func _riding() -> bool:
+	return GS.data.get("horse", false) and GS.data.get("riding", false)
 
 
 func _update_family() -> void:
@@ -483,7 +489,7 @@ func _build_hud() -> void:
 	layer.add_child(lbl_prompt)
 
 	var help := Label.new()
-	help.text = "WASD: mover · Shift: correr · Clic derecho: girar cámara · Rueda: zoom · E: usar · I: inventario · M: mapa de la región · T: velocidad · Esc: menú"
+	help.text = "WASD: mover · Shift: correr · Clic derecho: girar cámara · Rueda: zoom · E: usar · I: inventario · M: mapa de la región · H: caballo · T: velocidad · Esc: menú"
 	help.add_theme_font_size_override("font_size", 13)
 	help.add_theme_color_override("font_outline_color", Color.BLACK)
 	help.add_theme_constant_override("outline_size", 4)
@@ -643,7 +649,7 @@ func _move_player(delta: float) -> void:
 			player.play("Idle")
 		return
 	var sprint := Input.is_key_pressed(KEY_SHIFT)
-	var p: Vector3 = player.position + dir * (SPRINT_SPEED if sprint else RUN_SPEED) * delta
+	var p: Vector3 = player.position + dir * (SPRINT_SPEED if sprint else RUN_SPEED) * (1.8 if _riding() else 1.0) * delta
 	p.x = clampf(p.x, bnd.position.x, bnd.end.x)
 	p.z = clampf(p.z, bnd.position.y, bnd.end.y)
 	var hp := house_pos()
@@ -765,6 +771,10 @@ func _unhandled_input(ev: InputEvent) -> void:
 				_pause_menu()
 		KEY_T:
 			GS.speed = {1.0: 3.0, 3.0: 6.0}.get(GS.speed, 1.0)
+		KEY_H:
+			if GS.data.get("horse", false) and not panel.visible:
+				GS.data["riding"] = not GS.data.get("riding", false)
+				_update_player_model()
 		KEY_I:
 			if not panel.visible:
 				farm.inventory_panel()

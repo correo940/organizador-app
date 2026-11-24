@@ -54,6 +54,8 @@ func _ready() -> void:
 	var helm := "Helmet2" if int(d["armor"]) >= 2 else ""
 	party.build(["ubc/Superhero_Male_FullBody" if d["player"]["male"] else "ubc/Superhero_Female_FullBody", "out/Male_Ranger" if d["player"]["male"] else "out/Female_Ranger"], {"faction": "azul", "hide_hood": true, "sword": true, "shield": true, "helmet": helm})
 	party.scale = Vector3.ONE * 3.5
+	if d.get("horse", false):
+		party.mount(Color(1.3, 0.9, 0.7))
 	M.recolor(M.put(party, "castle/Banner.glb", Vector3(0.8, 0, -0.5), 0.0, 1.0), Color(0.15, 0.3, 0.7))
 	party.position = Vector3(reg["party"][0], 0, reg["party"][1])
 	target = party.position
@@ -149,12 +151,13 @@ func _process(delta: float) -> void:
 		var to: Vector3 = target - party.position
 		to.y = 0
 		if to.length() > 0.5:
-			var step := minf(to.length(), SPEED * delta)
+			var fast := 1.6 if d.get("horse", false) else 1.0
+			var step := minf(to.length(), SPEED * fast * delta)
 			party.position += to.normalized() * step
 			party.rotation.y = lerp_angle(party.rotation.y, atan2(to.x, to.z), minf(1.0, delta * 8.0))
 			party.play("Walk")
 			var reg := R.region()
-			reg["walked"] = float(reg["walked"]) + step
+			reg["walked"] = float(reg["walked"]) + step / fast
 			if float(reg["walked"]) >= R.DAY_DIST:
 				reg["walked"] = float(reg["walked"]) - R.DAY_DIST
 				GS.next_day()

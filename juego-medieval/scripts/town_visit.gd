@@ -148,6 +148,8 @@ func _ready() -> void:
 	player = ACTOR.new()
 	add_child(player)
 	player.build(parts, opts)
+	if d.get("horse", false) and d.get("riding", false):
+		player.mount(Color(1.3, 0.9, 0.7))
 	player.position = GATE + Vector3(0, 0, -9)
 	player.rotation.y = PI
 	cam = CAM.new()
@@ -232,7 +234,7 @@ func _move_player(delta: float) -> void:
 		player.play("Idle")
 		return
 	var sprint := Input.is_key_pressed(KEY_SHIFT)
-	var p: Vector3 = player.position + dir * (7.0 if sprint else 4.2) * delta
+	var p: Vector3 = player.position + dir * (7.0 if sprint else 4.2) * (1.8 if player.horse != null else 1.0) * delta
 	if Vector2(p.x, p.z).length() > RADIUS - 2.0:
 		p = Vector3(p.x, 0, p.z).normalized() * (RADIUS - 2.0)
 	for o in obstacles:

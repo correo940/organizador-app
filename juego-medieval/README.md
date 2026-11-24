@@ -20,10 +20,16 @@ Juego de estrategia medieval para PC (Windows) en 3D, hecho con Godot 4.3. Model
 
 **Próximas fases:** gobernar el pueblo y dirigir ejércitos (fase 2), y un mapa del mundo para viajar y combatir (fase 3).
 
+**Visitar pueblos:** desde el mapa puedes pasear a pie por cualquier pueblo (calles, casas, murallas, mercado, taberna con rumores y la corte de su señor). Los asedios se libran delante de las murallas del pueblo atacado.
+
+**Peligros del bosque:** manadas de lobos (más de noche y en invierno) que te atacan y se llevan ganado del corral; bandidos que acampan en un claro del bosque y saquean el pueblo si no los echas.
+
+**Caballo:** cómpralo en el mercado (150 oro). H para montar o desmontar en la aldea; viajas más rápido por el mapa y en batalla luchas a caballo (más rápido, más vida y golpes más fuertes).
+
 **Sonido:** música original para aldea, mapa y batalla, y efectos (talar, picar, pasos, espadas, monedas). La música se activa o desactiva en el menú principal.
 
 ## Controles
-- WASD: moverse · Shift: correr · Clic derecho + ratón: girar cámara · Rueda: zoom · E: interactuar (mantén E para recoger recursos) · T: velocidad del tiempo · Esc: menú · F5: guardar
+- WASD: moverse · Shift: correr · Clic derecho + ratón: girar cámara · Rueda: zoom · E: interactuar (mantén E para recoger recursos) · H: montar/desmontar · T: velocidad del tiempo · Esc: menú · F5: guardar
 - En batalla: el ratón mueve la cámara; clic izquierdo ataca, clic derecho (mantener) bloquea; Esc suelta el ratón
 
 ## Compilar

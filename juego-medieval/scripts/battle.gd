@@ -135,6 +135,13 @@ func _ready() -> void:
 	pl = {"a": pa, "team": 0, "type": "jugador", "hp": maxf(float(d["player"]["health"]), 20.0), "max": 100.0,
 		"dmg": 20.0 + 10.0 * int(d["weapon"]), "speed": 4.6, "reach": 2.4, "ranged": false, "cd": 0.0, "alive": true,
 		"hit_at": -1.0, "target": null, "anchor": pa.position, "player": true}
+	if d.get("horse", false):
+		pa.mount(Color(1.3, 0.9, 0.7))
+		pl["speed"] = 7.5
+		pl["hp"] += 30.0
+		pl["max"] = 130.0
+		pl["dmg"] *= 1.25
+		pl["reach"] = 2.8
 	units.append(pl)
 
 	# Tus tropas: las que no caben en el campo esperan como refuerzo.
@@ -228,7 +235,7 @@ func _build_hud() -> void:
 	lbl_order.position = Vector2(16, 52)
 	layer.add_child(lbl_order)
 	hp_bar = ProgressBar.new()
-	hp_bar.max_value = 100
+	hp_bar.max_value = pl["max"]
 	hp_bar.show_percentage = false
 	hp_bar.custom_minimum_size = Vector2(320, 18)
 	hp_bar.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM)
@@ -578,7 +585,7 @@ func _end(victory: bool) -> void:
 		var pres := 25 + 2 * kills + enemy_total / 4 + (15 if chief else 0)
 		d["gold"] += gold
 		d["prestige"] += pres
-		d["player"]["health"] = maxf(pl["hp"], 10.0)
+		d["player"]["health"] = clampf(pl["hp"], 10.0, 100.0)
 		text = "¡VICTORIA!\n\nVictoria contra %s (%d enemigos).\nAbatidos por ti: %d\nBajas de tus tropas: %d\n\nBotín: +%d oro\nPrestigio: +%d" % [enemy_name, enemy_total, kills, losses, gold, pres]
 		GS.say("Victoria contra %s. +%d oro, +%d prestigio. Bajas: %d." % [enemy_name, gold, pres, losses])
 		for u in units:
@@ -614,7 +621,7 @@ func _end_siege(victory: bool, losses: int) -> void:
 			result_label.text = "¡CAMPEÓN DEL TORNEO!\n\nHas derrotado al campeón de %s.\nPremio: 100 de oro · +25 de prestigio · mejora tu relación con su señor." % enemy_name
 			GS.say("Ganas el torneo de %s. (+100 oro, +25 prestigio)" % enemy_name)
 		else:
-			d["player"]["health"] = maxf(pl["hp"], 30.0)
+			d["player"]["health"] = clampf(pl["hp"], 30.0, 100.0)
 			result_label.text = "DERROTA EN EL TORNEO\n\nEl campeón te ha descabalgado. Sin heridas graves, solo el orgullo."
 		GS.next_day()
 		GS.save_game()
@@ -625,7 +632,7 @@ func _end_siege(victory: bool, losses: int) -> void:
 			var loot := 12 * int(siege["troops"])
 			d["gold"] = int(d["gold"]) + loot
 			d["prestige"] += 10 + kills
-			d["player"]["health"] = maxf(pl["hp"], 10.0)
+			d["player"]["health"] = clampf(pl["hp"], 10.0, 100.0)
 			d.erase("bandits")
 			result_label.text = "¡VICTORIA!\n\nHas echado a los bandidos del bosque.\nBotín: +%d oro · Prestigio: +%d" % [loot, 10 + kills]
 			GS.say("Echas a los bandidos del bosque. +%d oro." % loot)
@@ -641,7 +648,7 @@ func _end_siege(victory: bool, losses: int) -> void:
 		if victory:
 			var loot := GS.REGION.army_defeated(int(siege["army"]))
 			d["prestige"] += 15 + 2 * kills
-			d["player"]["health"] = maxf(pl["hp"], 10.0)
+			d["player"]["health"] = clampf(pl["hp"], 10.0, 100.0)
 			result_label.text = "¡VICTORIA!\n\nHas derrotado al ejército de %s.\nBotín: +%d oro · Bajas de tus tropas: %d" % [enemy_name, loot, losses]
 			GS.say("Derrotas al ejército de %s. +%d oro." % [enemy_name, loot])
 		else:
@@ -657,7 +664,7 @@ func _end_siege(victory: bool, losses: int) -> void:
 		return
 	if victory:
 		d["prestige"] += 10 + 2 * kills
-		d["player"]["health"] = maxf(pl["hp"], 10.0)
+		d["player"]["health"] = clampf(pl["hp"], 10.0, 100.0)
 		result_label.text = "¡VICTORIA!\n\nHabéis tomado %s.\nAbatidos por ti: %d · Bajas de tus tropas: %d\n\n¿Qué haces con el pueblo?" % [enemy_name, kills, losses]
 		back_btn.visible = false
 		for choice in [["Saquearlo (botín de oro)", "saquear"], ["Conquistarlo (pasa a ser tuyo)", "conquistar"], ["Exigir vasallaje (tributo cada estación)", "vasallo"]]:

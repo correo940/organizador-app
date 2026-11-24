@@ -624,6 +624,13 @@ func market_panel() -> void:
 			d["gold"] -= 6
 			d["tools"].append("caña")
 			market_panel(), d["gold"] >= 6))
+	if not d.get("horse", false):
+		row.add_child(_btn("Caballo (-150)", func():
+			d["gold"] -= 150
+			d["horse"] = true
+			d["riding"] = true
+			v._float("¡Tienes caballo! Pulsa H para montar o desmontar.", Color(1, 0.9, 0.6))
+			market_panel(), d["gold"] >= 150))
 	if w < 3:
 		row.add_child(_btn("Espada nivel %d (-%d)" % [w + 1, 25 * (w + 1)], func():
 			d["gold"] -= 25 * (w + 1)
