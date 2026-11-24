@@ -43,7 +43,7 @@ static func open(v, i: int) -> void:
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 8)
 	var mood: int = vil["mood"]
-	box.add_child(_label("%s es %s. Tiene %d de oro y está %s.  Tu oro: %d" % [vil["name"], SIM.job_name(vil).to_lower(), int(vil["gold"]), "contento" if mood >= 60 else ("tranquilo" if mood >= 35 else "preocupado"), int(d["gold"])]))
+	box.add_child(_label("%s es %s. Tiene %d de oro y está %s.  Tu oro: %d" % [GS.full_name(vil), SIM.job_name(vil).to_lower(), int(vil["gold"]), "contento" if mood >= 60 else ("tranquilo" if mood >= 35 else "preocupado"), int(d["gold"])]))
 
 	var sells := GridContainer.new()
 	sells.columns = 4
@@ -110,4 +110,4 @@ static func open(v, i: int) -> void:
 	var scroll := ScrollContainer.new()
 	scroll.custom_minimum_size = Vector2(720, 400)
 	scroll.add_child(box)
-	v._open_custom("Comerciar con %s" % vil["name"], scroll)
+	v._open_custom("Comerciar con %s" % GS.full_name(vil), scroll)

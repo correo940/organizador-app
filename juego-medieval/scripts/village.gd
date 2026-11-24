@@ -37,6 +37,8 @@ var villagers: Array = []
 var vtarget: Array = []
 var vlabels: Array = []
 var vwork: Array = []
+var vkids: Array = []
+var vsig := ""
 var lands_node: Node3D
 var lands_sig := ""
 var house_land := -2
@@ -239,7 +241,7 @@ func _rebuild_lands() -> void:
 			M.put(lands_node, "village/Package_1.glb", p + Vector3(-1.5, 0, 0), 0.3, 1.4)
 			M.put(lands_node, "village/Crate.glb", p + Vector3(1.5, 0, 1), 0.8, 1.4)
 		else:
-			text = "Casa de %s" % l["owner"]
+			text = ("Casa de la %s" if String(l["owner"]).begins_with("familia") else "Casa de %s") % l["owner"]
 			M.put(lands_node, kinds[i], p, PI, 1.7)
 		if l["owner"] == "" or l["owner"] == "jugador":
 			for o in [Vector3(-4, 0, -4), Vector3(4, 0, -4), Vector3(-4, 0, 4), Vector3(4, 0, 4)]:
@@ -257,10 +259,21 @@ func _actor(parts: Array, opts := {}) -> Node3D:
 	return a
 
 
+func _villager_sig() -> String:
+	var n := 0
+	for v in GS.data["villagers"]:
+		n += v.get("kids", []).size()
+	return "%d-%d-%d" % [GS.data["villagers"].size(), n, int(GS.data["year"])]
+
+
 func _reset_villagers() -> void:
+	vsig = _villager_sig()
 	for v in villagers:
 		v.queue_free()
 	villagers.clear()
+	for k in vkids:
+		k["a"].queue_free()
+	vkids.clear()
 	vtarget.clear()
 	vlabels.clear()
 	vwork.clear()
@@ -278,13 +291,26 @@ func _reset_villagers() -> void:
 		var a := _actor(parts, opts)
 		var home := _door(v)
 		a.position = home + Vector3(randf_range(-4, 4), 0, randf_range(-4, 4))
-		var l := M.label3d("%s\n%s" % [v["name"], SIM.job_name(v)], 32)
+		var l := M.label3d("%s\n%s" % [GS.full_name(v), SIM.job_name(v)], 32)
 		l.position = Vector3(0, 2.25, 0)
 		a.add_child(l)
 		villagers.append(a)
 		vtarget.append(a.position)
 		vlabels.append(l)
 		vwork.append(randf() * 2.0)
+		# Hijos de las familias del pueblo: juegan cerca de casa.
+		var kk := 0
+		for k in v.get("kids", []):
+			var km: bool = k["male"]
+			var kparts: Array = ["ubc/Superhero_Male_FullBody", "out/Male_Peasant", MALE_HAIR[kk % 2]] if km else ["ubc/Superhero_Female_FullBody", "out/Female_Ranger", FEMALE_HAIR[kk % 2]]
+			var ka := _actor(kparts, {"hide_hood": true, "faction": "bandido", "hair_color": M.SKIN_HAIR[(i + kk) % 4]} if not km else {"hair_color": M.SKIN_HAIR[(i + kk) % 4]})
+			ka.scale = Vector3.ONE * clampf(0.5 + int(k["age"]) * 0.032, 0.5, 0.95)
+			ka.position = home + Vector3(randf_range(-3, 3), 0, randf_range(-3, 3))
+			var kl := M.label3d(k["name"], 30)
+			kl.position = Vector3(0, 2.3, 0)
+			ka.add_child(kl)
+			vkids.append({"a": ka, "home": home, "t": ka.position})
+			kk += 1
 		i += 1
 
 
@@ -554,7 +580,7 @@ func _process(delta: float) -> void:
 		_build_nature(int(d["season"]))
 	if house_level != int(d["house_level"]) or house_land != int(d["player_land"]):
 		_rebuild_house()
-	if d["villagers"].size() != villagers.size():
+	if _villager_sig() != vsig:
 		_reset_villagers()
 	var ls := str(d["lands"]) + str(d["total_days"]) + str(d["player_land"])
 	if ls != lands_sig:
@@ -637,6 +663,10 @@ func _move_npcs(delta: float) -> void:
 				a.play_once("Interact")
 		else:
 			a.play("Idle")
+	for k in vkids:
+		if k["a"].position.distance_to(k["t"]) < 0.3 and randf() < 0.005:
+			k["t"] = k["home"] + (Vector3.ZERO if night else Vector3(randf_range(-4, 4), 0, randf_range(-4, 4)))
+		_walk_to(k["a"], k["t"], 1.2, delta)
 	for f in family:
 		if f["a"].position.distance_to(f["t"]) < 0.3 and randf() < 0.004:
 			f["t"] = _front_of_house() + Vector3(randf_range(-3.5, 3.5), 0, randf_range(-3.5, 3.5))
@@ -824,7 +854,14 @@ func _villager_panel(i: int) -> void:
 	var d = GS.data
 	var v = d["villagers"][i]
 	var talked: bool = v["name"] in d["talked"]
-	var text := "%s, %d años. %s.\nAfecto: %d / 100" % [v["name"], int(v["age"]), SIM.job_name(v), int(v["affection"])]
+	var text := "%s, %d años. %s.\nAfecto: %d / 100" % [GS.full_name(v), int(v["age"]), SIM.job_name(v), int(v["affection"])]
+	if v.has("partner"):
+		text += "\n%s con %s." % ["Casado" if v["male"] else "Casada", v["partner"]]
+	var kid_names := []
+	for k in v.get("kids", []):
+		kid_names.append("%s (%d)" % [k["name"], int(k["age"])])
+	if not kid_names.is_empty():
+		text += "\nHijos: " + ", ".join(kid_names)
 	if int(v["affection"]) >= 100:
 		text += "\n\nSe le ve muy feliz de verte..."
 	var opts := []
@@ -842,7 +879,7 @@ func _villager_panel(i: int) -> void:
 		d["gold"] -= 5
 		v["affection"] = mini(100, int(v["affection"]) + 20)
 		_villager_panel(i), d["gold"] >= 5])
-	if int(v["affection"]) >= 100:
+	if int(v["affection"]) >= 100 and not v.has("partner"):
 		opts.append(["Proponer matrimonio", func():
 			var err: String = GS.marry(i)
 			if err != "":
@@ -851,7 +888,7 @@ func _villager_panel(i: int) -> void:
 				_reset_villagers()
 				_open_panel("¡Boda!", "Te has casado con %s. Pronto podréis tener hijos que continúen el linaje." % d["spouse"]["name"], [["Cerrar", _close_panel]])])
 	opts.append(["Adiós", _close_panel])
-	_open_panel(v["name"], text, opts)
+	_open_panel(GS.full_name(v), text, opts)
 
 
 func _hall_panel() -> void:

@@ -98,12 +98,25 @@ static func setup(v: Dictionary) -> void:
 		v["mood"] = 60
 	if not v.has("tools"):
 		v["tools"] = randi_range(0, TOOL_DAYS)
+	if not v.has("kids"):
+		v["kids"] = []
 
 
 static func ensure() -> void:
 	var d = GS.data
+	var seen := [d["player"]["name"]] if d.has("player") else []
+	if d.get("spouse") != null:
+		seen.append(d["spouse"]["name"])
+	for c in d.get("children", []):
+		seen.append(c["name"])
 	for v in d["villagers"]:
 		setup(v)
+		# Partidas antiguas: nombres repetidos y aldeanos sin apellido.
+		if v["name"] in seen:
+			v["name"] = GS.rng_name(v["male"])
+		seen.append(v["name"])
+		if v.get("surname", "") == "":
+			v["surname"] = GS.rng_surname()
 	if not d.has("lands"):
 		d["lands"] = []
 		for i in LANDS.size():
@@ -185,11 +198,12 @@ static func day() -> void:
 			vadd(v, k, whole)
 			produced += whole * price(k)
 	for v in vil:
-		var fed := _eat(v, 1)
+		var mouths: int = 1 + v["kids"].size()
+		var fed := _eat(v, mouths)
 		if not fed:
 			for k in ["pan", "pescado", "carne", "zanahoria", "manzana", "queso"]:
-				_acquire(v, k, 2)
-				if _eat(v, 1):
+				_acquire(v, k, 2 * mouths)
+				if _eat(v, mouths):
 					fed = true
 					break
 		v["mood"] = clampi(int(v["mood"]) + (2 if fed else -10), 0, 100)
@@ -244,15 +258,63 @@ static func _lands_and_settlers() -> void:
 	for i in lands.size():
 		var l = lands[i]
 		if l["open"] and l["owner"] == "" and int(d["total_days"]) - int(l["since"]) >= 6 and randf() < 0.12:
-			var p: Vector2 = LANDS[i]
-			var v := GS.new_villager(p / 0.05)
-			setup(v)
-			v["gold"] = randi_range(20, 40)
-			d["villagers"].append(v)
-			l["owner"] = v["name"]
-			l["built"] = int(d["total_days"]) + 2
-			GS.say("Llegan forasteros: %s (%s) compra un terreno y se instala en el pueblo." % [v["name"], job_name(v).to_lower()])
+			_settle_family(i)
 			break
+
+
+## Llega una familia de fuera: un matrimonio y de 0 a 3 hijos.
+static func _settle_family(i: int) -> void:
+	var d = GS.data
+	var home: Vector2 = LANDS[i] / 0.05
+	var a := GS.new_villager(home)
+	a["male"] = true
+	a["name"] = GS.rng_name(true)
+	a["gold"] = randi_range(20, 40)
+	d["villagers"].append(a)
+	var b := GS.new_villager(home)
+	b["male"] = false
+	b["name"] = GS.rng_name(false)
+	b["surname"] = a["surname"]
+	b["age"] = clampi(int(a["age"]) + randi_range(-5, 3), 17, 40)
+	b["gold"] = randi_range(10, 25)
+	a["partner"] = b["name"]
+	b["partner"] = a["name"]
+	d["villagers"].append(b)
+	var kids := []
+	for n in randi_range(0, 3):
+		var m := randf() < 0.5
+		var k := {"name": GS.rng_name(m), "male": m, "age": randi_range(1, 13)}
+		a["kids"].append(k)
+		kids.append(k["name"])
+	d["lands"][i]["owner"] = "familia " + a["surname"]
+	d["lands"][i]["built"] = int(d["total_days"]) + 2
+	var text := "Llega la familia %s: %s (%s) y %s (%s)" % [a["surname"], a["name"], job_name(a).to_lower(), b["name"], job_name(b).to_lower()]
+	if not kids.is_empty():
+		text += ", con %s %s" % ["su hijo" if kids.size() == 1 else "sus hijos", ", ".join(kids)]
+	GS.say(text + ". Compran un terreno y se instalan en el pueblo.")
+
+
+## Cada año crecen los hijos de los aldeanos; a los 16 empiezan a trabajar.
+static func year() -> void:
+	var d = GS.data
+	var grown := []
+	for v in d["villagers"]:
+		for k in v["kids"].duplicate():
+			k["age"] += 1
+			if int(k["age"]) >= 16:
+				v["kids"].erase(k)
+				grown.append([k, v])
+	for g in grown:
+		var k = g[0]
+		var parent = g[1]
+		var nv := GS.new_villager(Vector2(parent["hx"], parent["hy"]))
+		nv["name"] = k["name"]
+		nv["male"] = k["male"]
+		nv["age"] = k["age"]
+		nv["surname"] = parent["surname"]
+		nv["gold"] = 5
+		d["villagers"].append(nv)
+		GS.say("%s %s se hace mayor y empieza a trabajar como %s." % [nv["name"], nv["surname"], job_name(nv).to_lower()])
 
 
 ## Cada estación, quien va mal cambia de oficio hacia lo que más escasea.
@@ -275,7 +337,7 @@ static func season() -> void:
 			if best != v["job"]:
 				var old := job_name(v)
 				v["job"] = best
-				GS.say("%s deja de ser %s y se hace %s." % [v["name"], old.to_lower(), job_name(v).to_lower()])
+				GS.say("%s deja de ser %s y se hace %s." % [GS.full_name(v), old.to_lower(), job_name(v).to_lower()])
 
 
 static func buy_land(i: int) -> String:

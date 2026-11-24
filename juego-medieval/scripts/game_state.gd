@@ -18,8 +18,9 @@ const HOUSE_COSTS := [
 	{"wood": 150, "stone": 220, "gold": 300},
 ]
 const CHIEF_PRESTIGE := 150
-const MALE_NAMES := ["Rodrigo", "Sancho", "Alonso", "Fernando", "Gonzalo", "Diego", "Martín", "Pedro", "Íñigo", "Bermudo", "Ramiro", "García", "Nuño", "Álvaro", "Tello"]
-const FEMALE_NAMES := ["Urraca", "Jimena", "Elvira", "Sancha", "Teresa", "Leonor", "Berenguela", "Mencía", "Aldonza", "Constanza", "Toda", "Mayor", "Inés", "Blanca", "Oria"]
+const MALE_NAMES := ["Rodrigo", "Sancho", "Alonso", "Fernando", "Gonzalo", "Diego", "Martín", "Pedro", "Íñigo", "Bermudo", "Ramiro", "García", "Nuño", "Álvaro", "Tello", "Fruela", "Ordoño", "Vermudo", "Lope", "Fortún", "Gutierre", "Munio", "Pelayo", "Suero", "Vela", "Ximeno", "Galindo", "Aznar", "Gómez", "Rui", "Lain", "Mendo", "Osorio", "Pascual", "Domingo", "Esteban", "Juan", "Miguel", "Andrés", "Bernardo", "Gil", "Hernando", "Benito", "Simón"]
+const FEMALE_NAMES := ["Urraca", "Jimena", "Elvira", "Sancha", "Teresa", "Leonor", "Berenguela", "Mencía", "Aldonza", "Constanza", "Toda", "Mayor", "Inés", "Blanca", "Oria", "Elo", "Goto", "Munia", "Onneca", "Velasquita", "Gontrodo", "Estefanía", "Eva", "Marina", "Juliana", "María", "Catalina", "Isabel", "Beatriz", "Juana", "Lucía", "Águeda", "Benita", "Elena", "Florencia", "Guiomar", "Leocadia", "Olalla", "Sol", "Violante", "Columba", "Romana", "Marta", "Ana"]
+const SURNAMES := ["Ruiz", "Pérez", "Sánchez", "Fernández", "Díaz", "Muñoz", "Álvarez", "Gómez", "Martínez", "López", "Ordóñez", "Velázquez", "Íñiguez", "Garcés", "Bermúdez", "Núñez", "Téllez", "Ramírez", "Osorio", "Fáñez", "Gutiérrez", "Rodríguez", "Vermúdez", "Sáez", "Laínez", "Domínguez", "Esteban", "Gil", "Vela", "Peláez"]
 const ENEMIES := ["los bandidos del bosque", "el señor de Valdeoscuro", "los invasores del norte", "un barón rebelde", "los saqueadores del río"]
 const HOMES := [Vector2(760, 620), Vector2(760, 1000), Vector2(980, 1180), Vector2(1380, 1180), Vector2(1640, 1040), Vector2(1660, 560), Vector2(900, 330), Vector2(1520, 300)]
 
@@ -81,13 +82,49 @@ var speed := 1.0
 var popups: Array = []  # mensajes importantes (muertes) que la aldea muestra en ventana
 
 
+## Nombres de todas las personas vivas del pueblo (nadie puede repetirse).
+func used_names() -> Array:
+	var used := []
+	if data.has("player"):
+		used.append(data["player"]["name"])
+	if data.get("spouse") != null:
+		used.append(data["spouse"]["name"])
+	for c in data.get("children", []):
+		used.append(c["name"])
+	for v in data.get("villagers", []):
+		used.append(v["name"])
+		for k in v.get("kids", []):
+			used.append(k["name"])
+	return used
+
+
 func rng_name(male: bool) -> String:
-	return (MALE_NAMES if male else FEMALE_NAMES).pick_random()
+	var used := used_names()
+	var pool: Array = (MALE_NAMES if male else FEMALE_NAMES).filter(func(n): return not n in used)
+	if not pool.is_empty():
+		return pool.pick_random()
+	for extra in ["el Mozo", "el Joven", "el Viejo", "de Arriba", "de Abajo", "del Río", "del Monte"]:
+		pool = (MALE_NAMES if male else FEMALE_NAMES).map(func(n): return "%s %s" % [n, extra]).filter(func(n): return not n in used)
+		if not pool.is_empty():
+			return pool.pick_random()
+	return "%s %d" % [(MALE_NAMES if male else FEMALE_NAMES).pick_random(), randi_range(2, 99)]
+
+
+func rng_surname() -> String:
+	var used := []
+	for v in data.get("villagers", []):
+		used.append(v.get("surname", ""))
+	var pool: Array = SURNAMES.filter(func(n): return not n in used)
+	return (pool if not pool.is_empty() else SURNAMES).pick_random()
+
+
+func full_name(v: Dictionary) -> String:
+	return "%s %s" % [v["name"], v["surname"]] if v.get("surname", "") != "" else v["name"]
 
 
 func new_villager(home: Vector2) -> Dictionary:
 	var m := randf() < 0.5
-	var v := {"name": rng_name(m), "male": m, "age": randi_range(17, 34), "affection": 0, "hx": home.x, "hy": home.y}
+	var v := {"name": rng_name(m), "surname": rng_surname(), "male": m, "age": randi_range(17, 34), "affection": 0, "hx": home.x, "hy": home.y}
 	SIM.setup(v)
 	return v
 
@@ -208,6 +245,7 @@ func new_year() -> void:
 			say("%s ya es adulto y puede ser tu heredero." % c["name"])
 	for v in data["villagers"]:
 		v["age"] += 1
+	SIM.year()
 	var s = data["spouse"]
 	if s != null:
 		s["age"] += 1
@@ -267,6 +305,8 @@ func try_build_house() -> String:
 
 func marry(i: int) -> String:
 	var v = data["villagers"][i]
+	if v.has("partner"):
+		return "%s ya está casado." % v["name"] if v["male"] else "%s ya está casada." % v["name"]
 	if data["spouse"] != null:
 		return "Ya estás casado."
 	if int(data["house_level"]) < 1:
