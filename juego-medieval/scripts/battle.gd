@@ -34,6 +34,11 @@ var enemy_dead := 0
 var res_box: VBoxContainer
 var back_btn: Button
 var lbl: Label
+var morale := [100.0, 100.0]  # moral de cada bando: al bajar, los heridos huyen
+var fled := [0, 0]
+var rout_cd := 1.0
+var formation := 0
+const FORMS := ["Línea", "Muro de escudos", "Cuña"]
 var lbl_order: Label
 var hp_bar: ProgressBar
 var flash: ColorRect
@@ -265,7 +270,7 @@ func _build_hud() -> void:
 	hp_bar.add_theme_stylebox_override("fill", fill)
 	layer.add_child(hp_bar)
 	var help := Label.new()
-	help.text = "WASD: mover · Shift: correr · Clic izq.: atacar · Clic der.: bloquear · 1: ¡Cargad! · 2: Mantened · 3: Seguidme · Esc: ratón"
+	help.text = "WASD: mover · Shift: correr · Clic izq.: atacar · Clic der.: bloquear · 1: ¡Cargad! · 2: Mantened · 3: Seguidme · F: formación · Esc: ratón"
 	help.add_theme_color_override("font_outline_color", Color.BLACK)
 	help.add_theme_constant_override("outline_size", 4)
 	help.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM)
@@ -308,13 +313,28 @@ func _count(team: int, include_player := true) -> int:
 
 func _set_order(o: int) -> void:
 	order = o
-	lbl_order.text = "Orden: " + ORDERS[o]
-	var i := 0
-	for u in units:
-		if u["alive"] and u["team"] == 0 and not u.has("player"):
-			if o == 1:
-				u["anchor"] = u["a"].position
-			i += 1
+	lbl_order.text = "Orden: %s · Formación: %s (F)" % [ORDERS[o], FORMS[formation]]
+	if o != 1:
+		return
+	# Mantened: las tropas forman delante de ti según la formación elegida.
+	var mine := units.filter(func(u): return u["alive"] and u["team"] == 0 and not u.has("player") and not u.has("flee"))
+	var front := mine.filter(func(u): return not u["ranged"])
+	var back := mine.filter(func(u): return u["ranged"])
+	var base: Vector3 = pl["a"].position + Vector3(0, 0, -3)
+	for i in front.size():
+		var p := Vector3.ZERO
+		match formation:
+			0:
+				p = Vector3((i - (front.size() - 1) / 2.0) * 2.0, 0, 0)
+			1:
+				var cols := maxi(4, int(ceil(front.size() / 2.0)))
+				p = Vector3((i % cols - (cols - 1) / 2.0) * 1.15, 0, (i / cols) * 1.2)
+			2:
+				var k := (i + 1) / 2
+				p = Vector3(k * 1.5 * (1 if i % 2 == 1 else -1), 0, k * 1.4 - 2.0)
+		front[i]["anchor"] = base + p
+	for i in back.size():
+		back[i]["anchor"] = base + Vector3((i - (back.size() - 1) / 2.0) * 1.8, 0, 5.0)
 
 
 func _unhandled_input(ev: InputEvent) -> void:
@@ -331,6 +351,9 @@ func _unhandled_input(ev: InputEvent) -> void:
 				_set_order(1)
 			KEY_3:
 				_set_order(2)
+			KEY_F:
+				formation = (formation + 1) % FORMS.size()
+				_set_order(1)
 	elif ev is InputEventMouseButton and ev.pressed and not cam.captured:
 		cam.captured = true
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
@@ -342,8 +365,10 @@ func _process(delta: float) -> void:
 	if over:
 		return
 	lbl.text = "   Batalla contra %s      Tus tropas: %d (+%d de refuerzo)      Enemigos: %d (+%d)      Abatidos por ti: %d" % [enemy_name, _count(0, false), ally_reserve.size(), _count(1), enemy_reserve.size(), kills]
+	lbl.text += "      Moral: %d contra %d" % [int(morale[0]), int(morale[1])]
 	hp_bar.value = pl["hp"]
 	_reinforce(delta)
+	_check_rout(delta)
 	_player_step(delta)
 	for u in units:
 		if over:
@@ -409,6 +434,16 @@ func _rest_point(u: Dictionary) -> Vector3:
 
 func _ai_step(u: Dictionary, delta: float) -> void:
 	var a = u["a"]
+	if u.has("flee"):
+		var edge := Vector3(a.position.x, 0, HALF if u["team"] == 0 else -HALF)
+		_walk(u, edge, 0.0, delta)
+		a.play("Sprint")
+		if absf(a.position.z) >= HALF - 0.6:
+			u["alive"] = false
+			a.visible = false
+			fled[u["team"]] += 1
+			_check_end()
+		return
 	u["cd"] -= delta
 	if u["target"] == null or not u["target"]["alive"] or randf() < 0.01:
 		u["target"] = _nearest(u)
@@ -446,6 +481,8 @@ func _ai_step(u: Dictionary, delta: float) -> void:
 			u["cd"] = 1.3 + randf() * 0.7
 			a.play_once("Sword_Attack")
 			u["hit_at"] = 0.35
+			u["charge"] = float(u.get("run", 0.0)) > 1.2
+			u["run"] = 0.0
 	elif not attacking:
 		a.play("Sword_Idle" if not u["ranged"] else "Idle")
 
@@ -456,6 +493,8 @@ func _walk(u: Dictionary, target: Vector3, stop: float, delta: float) -> void:
 	to.y = 0
 	if to.length() <= stop:
 		a.play("Idle")
+		# En su puesto, de cara al enemigo (si no, les pueden atacar por la espalda).
+		a.rotation.y = lerp_angle(a.rotation.y, PI if u["team"] == 0 else 0.0, minf(1.0, delta * 4.0))
 		return
 	var sep := Vector3.ZERO
 	for o in units:
@@ -468,6 +507,7 @@ func _walk(u: Dictionary, target: Vector3, stop: float, delta: float) -> void:
 	a.position.x = clampf(a.position.x, -HALF, HALF)
 	a.position.z = clampf(a.position.z, -HALF, HALF)
 	a.rotation.y = lerp_angle(a.rotation.y, atan2(to.x, to.z), minf(1.0, delta * 8.0))
+	u["run"] = float(u.get("run", 0.0)) + delta
 	a.play("Jog_Fwd")
 
 
@@ -535,7 +575,9 @@ func _resolve_hit(u: Dictionary) -> void:
 	else:
 		var t = u["target"]
 		if t != null and t["alive"] and t["a"].position.distance_to(a.position) < u["reach"] + 0.6:
-			_damage(t, u["dmg"] * randf_range(0.8, 1.2), u)
+			var mult := 1.6 if u.get("charge", false) and u["type"] == "jinete" else 1.0
+			u["charge"] = false
+			_damage(t, u["dmg"] * randf_range(0.8, 1.2) * mult, u)
 
 
 func _nearest(u: Dictionary):
@@ -560,6 +602,15 @@ func _damage(t: Dictionary, amount: float, src: Dictionary) -> void:
 		flash.color.a = 0.35
 	elif t["type"] == "infante":
 		amount *= 0.8
+	# Golpe por la espalda: mucho más dañino.
+	var tf := Vector3(sin(t["a"].rotation.y), 0, cos(t["a"].rotation.y))
+	var from: Vector3 = src["a"].position - t["a"].position
+	from.y = 0
+	if from.length() > 0.01 and tf.dot(from.normalized()) < -0.3:
+		amount *= 1.5
+	# Muro de escudos: quien aguanta en su puesto recibe menos daño.
+	if t["team"] == 0 and order == 1 and formation == 1 and t["type"] in ["infante", "lancero", "milicia"] and t["a"].position.distance_to(t["anchor"]) < 1.5:
+		amount *= 0.65
 	t["hp"] -= amount
 	var near: float = t["a"].position.distance_to(pl["a"].position)
 	if near < 14.0:
@@ -578,12 +629,44 @@ func _damage(t: Dictionary, amount: float, src: Dictionary) -> void:
 		enemy_dead += 1
 	if t.has("child"):
 		_child_fell(t["child"])
+	# Cada baja hunde la moral de su bando y anima al contrario.
+	var side: int = t["team"]
+	var alive_side := _count(side) + (ally_reserve.size() if side == 0 else enemy_reserve.size()) / 2
+	morale[side] = maxf(0.0, morale[side] - 160.0 / (alive_side + 8.0) - (25.0 if t.get("captain", false) else 0.0))
+	morale[1 - side] = minf(100.0, morale[1 - side] + 1.5)
 	if t["team"] == 0 and t.get("real", false):
 		dead_by_type[t["type"]] = int(dead_by_type.get(t["type"], 0)) + 1
 	if t.has("player"):
 		_end(false)
-	elif _count(1) == 0 and enemy_reserve.is_empty():
+	else:
+		_check_end()
+
+
+func _check_end() -> void:
+	if not over and _count(1) == 0 and enemy_reserve.is_empty():
 		_end(true)
+
+
+## Con la moral baja, los heridos huyen; si se hunde del todo, huye el bando entero.
+func _check_rout(delta: float) -> void:
+	rout_cd -= delta
+	if rout_cd > 0:
+		return
+	rout_cd = 1.0
+	for side in 2:
+		if morale[side] >= 35.0:
+			continue
+		var all_run: bool = morale[side] < 12.0
+		if all_run and side == 1 and not enemy_reserve.is_empty():
+			fled[1] += enemy_reserve.size()
+			enemy_reserve.clear()
+		for u in units:
+			if u["alive"] and u["team"] == side and not u.has("player") and not u.has("flee") and not u.has("child") and not u.get("captain", false):
+				if all_run or (float(u["hp"]) / float(u["max"]) < 0.45 and randf() < 0.35):
+					u["flee"] = true
+					u["target"] = null
+		if all_run and side == 1:
+			lbl_order.text = "¡El enemigo huye en desbandada!"
 
 
 func _child_fell(n: String) -> void:
