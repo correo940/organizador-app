@@ -6,6 +6,7 @@ signal notify(text: String)
 const SIM := preload("res://scripts/village_sim.gd")
 const ARMY := preload("res://scripts/army.gd")
 const REGION := preload("res://scripts/region_sim.gd")
+const EVENTS := preload("res://scripts/events.gd")
 
 const SAVE_PATH := "user://partida.json"
 const SECONDS_PER_DAY := 40.0
@@ -199,6 +200,7 @@ func next_day() -> void:
 	SIM.day()
 	ARMY.day()
 	REGION.day()
+	EVENTS.day()
 	if data["spouse"] != null and data["children"].size() < 6 and p["age"] >= 16 and p["age"] < 48 and data["spouse"]["age"] < 46 and randf() < 0.06:
 		var m := randf() < 0.5
 		var cname := rng_name(m)

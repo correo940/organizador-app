@@ -145,6 +145,10 @@ func _process(delta: float) -> void:
 		var pp: Dictionary = GS.popups.pop_front()
 		if d.get("game_over", false):
 			_open_panel(pp["title"], pp["text"], [["Volver al menú", func(): main.show_menu()]])
+		elif pp.has("options"):
+			_open_panel(pp["title"], pp["text"], pp["options"].map(func(o): return [o[0], func():
+				_close_panel()
+				o[1].call()]))
 		else:
 			_open_panel(pp["title"], pp["text"], [[pp.get("button", "Continuar"), _close_panel]])
 	if not panel.visible and not d.get("game_over", false):

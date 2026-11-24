@@ -1048,5 +1048,9 @@ func _show_popup(pp: Dictionary) -> void:
 	SFX.play("campana")
 	if GS.data.get("game_over", false):
 		_open_panel(pp["title"], pp["text"], [["Volver al menú", func(): main.show_menu()]])
+	elif pp.has("options"):
+		_open_panel(pp["title"], pp["text"], pp["options"].map(func(o): return [o[0], func():
+			_close_panel()
+			o[1].call()]))
 	else:
 		_open_panel(pp["title"], pp["text"], [[pp.get("button", "Continuar con el heredero"), _close_panel]])

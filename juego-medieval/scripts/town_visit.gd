@@ -213,7 +213,12 @@ func _process(delta: float) -> void:
 			w["a"].rotation.y = lerp_angle(w["a"].rotation.y, atan2(to.x, to.z), minf(1.0, delta * 6.0))
 	if not panel.visible and not GS.popups.is_empty():
 		var pp: Dictionary = GS.popups.pop_front()
-		_open_panel(pp["title"], pp["text"], [[pp.get("button", "Continuar"), _close_panel]])
+		if pp.has("options"):
+			_open_panel(pp["title"], pp["text"], pp["options"].map(func(o): return [o[0], func():
+				_close_panel()
+				o[1].call()]))
+		else:
+			_open_panel(pp["title"], pp["text"], [[pp.get("button", "Continuar"), _close_panel]])
 	if not panel.visible:
 		_move_player(delta)
 	inter = null
