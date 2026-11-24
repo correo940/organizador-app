@@ -144,6 +144,24 @@ func _ready() -> void:
 		pl["reach"] = 2.8
 	units.append(pl)
 
+	# Tus hijos capitanes luchan a tu lado.
+	if siege.get("kind", "") != "torneo":
+		var ci := 0
+		for c in d["children"]:
+			if c.get("role", "") == "capitan" and int(c["age"]) >= 16:
+				var u := _spawn("infante", 0, Vector3(-2.5 + 5.0 * (ci % 2), 0, 13 + ci / 2 * 1.5))
+				var xp := int(c.get("xp", 0))
+				u["hp"] = 90.0 + 8.0 * xp
+				u["max"] = u["hp"]
+				u["dmg"] = 15.0 + 1.5 * xp
+				u["child"] = c["name"]
+				u["a"].scale = Vector3.ONE * 1.06
+				var l := M.label3d(c["name"], 56)
+				l.position = Vector3(0, 2.3, 0)
+				l.modulate = Color(0.75, 0.85, 1.0)
+				u["a"].add_child(l)
+				ci += 1
+
 	# Tus tropas: las que no caben en el campo esperan como refuerzo.
 	var mine := []
 	for k in ARMY.ORDER:
@@ -558,6 +576,8 @@ func _damage(t: Dictionary, amount: float, src: Dictionary) -> void:
 		kills += 1
 	if t["team"] == 1:
 		enemy_dead += 1
+	if t.has("child"):
+		_child_fell(t["child"])
 	if t["team"] == 0 and t.get("real", false):
 		dead_by_type[t["type"]] = int(dead_by_type.get(t["type"], 0)) + 1
 	if t.has("player"):
@@ -566,7 +586,22 @@ func _damage(t: Dictionary, amount: float, src: Dictionary) -> void:
 		_end(true)
 
 
+func _child_fell(n: String) -> void:
+	var d = GS.data
+	for c in d["children"]:
+		if c["name"] == n:
+			d["children"].erase(c)
+			GS.popups.append({"title": "Ha caído %s" % n, "text": "Tu %s %s ha muerto luchando a tu lado. Toda la familia guarda luto." % ["hijo" if c["male"] else "hija", n], "button": "Continuar"})
+			GS.say("%s ha caído en la batalla." % n)
+			return
+
+
 func _end(victory: bool) -> void:
+	for u in units:
+		if u.has("child") and u["alive"]:
+			for c in GS.data["children"]:
+				if c["name"] == u["child"]:
+					c["xp"] = int(c.get("xp", 0)) + 1
 	over = true
 	cam.captured = false
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE

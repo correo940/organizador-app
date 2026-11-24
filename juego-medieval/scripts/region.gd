@@ -260,7 +260,8 @@ func _town_panel(id: int) -> void:
 	var tier := R.tier_of(int(t["pop"]))
 	var walls: String = ["sin defensas", "empalizada", "murallas de piedra"][int(t["wall"])]
 	if t["owner"] == "jugador":
-		var text := "%s tuya · %d habitantes · %s · guarnición de %d soldados.\nTe rinde unos %.1f de oro al día." % [R.tier_name(tier), int(t["pop"]), walls, int(t["garrison"]), int(t["pop"]) / 40.0]
+		var gov := R.governor_of(id)
+		var text := "%s tuya · %d habitantes · %s · guarnición de %d soldados.\nTe rinde unos %.1f de oro al día.\n%s" % [R.tier_name(tier), int(t["pop"]), walls, int(t["garrison"]), int(t["pop"]) / 40.0 * (1.5 if gov != "" else 1.0), ("Lo gobierna %s, de tu familia (+50%% de rentas)." % gov) if gov != "" else "Sin gobernador: nombra a un hijo adulto desde tu casa (Ver familia) y rentará un 50% más."]
 		_open_panel(t["name"], text, [
 			["Levantar empalizada (40 madera)", func():
 				GS.pay({"madera": 40})

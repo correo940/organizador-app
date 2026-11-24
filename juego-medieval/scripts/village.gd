@@ -900,15 +900,52 @@ func _family_panel() -> void:
 	var heir_age := -1
 	for c in d["children"]:
 		heir_age = maxi(heir_age, int(c["age"]))
+	var opts := []
 	for c in d["children"]:
 		var tag := " — heredero" if int(c["age"]) == heir_age else ""
-		lines.append("%s (%d años) — %s%s" % [c["name"], int(c["age"]), "hijo" if c["male"] else "hija", tag])
+		var role := ""
+		match c.get("role", ""):
+			"capitan":
+				role = " · capitán de tus tropas (%d batallas)" % int(c.get("xp", 0))
+			"gobernador":
+				role = " · gobierna %s" % GS.REGION.town(int(c["town"])).get("name", "?")
+		lines.append("%s (%d años) — %s%s%s" % [c["name"], int(c["age"]), "hijo" if c["male"] else "hija", tag, role])
+		if int(c["age"]) >= 16:
+			opts.append(["Cargos de %s" % c["name"], func(): _child_roles(c)])
 	if d["children"].is_empty():
 		lines.append("")
 		lines.append("Sin hijos. Si mueres sin herederos, tu linaje se extingue.")
 	lines.append("")
 	lines.append("La familia come %d de comida al día." % GS.family_size())
-	_open_panel("Familia", "\n".join(lines), [["Volver", _house_panel], ["Cerrar", _close_panel]])
+	opts.append_array([["Volver", _house_panel], ["Cerrar", _close_panel]])
+	_open_panel("Familia", "\n".join(lines), opts)
+
+
+## Un hijo adulto puede ser capitán (lucha a tu lado en las batallas) o gobernar uno de tus pueblos.
+func _child_roles(c: Dictionary) -> void:
+	var d = GS.data
+	var text := "%s puede servir a la familia:\n\n· Capitán: lucha a tu lado en cada batalla. Gana experiencia, pero puede morir.\n· Gobernador: administra un pueblo tuyo del mapa y sus rentas suben un 50%%." % c["name"]
+	var opts := []
+	if c.get("role", "") != "capitan":
+		opts.append(["Nombrar capitán", func():
+			c["role"] = "capitan"
+			c.erase("town")
+			GS.say("%s será capitán de tus tropas." % c["name"])
+			_family_panel()])
+	for t in GS.REGION.region()["towns"]:
+		if t["owner"] == "jugador" and not t.get("home", false) and GS.REGION.governor_of(int(t["id"])) == "":
+			opts.append(["Nombrar gobernador de %s" % t["name"], func():
+				c["role"] = "gobernador"
+				c["town"] = int(t["id"])
+				GS.say("%s parte a gobernar %s." % [c["name"], t["name"]])
+				_family_panel()])
+	if c.get("role", "") != "":
+		opts.append(["Quitarle el cargo (vuelve a casa)", func():
+			c["role"] = ""
+			c.erase("town")
+			_family_panel()])
+	opts.append(["Volver", _family_panel])
+	_open_panel("Cargos de %s" % c["name"], text, opts)
 
 
 func _villager_panel(i: int) -> void:

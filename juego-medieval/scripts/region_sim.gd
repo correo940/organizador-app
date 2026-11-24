@@ -172,7 +172,7 @@ static func day() -> void:
 		var cap: int = [100, 400, 1200][mini(2, tier_of(pop) + 1)]
 		t["pop"] = mini(cap, pop + maxi(1 if randf() < 0.5 else 0, int(pop * 0.004)))
 		if t["owner"] == "jugador":
-			income += pop / 40.0
+			income += pop / 40.0 * (1.5 if governor_of(int(t["id"])) != "" else 1.0)
 		else:
 			t["gold"] = int(t["gold"]) + pop / 20
 			var target := int(pop * 0.08) + 4
@@ -253,6 +253,21 @@ static func _next_id() -> int:
 
 
 # ---------------- Acciones del jugador ----------------
+
+## Nombre del hijo o hija que gobierna el pueblo (o "").
+static func governor_of(id: int) -> String:
+	for c in GS.data["children"]:
+		if c.get("role", "") == "gobernador" and int(c.get("town", -1)) == id:
+			return c["name"]
+	return ""
+
+
+static func _child(n: String) -> Dictionary:
+	for c in GS.data["children"]:
+		if c["name"] == n:
+			return c
+	return {}
+
 
 static func found_village(site: int) -> String:
 	var d = GS.data
@@ -437,7 +452,14 @@ static func _assault(a: Dictionary, t: Dictionary) -> void:
 			t["garrison"] = 0
 			t["troops"] = survivors
 			if was_mine:
-				GS.popups.append({"title": "Pueblo perdido", "text": "%s ha conquistado tu pueblo de %s." % [lname, t["name"]], "button": "Continuar"})
+				var gov := governor_of(int(t["id"]))
+				var extra := ""
+				if gov != "":
+					for c in GS.data["children"]:
+						if c["name"] == gov:
+							c["role"] = ""
+					extra = "\nTu %s %s, que lo gobernaba, consigue huir y vuelve a casa." % ["hijo" if _child(gov)["male"] else "hija", gov]
+				GS.popups.append({"title": "Pueblo perdido", "text": "%s ha conquistado tu pueblo de %s.%s" % [lname, t["name"], extra], "button": "Continuar"})
 			GS.say("%s conquista %s." % [lname, t["name"]])
 			if old_lord >= 0 and lord_towns(old_lord).is_empty():
 				reg["wars"] = reg["wars"].filter(func(w): return int(w[0]) != old_lord and int(w[1]) != old_lord)
