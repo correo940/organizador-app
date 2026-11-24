@@ -7,6 +7,7 @@ const SIM := preload("res://scripts/village_sim.gd")
 const ARMY := preload("res://scripts/army.gd")
 const REGION := preload("res://scripts/region_sim.gd")
 const EVENTS := preload("res://scripts/events.gd")
+const QUESTS := preload("res://scripts/quests.gd")
 
 const SAVE_PATH := "user://partida.json"
 const SECONDS_PER_DAY := 40.0
@@ -140,13 +141,14 @@ func new_game(pname: String, dynasty: String, male: bool) -> void:
 		"dynasty": dynasty, "generation": 1,
 		"player": {"name": pname, "male": male, "age": 18, "health": 100.0},
 		"spouse": null, "children": [], "villagers": [],
-		"summons": null, "talked": [], "log": [],
+		"summons": null, "talked": [], "log": [], "quest": 0,
 	}
 	for h in HOMES:
 		data["villagers"].append(new_villager(h))
 	ensure_economy()
 	popups.clear()
 	say("%s %s llega a la aldea con lo puesto. Empieza tu linaje." % [pname, dynasty])
+	popups.append({"title": "Bienvenido a %s" % data["town"], "text": "Llegas con lo puesto. Tu meta: levantar una casa, formar una familia y llegar a señor de ciudades.\n\nControles: WASD para andar, Shift para correr, clic derecho y ratón para girar la cámara, E para interactuar (mantén E para talar o picar), I para el inventario, M para el mapa, T para acelerar el tiempo.\n\nArriba a la derecha verás siempre tu objetivo actual y una pista.\n\nPrimer objetivo: %s\n%s" % [QUESTS.LIST[0]["goal"], QUESTS.LIST[0]["tip"]], "button": "¡A trabajar!"})
 
 
 func say(text: String) -> void:
@@ -201,6 +203,7 @@ func next_day() -> void:
 	ARMY.day()
 	REGION.day()
 	EVENTS.day()
+	QUESTS.check()
 	if data["spouse"] != null and data["children"].size() < 6 and p["age"] >= 16 and p["age"] < 48 and data["spouse"]["age"] < 46 and randf() < 0.06:
 		var m := randf() < 0.5
 		var cname := rng_name(m)

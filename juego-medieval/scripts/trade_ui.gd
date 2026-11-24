@@ -65,6 +65,7 @@ static func open(v, i: int) -> void:
 			vil["gold"] += p
 			SIM.vadd(vil, k, -1)
 			GS.res_add(k, 1)
+			d["traded"] = true
 			vil["affection"] = mini(100, int(vil["affection"]) + 1)
 			open(v, i), int(d["gold"]) >= p))
 		var offer := _barter_offer(vil, p)
@@ -76,6 +77,7 @@ static func open(v, i: int) -> void:
 				SIM.vadd(vil, offer[0], offer[1])
 				SIM.vadd(vil, k, -1)
 				GS.res_add(k, 1)
+				d["traded"] = true
 				vil["affection"] = mini(100, int(vil["affection"]) + 2)
 				open(v, i), true))
 	if not any:
@@ -100,6 +102,7 @@ static func open(v, i: int) -> void:
 			SIM.vadd(vil, k, 1)
 			vil["gold"] -= p
 			d["gold"] += p
+			d["traded"] = true
 			vil["affection"] = mini(100, int(vil["affection"]) + 1)
 			open(v, i), GS.res(k) >= 1 and int(vil["gold"]) >= p))
 	if w.is_empty():

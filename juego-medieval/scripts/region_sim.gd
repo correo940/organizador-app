@@ -270,6 +270,7 @@ static func found_village(site: int) -> String:
 	t["owner"] = "jugador"
 	t["troops"] = 0
 	t["wall"] = 0
+	t["founded"] = true
 	reg["towns"].append(t)
 	d["prestige"] += 20
 	GS.say("Has fundado la aldea de %s. (+20 prestigio)" % name)

@@ -462,6 +462,8 @@ func _build_hud() -> void:
 	layer.add_child(info)
 	lbl_info = Label.new()
 	lbl_info.add_theme_font_size_override("font_size", 15)
+	lbl_info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	lbl_info.custom_minimum_size.x = 360
 	info.add_child(lbl_info)
 
 	var logp := PanelContainer.new()
@@ -534,6 +536,12 @@ func _update_hud() -> void:
 		lines.append("¡LLAMADA DEL REY!")
 		lines.append("Contra %s" % d["summons"]["enemy"])
 		lines.append("Quedan %d días · Campamento al este" % maxi(left, 0))
+	GS.QUESTS.check()
+	var q: Dictionary = GS.QUESTS.current()
+	if not q.is_empty():
+		lines.append("")
+		lines.append("OBJETIVO: %s" % q["goal"])
+		lines.append(q["tip"])
 	lbl_info.text = "\n".join(lines)
 	lbl_prompt.text = "" if panel.visible or inter.is_empty() else "[E] " + inter["label"]
 

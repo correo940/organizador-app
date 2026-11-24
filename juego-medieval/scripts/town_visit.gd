@@ -27,6 +27,7 @@ var step_t := 0.0
 func _ready() -> void:
 	var d = GS.data
 	id = int(d["visit"])
+	d["visited"] = true
 	t = R.town(id)
 	tier = R.tier_of(int(t["pop"]))
 	var r := RandomNumberGenerator.new()
