@@ -724,6 +724,9 @@ func _find_interaction() -> Dictionary:
 	for rk in rocks:
 		if pp.distance_to(rk["p"]) < 1.2 + rk["s"] * 0.6:
 			return {"type": "rock", "label": "Picar piedra (mantén E)", "p": rk["p"]}
+	var ti: Dictionary = town.find_interaction(pp)
+	if not ti.is_empty():
+		return ti
 	var bi: Dictionary = bld.find_interaction(pp)
 	if not bi.is_empty():
 		return bi
@@ -792,6 +795,8 @@ func _interact() -> void:
 			bld.interact(inter)
 		"land":
 			_land_panel(inter["i"])
+		"barracks":
+			town.barracks_panel()
 		_:
 			farm.interact(inter)
 
@@ -922,7 +927,7 @@ func _hall_panel() -> void:
 			_hall_panel(), int(d["prestige"]) >= GS.CHIEF_PRESTIGE and int(d["house_level"]) >= 2])
 	else:
 		var can_tax: bool = int(d["taxed"]) != GS.season_index()
-		text = "Eres el jefe del pueblo.\nCuando el rey llame a las armas, llevarás a la milicia contigo.\n\n(Próxima fase: gobernar la aldea, reclutar y dirigir ejércitos.)"
+		text = "Eres el jefe del pueblo.\nCuando el rey llame a las armas, llevarás a tus tropas (o a la milicia del pueblo si no tienes ejército).\nCuando el pueblo sea villa podrás reclutar soldados en el cuartel."
 		var tax := int(d["commons"]) / 4
 		for vv in d["villagers"]:
 			tax += mini(5, int(vv["gold"]))

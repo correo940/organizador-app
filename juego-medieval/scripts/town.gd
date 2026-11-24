@@ -5,6 +5,7 @@ extends Node3D
 const M := preload("res://scripts/models.gd")
 const ACTOR := preload("res://scripts/actor.gd")
 const SIM := preload("res://scripts/village_sim.gd")
+const ARMY := preload("res://scripts/army.gd")
 
 ## Barrios por nivel: rectángulo (x, z, ancho, fondo).
 const EAST := Rect2(122, 10, 38, 68)
@@ -22,6 +23,8 @@ var house_nodes: Array = []
 var shown := -1
 var walkers: Array = []
 var obstacles: Array = []
+var drill: Array = []
+var drill_sig := ""
 
 
 ## Límites por los que puede moverse el jugador en cada nivel.
@@ -56,7 +59,7 @@ func _ready() -> void:
 		M.put(self, "rts/Barracks_FirstAge_Level2.glb", BARRACKS, -PI / 2, 1.0)
 		_fit(get_child(get_child_count() - 1), 11.0)
 		obstacles.append([Vector2(BARRACKS.x, BARRACKS.z), 5.5])
-		_label(BARRACKS + Vector3(0, 9, 0), "Cuartel (próximamente)")
+		_label(BARRACKS + Vector3(0, 9, 0), "Cuartel")
 		for k in 3:
 			var p := Vector3(70 + k * 4.0, 0, 52)
 			M.put(self, "village/MarketStand_%d.glb" % (1 + k % 2), p, PI, 1.7)
@@ -73,6 +76,7 @@ func _ready() -> void:
 		obstacles.append([Vector2(CATHEDRAL.x, CATHEDRAL.z), 7.0])
 		_label(CATHEDRAL + Vector3(0, 16, 0), "Catedral")
 		_stone_walls(bounds(2).grow(-0.5))
+	slots = slots.filter(func(sl): return sl[0].distance_to(BARRACKS) > 10.0)
 	slots.sort_custom(func(a, b): return a[0].distance_to(Vector3(60, 0, 40)) < b[0].distance_to(Vector3(60, 0, 40)))
 	for s in slots:
 		house_nodes.append(null)
@@ -158,9 +162,19 @@ func _process(delta: float) -> void:
 				house_nodes[i] = null
 		shown = want
 		_update_walkers()
+	var ds := "%d-%s" % [ARMY.total(), str(GS.data["army"])]
+	if tier >= 1 and ds != drill_sig:
+		drill_sig = ds
+		_update_drill()
 	if v.panel.visible:
 		return
 	var t: float = GS.data["time"]
+	for i in drill.size():
+		var dd = drill[i]
+		dd["cd"] -= delta
+		if dd["cd"] <= 0:
+			dd["cd"] = randf_range(1.2, 2.0)
+			dd["a"].play_once("Sword_Attack" if dd["kind"] != "arquero" else "Spell_Simple_Shoot")
 	var night := t < 0.22 or t > 0.85
 	for w in walkers:
 		w["a"].visible = not night
@@ -199,3 +213,77 @@ func _street_point() -> Vector3:
 	if tier >= 2:
 		pts.append(Vector3(randf_range(10, 122), 0, -20 + randf_range(-1.5, 1.5)))
 	return pts.pick_random()
+
+
+## Soldados entrenando delante del cuartel (hasta 10, en proporción a tu ejército).
+func _update_drill() -> void:
+	for dd in drill:
+		dd["a"].queue_free()
+	drill.clear()
+	var kinds := []
+	for k in ARMY.ORDER:
+		for n in int(GS.data["army"][k]):
+			kinds.append(k)
+	kinds.shuffle()
+	for i in mini(10, kinds.size()):
+		var a := ACTOR.new()
+		add_child(a)
+		var k: String = kinds[i]
+		var opts := {"faction": "azul", "hide_hood": k != "arquero", "sword": k in ["infante", "milicia"], "shield": k in ["infante"], "helmet": "Helmet2" if k in ["infante", "lancero"] else ""}
+		a.build(["ubc/Superhero_Male_FullBody", "out/Male_Ranger"], opts)
+		if k == "lancero":
+			a.attach("hand_r", "weapons/Spear.glb", Vector3(0, 0.05, 0), Vector3(0, 0, 90), 2.3)
+		elif k == "arquero":
+			a.attach("hand_l", "weapons/Bow_Wooden.glb", Vector3(0, 0.05, 0), Vector3(0, 90, 0), 1.3)
+		a.position = BARRACKS + Vector3(-9 - (i / 5) * 2.2, 0, -4 + (i % 5) * 2.0)
+		a.rotation.y = PI / 2
+		drill.append({"a": a, "kind": k, "cd": randf() * 2.0})
+
+
+func find_interaction(pp: Vector3) -> Dictionary:
+	if tier >= 1 and pp.distance_to(BARRACKS) < 9.0:
+		return {"type": "barracks", "label": "Cuartel"}
+	return {}
+
+
+func barracks_panel() -> void:
+	var d = GS.data
+	var err := ARMY.can_recruit()
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 8)
+	var info := Label.new()
+	info.text = "Tropas: %d de %d plazas (la mitad del pueblo llano como máximo) · Paga diaria: %.1f de oro · Tu oro: %d\nTus tropas te acompañan cuando el rey te llama a la guerra. Las bajas se pierden.%s" % [ARMY.total(), ARMY.capacity(), ARMY.daily_pay(), int(d["gold"]), ("\n" + err) if err != "" else ""]
+	info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	info.custom_minimum_size.x = 760
+	box.add_child(info)
+	var grid := GridContainer.new()
+	grid.columns = 6
+	grid.add_theme_constant_override("h_separation", 10)
+	for h in ["Tropa", "Tienes", "Coste por soldado", "", "", ""]:
+		var l := Label.new()
+		l.text = h
+		l.add_theme_color_override("font_color", Color(0.9, 0.75, 0.4))
+		grid.add_child(l)
+	for k in ARMY.UNITS:
+		var u = ARMY.UNITS[k]
+		for t in [u["name"], str(int(d["army"][k])), "%s · paga %.2f/día" % [GS.cost_text(u["cost"]), float(u["pay"])]]:
+			var l := Label.new()
+			l.text = t
+			grid.add_child(l)
+		for n in [1, 5]:
+			var b := Button.new()
+			b.text = "Reclutar %d" % n
+			b.disabled = not (err == "" and GS.can_pay(u["cost"], n) and ARMY.total() + n <= ARMY.capacity())
+			b.pressed.connect(func():
+				v._float(ARMY.recruit(k, n), Color(0.8, 0.9, 1.0))
+				barracks_panel())
+			grid.add_child(b)
+		var dm := Button.new()
+		dm.text = "Licenciar 5"
+		dm.disabled = int(d["army"][k]) <= 0
+		dm.pressed.connect(func():
+			ARMY.dismiss(k, 5)
+			barracks_panel())
+		grid.add_child(dm)
+	box.add_child(grid)
+	v._open_custom("Cuartel de %s" % d["town"], box)

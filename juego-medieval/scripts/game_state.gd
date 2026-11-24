@@ -4,6 +4,7 @@ extends Node
 signal notify(text: String)
 
 const SIM := preload("res://scripts/village_sim.gd")
+const ARMY := preload("res://scripts/army.gd")
 
 const SAVE_PATH := "user://partida.json"
 const SECONDS_PER_DAY := 40.0
@@ -195,6 +196,7 @@ func next_day() -> void:
 		say("Tu familia pasa hambre. (-15 salud)")
 	farm_day()
 	SIM.day()
+	ARMY.day()
 	if data["spouse"] != null and data["children"].size() < 6 and p["age"] >= 16 and p["age"] < 48 and data["spouse"]["age"] < 46 and randf() < 0.06:
 		var m := randf() < 0.5
 		var cname := rng_name(m)
@@ -385,6 +387,7 @@ func ensure_economy() -> void:
 	if not data.has("honey"):
 		data["honey"] = 0.0
 	SIM.ensure()
+	ARMY.ensure()
 
 
 func inv(item: String) -> int:

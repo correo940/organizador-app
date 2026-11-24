@@ -478,7 +478,10 @@ const TOWN_NAMES := ["Peñalba", "Valdemora", "Torrecilla", "Fuenterrobles", "Vi
 
 
 static func total_pop() -> int:
-	return _population() + int(GS.data["commons"])
+	var soldiers := 0
+	for k in GS.data.get("army", {}):
+		soldiers += int(GS.data["army"][k])
+	return _population() + int(GS.data["commons"]) + soldiers
 
 
 static func town_title() -> String:
