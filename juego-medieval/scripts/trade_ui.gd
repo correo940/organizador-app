@@ -38,6 +38,7 @@ static func _barter_offer(vil: Dictionary, value: int) -> Array:
 
 
 static func open(v, i: int) -> void:
+	SFX.play("monedas", -6.0)
 	var d = GS.data
 	var vil = d["villagers"][i]
 	var box := VBoxContainer.new()

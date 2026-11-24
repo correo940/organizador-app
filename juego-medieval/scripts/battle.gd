@@ -187,6 +187,7 @@ func _ready() -> void:
 	add_child(cam)
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 	_build_hud()
+	SFX.music("batalla")
 	_set_order(1)
 
 
@@ -353,6 +354,7 @@ func _player_step(delta: float) -> void:
 		pl["cd"] = 0.75
 		a.rotation.y = cam.yaw + PI
 		a.play_once("Sword_Attack")
+		SFX.play("espada", -2.0, 0.1)
 		pl["hit_at"] = 0.3
 
 
@@ -519,6 +521,9 @@ func _damage(t: Dictionary, amount: float, src: Dictionary) -> void:
 	elif t["type"] == "infante":
 		amount *= 0.8
 	t["hp"] -= amount
+	var near: float = t["a"].position.distance_to(pl["a"].position)
+	if near < 14.0:
+		SFX.play("choque" if t.get("blocking", false) or t["type"] == "infante" else "golpe", -near * 0.6, 0.08)
 	if t["hp"] > 0:
 		if not t.has("player") and not (t["a"].current == "Sword_Attack" and t["a"].anim.is_playing()):
 			t["a"].play_once("Hit_Chest")

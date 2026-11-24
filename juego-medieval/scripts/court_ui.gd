@@ -30,6 +30,7 @@ static func _lbl(text: String, header := false) -> Label:
 # ---------------- Mercado ----------------
 
 static func market(v, id: int) -> void:
+	SFX.play("monedas", -6.0)
 	var t := R.town(id)
 	var d = GS.data
 	var grid := GridContainer.new()

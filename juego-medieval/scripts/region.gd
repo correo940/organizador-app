@@ -69,6 +69,7 @@ func _ready() -> void:
 	add_child(cam)
 	cam.make_current()
 	_build_hud()
+	SFX.music("mapa")
 	GS.notify.connect(func(_t): _refresh_log())
 	_refresh_log()
 

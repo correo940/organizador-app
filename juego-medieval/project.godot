@@ -10,6 +10,7 @@ config/icon="res://icon.svg"
 [autoload]
 
 GS="*res://scripts/game_state.gd"
+SFX="*res://scripts/audio.gd"
 
 [display]
 

@@ -432,6 +432,7 @@ func interact(it: Dictionary) -> void:
 			GS.add(it["item"], n)
 			GS.mark_picked(it["id"])
 			v.player.play_once("Interact")
+			SFX.play("cosecha")
 			v._float("+%d %s" % [n, String(GS.ITEMS[it["item"]][0]).to_lower()], Color(0.7, 1.0, 0.5))
 		"field":
 			_field(it["i"])
@@ -493,6 +494,7 @@ func _field(i: int) -> void:
 		v._open_panel("Sembrar", text, opts)
 	elif GS.field_ready(f):
 		var res: String = GS.harvest(i)
+		SFX.play("cosecha")
 		v.player.play_once("Interact")
 		v._float(res, Color(0.7, 1.0, 0.5))
 	else:
@@ -561,6 +563,7 @@ func oven_panel() -> void:
 
 ## Mercado: compra y venta de todo lo que produce el pueblo.
 func market_panel() -> void:
+	SFX.play("monedas", -6.0)
 	var d = GS.data
 	var grid := GridContainer.new()
 	grid.columns = 5

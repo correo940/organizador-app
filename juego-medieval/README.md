@@ -20,6 +20,8 @@ Juego de estrategia medieval para PC (Windows) en 3D, hecho con Godot 4.3. Model
 
 **Próximas fases:** gobernar el pueblo y dirigir ejércitos (fase 2), y un mapa del mundo para viajar y combatir (fase 3).
 
+**Sonido:** música original para aldea, mapa y batalla, y efectos (talar, picar, pasos, espadas, monedas). La música se activa o desactiva en el menú principal.
+
 ## Controles
 - WASD: moverse · Shift: correr · Clic derecho + ratón: girar cámara · Rueda: zoom · E: interactuar (mantén E para recoger recursos) · T: velocidad del tiempo · Esc: menú · F5: guardar
 - En batalla: el ratón mueve la cámara; clic izquierdo ataca, clic derecho (mantener) bloquea; Esc suelta el ratón

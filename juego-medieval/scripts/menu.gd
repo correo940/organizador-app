@@ -54,7 +54,15 @@ func _ready() -> void:
 	_button(box, "Nueva partida", _on_new)
 	if GS.has_save():
 		_button(box, "Continuar partida guardada", _on_continue)
+	var mb := Button.new()
+	mb.text = "Música: sí" if SFX.music_on else "Música: no"
+	mb.custom_minimum_size.y = 40
+	mb.pressed.connect(func():
+		SFX.toggle_music()
+		mb.text = "Música: sí" if SFX.music_on else "Música: no")
+	box.add_child(mb)
 	_button(box, "Salir", func(): get_tree().quit())
+	SFX.music("aldea")
 
 	var help := Label.new()
 	help.text = "WASD / flechas: moverse   E: interactuar   T: velocidad del tiempo\nEsc: menú   F5: guardar\nTala, pica piedra y cultiva. Construye tu casa, cásate y ten hijos.\nAcude cuando el rey te llame a la guerra y gana prestigio\nhasta convertirte en jefe del pueblo."

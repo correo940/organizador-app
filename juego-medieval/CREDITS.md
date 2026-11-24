@@ -7,3 +7,6 @@ Todos los modelos 3D y animaciones son de **Quaternius** (https://quaternius.com
 - Ultimate Crops Pack, Animated Fish Pack, Ultimate Fantasy RTS (mina, granero, capilla)
 
 Las texturas de `assets/tex/` son variantes de color de las texturas originales del traje Ranger.
+
+Efectos de sonido (`assets/audio/*.ogg` salvo la música): **Kenney** (https://kenney.nl) — RPG Audio e Impact Sounds, licencia **CC0 1.0**.
+Música (`musica_aldea`, `musica_mapa`, `musica_batalla`): compuesta y sintetizada para este juego (laúd, flauta, bordón y tambores), original.

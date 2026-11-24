@@ -39,6 +39,7 @@ var vlabels: Array = []
 var vwork: Array = []
 var vkids: Array = []
 var vsig := ""
+var step_t := 0.0
 var lands_node: Node3D
 var lands_sig := ""
 var house_land := -2
@@ -101,6 +102,7 @@ func _ready() -> void:
 	cam.global_position = player.global_position + Vector3(0, 1.6, 0)
 	GS.notify.connect(func(_t): _refresh_log())
 	_refresh_log()
+	SFX.music("aldea")
 
 
 # ---------------- Mundo ----------------
@@ -652,6 +654,10 @@ func _move_player(delta: float) -> void:
 			p.x = fix.x
 			p.z = fix.y
 	player.position = p
+	step_t -= delta
+	if step_t <= 0:
+		step_t = 0.27 if sprint else 0.36
+		SFX.play("paso_nieve" if int(GS.data["season"]) == 3 else "paso", -10.0)
 	player.rotation.y = lerp_angle(player.rotation.y, atan2(dir.x, dir.z), minf(1.0, delta * 12.0))
 	player.play("Sprint" if sprint else "Jog_Fwd")
 
@@ -819,11 +825,13 @@ func _gather(type: String) -> void:
 			d["wood"] += w
 			cooldown = 0.45
 			_float("+%d madera" % w, Color(0.95, 0.75, 0.45))
+			SFX.play("talar")
 		"rock":
 			var st := 2 if "pico" in d["tools"] else 1
 			d["stone"] += st
 			cooldown = 0.6
 			_float("+%d piedra" % st, Color(0.85, 0.85, 0.9))
+			SFX.play("picar")
 
 
 func _house_panel() -> void:
@@ -1017,6 +1025,7 @@ func _pause_menu() -> void:
 
 
 func _show_popup(pp: Dictionary) -> void:
+	SFX.play("campana")
 	if GS.data.get("game_over", false):
 		_open_panel(pp["title"], pp["text"], [["Volver al menú", func(): main.show_menu()]])
 	else:

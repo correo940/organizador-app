@@ -182,6 +182,7 @@ func mine_tick() -> void:
 		return
 	cd = 1.0
 	v.player.play_once("Interact")
+	SFX.play("picar")
 	var pick: bool = "pico" in GS.data["tools"]
 	GS.data["stone"] += 1
 	if randf() < (0.6 if pick else 0.3):

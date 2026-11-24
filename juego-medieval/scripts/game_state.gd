@@ -304,6 +304,7 @@ func try_build_house() -> String:
 	data["stone"] -= c["stone"]
 	data["gold"] -= c["gold"]
 	data["house_level"] = lvl + 1
+	SFX.play("talar")
 	data["prestige"] += 10 * (lvl + 1)
 	say("Has construido: %s. (+%d prestigio)" % [HOUSE_NAMES[lvl + 1], 10 * (lvl + 1)])
 	return ""
@@ -634,6 +635,7 @@ func construct(slot: int, id: String) -> String:
 		return "Te faltan materiales: " + cost_text(b["cost"])
 	pay(b["cost"])
 	data["buildings"][str(slot)] = id
+	SFX.play("talar")
 	var pres := 40 if id == "capilla" else 5
 	data["prestige"] += pres
 	say("Has construido: %s. (+%d prestigio)" % [b["name"], pres])
