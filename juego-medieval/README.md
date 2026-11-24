@@ -14,6 +14,8 @@ Juego de estrategia medieval para PC (Windows) en 3D, hecho con Godot 4.3. Model
 
 **Ejército:** como jefe de una villa o ciudad, recluta en el cuartel milicia, lanceros, arqueros y hombres de armas sacados del pueblo llano (con coste y paga diaria; sin paga, desertan). En batalla tus tropas te siguen con órdenes (1: ¡Cargad!, 2: Mantened, 3: Seguidme), los arqueros disparan flechas, entran refuerzos por oleadas y las bajas se descuentan del ejército.
 
+**Mapa de la región (tecla M):** marcha con tu ejército entre pueblos (viajar consume días). Cuatro señores con sus pueblos que crecen y fundan aldeas nuevas. Puedes fundar tus propias aldeas en lugares libres, darles empalizada o murallas, guarnición y colonos; atacar pueblos y, si ganas, saquearlos, conquistarlos o hacerlos vasallos. Los señores enemistados asaltan tus aldeas mal defendidas.
+
 **Próximas fases:** gobernar el pueblo y dirigir ejércitos (fase 2), y un mapa del mundo para viajar y combatir (fase 3).
 
 ## Controles

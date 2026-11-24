@@ -5,6 +5,7 @@ signal notify(text: String)
 
 const SIM := preload("res://scripts/village_sim.gd")
 const ARMY := preload("res://scripts/army.gd")
+const REGION := preload("res://scripts/region_sim.gd")
 
 const SAVE_PATH := "user://partida.json"
 const SECONDS_PER_DAY := 40.0
@@ -197,6 +198,7 @@ func next_day() -> void:
 	farm_day()
 	SIM.day()
 	ARMY.day()
+	REGION.day()
 	if data["spouse"] != null and data["children"].size() < 6 and p["age"] >= 16 and p["age"] < 48 and data["spouse"]["age"] < 46 and randf() < 0.06:
 		var m := randf() < 0.5
 		var cname := rng_name(m)
@@ -226,6 +228,7 @@ func next_season() -> void:
 	if has_building("capilla"):
 		data["prestige"] += 3
 	SIM.season()
+	REGION.season()
 	if data.get("game_over", false):
 		return
 	say("Comienza %s del año %d." % [["la primavera", "el verano", "el otoño", "el invierno"][int(data["season"])], int(data["year"])])
@@ -388,6 +391,7 @@ func ensure_economy() -> void:
 		data["honey"] = 0.0
 	SIM.ensure()
 	ARMY.ensure()
+	REGION.ensure()
 
 
 func inv(item: String) -> int:

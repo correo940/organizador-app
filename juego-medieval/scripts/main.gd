@@ -23,5 +23,9 @@ func start_village() -> void:
 	_switch(preload("res://scripts/village.gd").new())
 
 
+func start_region() -> void:
+	_switch(preload("res://scripts/region.gd").new())
+
+
 func start_battle() -> void:
 	_switch(preload("res://scripts/battle.gd").new())

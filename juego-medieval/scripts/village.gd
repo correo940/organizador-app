@@ -476,7 +476,7 @@ func _build_hud() -> void:
 	layer.add_child(lbl_prompt)
 
 	var help := Label.new()
-	help.text = "WASD: mover · Shift: correr · Clic derecho: girar cámara · Rueda: zoom · E: usar · I: inventario · T: velocidad · Esc: menú"
+	help.text = "WASD: mover · Shift: correr · Clic derecho: girar cámara · Rueda: zoom · E: usar · I: inventario · M: mapa de la región · T: velocidad · Esc: menú"
 	help.add_theme_font_size_override("font_size", 13)
 	help.add_theme_color_override("font_outline_color", Color.BLACK)
 	help.add_theme_constant_override("outline_size", 4)
@@ -754,6 +754,10 @@ func _unhandled_input(ev: InputEvent) -> void:
 		KEY_I:
 			if not panel.visible:
 				farm.inventory_panel()
+		KEY_M:
+			if not panel.visible and not GS.data.get("game_over", false):
+				GS.save_game()
+				main.start_region()
 		KEY_F5:
 			GS.save_game()
 			_float("Partida guardada", Color.WHITE)

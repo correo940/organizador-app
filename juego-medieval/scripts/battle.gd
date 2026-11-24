@@ -28,6 +28,10 @@ var enemy_reserve: Array = []
 var reinforce_cd := 0.0
 var arrows: Array = []
 var dead_by_type := {}
+var siege := {}  # ataque a un pueblo de la región (vacío si es una llamada del rey)
+var enemy_dead := 0
+var res_box: VBoxContainer
+var back_btn: Button
 var lbl: Label
 var lbl_order: Label
 var hp_bar: ProgressBar
@@ -83,7 +87,12 @@ func _spawn(kind: String, team: int, pos: Vector3) -> Dictionary:
 
 func _ready() -> void:
 	var d = GS.data
-	enemy_name = d["summons"]["enemy"] if d["summons"] != null else "unos bandidos"
+	if d.get("battle") != null:
+		siege = d["battle"]
+	if not siege.is_empty():
+		enemy_name = siege["enemy"]
+	else:
+		enemy_name = d["summons"]["enemy"] if d["summons"] != null else "unos bandidos"
 	enemy_faction = "bandido" if enemy_name.contains("bandidos") or enemy_name.contains("saqueadores") else "rojo"
 	env = M.make_env(self, Vector3.ZERO, 400)
 	M.set_season_ground(env["grad"], int(d["season"]))
@@ -121,8 +130,9 @@ func _ready() -> void:
 	if mine.is_empty() and int(d["title"]) == 1:
 		for n in 6:
 			mine.append("milicia_local")
-	for n in 4:
-		mine.append("rey")
+	if siege.is_empty():
+		for n in 4:
+			mine.append("rey")
 	var row := 0
 	for i in mine.size():
 		var kind: String = mine[i]
@@ -137,6 +147,8 @@ func _ready() -> void:
 
 	# Ejército enemigo, en proporción al tuyo.
 	enemy_total = 6 + mini(8, (int(d["year"]) - 1100) / 2) + randi_range(0, 2) + int(ARMY.total() * 0.7)
+	if not siege.is_empty():
+		enemy_total = maxi(3, int(siege["troops"]) - 1)
 	var foes := []
 	for i in enemy_total:
 		var roll := randf()
@@ -150,6 +162,11 @@ func _ready() -> void:
 			continue
 		var back := -8.0 if foes[i] == "arquero" else 0.0
 		_spawn(foes[i], 1, Vector3(-12 + (i % 10) * 2.6 + randf_range(-0.4, 0.4), 0, -14 - (i / 10) * 2.4 + back))
+	if not siege.is_empty():
+		for u in units:
+			if u["team"] == 1:
+				u["hp"] *= 1.0 + 0.2 * int(siege["wall"])
+				u["max"] = u["hp"]
 	var cap := _spawn("infante", 1, Vector3(0, 0, -19))
 	cap["captain"] = true
 	cap["hp"] = 110.0
@@ -226,15 +243,17 @@ func _build_hud() -> void:
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 12)
 	result_panel.add_child(box)
+	res_box = box
 	result_label = Label.new()
 	result_label.add_theme_font_size_override("font_size", 20)
 	result_label.custom_minimum_size.x = 480
 	result_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	box.add_child(result_label)
 	var b := Button.new()
-	b.text = "Volver al pueblo"
+	b.text = "Volver al pueblo" if siege.is_empty() else "Volver al mapa"
 	b.custom_minimum_size.y = 40
-	b.pressed.connect(func(): main.start_village())
+	b.pressed.connect(func(): main.start_village() if siege.is_empty() else main.start_region())
+	back_btn = b
 	box.add_child(b)
 
 
@@ -506,6 +525,8 @@ func _damage(t: Dictionary, amount: float, src: Dictionary) -> void:
 	t["a"].play_once("Death01")
 	if src.has("player"):
 		kills += 1
+	if t["team"] == 1:
+		enemy_dead += 1
 	if t["team"] == 0 and t.get("real", false):
 		dead_by_type[t["type"]] = int(dead_by_type.get(t["type"], 0)) + 1
 	if t.has("player"):
@@ -525,6 +546,9 @@ func _end(victory: bool) -> void:
 	for k in dead_by_type:
 		losses += int(dead_by_type[k])
 	var text: String
+	if not siege.is_empty():
+		_end_siege(victory, losses)
+		return
 	if victory:
 		var gold := 10 + 3 * enemy_total + 3 * kills
 		var pres := 25 + 2 * kills + enemy_total / 4 + (15 if chief else 0)
@@ -549,6 +573,42 @@ func _end(victory: bool) -> void:
 	GS.next_day()
 	GS.save_game()
 	result_label.text = text
+	result_panel.visible = true
+
+
+## Final de un ataque a un pueblo: si ganas, eliges qué hacer con él.
+func _end_siege(victory: bool, losses: int) -> void:
+	var d = GS.data
+	var id: int = siege["town"]
+	d.erase("battle")
+	if victory:
+		d["prestige"] += 10 + 2 * kills
+		d["player"]["health"] = maxf(pl["hp"], 10.0)
+		result_label.text = "¡VICTORIA!\n\nHabéis tomado %s.\nAbatidos por ti: %d · Bajas de tus tropas: %d\n\n¿Qué haces con el pueblo?" % [enemy_name, kills, losses]
+		back_btn.visible = false
+		for choice in [["Saquearlo (botín de oro)", "saquear"], ["Conquistarlo (pasa a ser tuyo)", "conquistar"], ["Exigir vasallaje (tributo cada estación)", "vasallo"]]:
+			var b := Button.new()
+			b.text = choice[0]
+			b.custom_minimum_size.y = 38
+			b.pressed.connect(func():
+				var msg := GS.REGION.after_victory(id, choice[1])
+				GS.say(msg)
+				GS.next_day()
+				GS.save_game()
+				main.start_region())
+			res_box.add_child(b)
+	else:
+		var t := GS.REGION.town(id)
+		t["troops"] = maxi(0, int(t["troops"]) - enemy_dead)
+		d["prestige"] = maxi(0, int(d["prestige"]) - 5)
+		if randf() < 0.25:
+			result_label.text = "DERROTA\n\nCaíste ante los muros de %s...\nBajas de tus tropas: %d" % [enemy_name, losses]
+			GS.player_death("murió asaltando %s" % enemy_name)
+		else:
+			d["player"]["health"] = 15.0
+			result_label.text = "DERROTA\n\nTus tropas se retiran de %s.\nBajas: %d · Enemigos caídos: %d" % [enemy_name, losses, enemy_dead]
+		GS.next_day()
+		GS.save_game()
 	result_panel.visible = true
 
 
