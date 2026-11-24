@@ -174,7 +174,7 @@ func _process(delta: float) -> void:
 		dd["cd"] -= delta
 		if dd["cd"] <= 0:
 			dd["cd"] = randf_range(1.2, 2.0)
-			dd["a"].play_once("Sword_Attack" if dd["kind"] != "arquero" else "Spell_Simple_Shoot")
+			dd["a"].play_once("Sword_Attack" if not dd["kind"] in ["arquero", "arquero_jinete"] else "Spell_Simple_Shoot")
 	var night := t < 0.22 or t > 0.85
 	for w in walkers:
 		w["a"].visible = not night
@@ -229,15 +229,15 @@ func _update_drill() -> void:
 		var a := ACTOR.new()
 		add_child(a)
 		var k: String = kinds[i]
-		var opts := {"faction": "azul", "hide_hood": k != "arquero", "sword": k in ["infante", "milicia", "jinete"], "shield": k in ["infante", "jinete"], "helmet": "Helmet2" if k in ["infante", "lancero", "jinete"] else ""}
+		var opts := {"faction": "azul", "hide_hood": not k in ["arquero", "arquero_jinete"], "sword": k in ["infante", "milicia", "jinete"], "shield": k in ["infante", "jinete"], "helmet": "Helmet2" if k in ["infante", "lancero", "jinete"] else ""}
 		a.build(["ubc/Superhero_Male_FullBody", "out/Male_Ranger"], opts)
 		if k == "lancero":
 			a.attach("hand_r", "weapons/Spear.glb", Vector3(0, 0.05, 0), Vector3(0, 0, 90), 2.3)
-		elif k == "arquero":
+		elif k in ["arquero", "arquero_jinete"]:
 			a.attach("hand_l", "weapons/Bow_Wooden.glb", Vector3(0, 0.05, 0), Vector3(0, 90, 0), 1.3)
 		a.position = BARRACKS + Vector3(-9 - (i / 5) * 2.2, 0, -4 + (i % 5) * 2.0)
 		a.rotation.y = PI / 2
-		if k == "jinete":
+		if k in ARMY.MOUNTED:
 			a.mount(Color(1.7, 1.4, 1.1))
 		drill.append({"a": a, "kind": k, "cd": randf() * 2.0})
 
@@ -288,4 +288,28 @@ func barracks_panel() -> void:
 			barracks_panel())
 		grid.add_child(dm)
 	box.add_child(grid)
+	var eh := Label.new()
+	eh.text = "Taller de asedio — tienes: " + ", ".join(ARMY.ENGINES.keys().map(func(k): return "%d %s" % [int(d["engines"][k]), String(ARMY.ENGINES[k]["name"]).to_lower()]))
+	eh.add_theme_color_override("font_color", Color(0.9, 0.75, 0.4))
+	box.add_child(eh)
+	var eg := GridContainer.new()
+	eg.columns = 3
+	eg.add_theme_constant_override("h_separation", 10)
+	for k in ARMY.ENGINES:
+		var e: Dictionary = ARMY.ENGINES[k]
+		var l := Label.new()
+		l.text = "%s · %s" % [e["name"], GS.cost_text(e["cost"])]
+		eg.add_child(l)
+		var dl := Label.new()
+		dl.text = e["desc"]
+		dl.add_theme_font_size_override("font_size", 13)
+		eg.add_child(dl)
+		var bb := Button.new()
+		bb.text = "Construir"
+		bb.disabled = not (err == "" and int(d["tier"]) >= int(e["tier"]) and GS.can_pay(e["cost"]))
+		bb.pressed.connect(func():
+			v._float(ARMY.build_engine(k), Color(0.8, 0.9, 1.0))
+			barracks_panel())
+		eg.add_child(bb)
+	box.add_child(eg)
 	v._open_custom("Cuartel de %s" % d["town"], box)

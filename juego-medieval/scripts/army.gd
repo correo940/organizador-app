@@ -7,8 +7,17 @@ const UNITS := {
 	"arquero": {"name": "Arqueros", "cost": {"oro": 10, "madera": 2}, "pay": 0.25, "hp": 35.0, "dmg": 9.0, "speed": 3.6, "reach": 18.0, "ranged": true},
 	"infante": {"name": "Hombres de armas", "cost": {"oro": 20, "hierro": 3, "piel": 1}, "pay": 0.4, "hp": 75.0, "dmg": 13.0, "speed": 3.3, "reach": 1.8},
 	"jinete": {"name": "Caballería", "cost": {"oro": 45, "hierro": 3, "piel": 2}, "pay": 0.7, "hp": 95.0, "dmg": 16.0, "speed": 6.5, "reach": 2.4, "tier": 2},
+	"arquero_jinete": {"name": "Arqueros a caballo", "cost": {"oro": 40, "madera": 2, "piel": 2}, "pay": 0.6, "hp": 60.0, "dmg": 9.0, "speed": 6.8, "reach": 16.0, "ranged": true, "tier": 2},
 }
-const ORDER := ["jinete", "infante", "lancero", "milicia", "arquero"]
+const ORDER := ["jinete", "infante", "lancero", "milicia", "arquero", "arquero_jinete"]
+const MOUNTED := ["jinete", "arquero_jinete"]
+
+## Maquinaria de guerra: no cobra paga ni ocupa plazas del cuartel.
+const ENGINES := {
+	"ariete": {"name": "Ariete", "cost": {"madera": 50, "hierro": 4, "oro": 20}, "tier": 1, "desc": "Asedio: derriba la puerta (las murallas defienden un nivel menos)."},
+	"balista": {"name": "Balista", "cost": {"madera": 40, "hierro": 6, "oro": 30}, "tier": 1, "desc": "Dispara virotes de largo alcance que atraviesan armaduras."},
+	"catapulta": {"name": "Catapulta", "cost": {"madera": 70, "piedra": 30, "oro": 50}, "tier": 2, "desc": "Lanza piedras que aplastan grupos; con 2 o más abre brecha en las murallas."},
+}
 
 
 static func ensure() -> void:
@@ -18,6 +27,11 @@ static func ensure() -> void:
 	for k in UNITS:
 		if not d["army"].has(k):
 			d["army"][k] = 0
+	if not d.has("engines"):
+		d["engines"] = {}
+	for k in ENGINES:
+		if not d["engines"].has(k):
+			d["engines"][k] = 0
 	if not d.has("pay_debt"):
 		d["pay_debt"] = 0.0
 
@@ -52,7 +66,7 @@ static func recruit(k: String, n: int) -> String:
 	if n <= 0:
 		return "No hay sitio en el cuartel o no queda gente para reclutar."
 	if int(GS.data["tier"]) < int(UNITS[k].get("tier", 1)):
-		return "La caballería solo se puede reclutar en una ciudad."
+		return "Las tropas a caballo solo se pueden reclutar en una ciudad."
 	var cost: Dictionary = UNITS[k]["cost"]
 	if not GS.can_pay(cost, n):
 		return "Te faltan recursos: %s por soldado." % GS.cost_text(cost)
@@ -60,6 +74,20 @@ static func recruit(k: String, n: int) -> String:
 	GS.data["army"][k] = int(GS.data["army"][k]) + n
 	GS.data["commons"] = int(GS.data["commons"]) - n
 	return "+%d %s" % [n, String(UNITS[k]["name"]).to_lower()]
+
+
+static func build_engine(k: String) -> String:
+	var err := can_recruit()
+	if err != "":
+		return err
+	var e: Dictionary = ENGINES[k]
+	if int(GS.data["tier"]) < int(e["tier"]):
+		return "Hace falta una ciudad para construir catapultas."
+	if not GS.can_pay(e["cost"]):
+		return "Te faltan: " + GS.cost_text(e["cost"])
+	GS.pay(e["cost"])
+	GS.data["engines"][k] = int(GS.data["engines"][k]) + 1
+	return "+1 %s" % String(e["name"]).to_lower()
 
 
 static func dismiss(k: String, n: int) -> void:

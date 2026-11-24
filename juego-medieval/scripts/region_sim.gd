@@ -414,9 +414,10 @@ static func _assault(a: Dictionary, t: Dictionary) -> void:
 	var defense := 0.0
 	if t.get("home", false):
 		var party := Vector2(reg["party"][0], reg["party"][1])
-		defense = (GS.ARMY.total() if party.distance_to(home()) < 30 else 0) + int(d["commons"]) * 0.05 + int(d["tier"]) * 12
+		var eng: Dictionary = d.get("engines", {})
+		defense = (GS.ARMY.total() if party.distance_to(home()) < 30 else 0) + int(d["commons"]) * 0.05 + int(d["tier"]) * 12 + int(eng.get("balista", 0)) * 8 + int(eng.get("catapulta", 0)) * 10
 	elif t["owner"] == "jugador":
-		defense = int(t["garrison"]) * 1.2 * (1.0 + 0.25 * int(t["wall"])) + int(t["pop"]) * 0.02
+		defense = int(t["garrison"]) * 1.2 * (1.0 + 0.25 * int(t["wall"])) + int(t["pop"]) * 0.02 + int(t.get("towers", 0)) * 10
 	else:
 		defense = int(t["troops"]) * (1.0 + 0.25 * int(t["wall"]))
 	var att := int(a["troops"]) * randf_range(0.8, 1.2)

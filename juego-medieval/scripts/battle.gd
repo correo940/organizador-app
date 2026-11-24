@@ -7,6 +7,7 @@ const M := preload("res://scripts/models.gd")
 const ACTOR := preload("res://scripts/actor.gd")
 const CAM := preload("res://scripts/cam_rig.gd")
 const ARMY := preload("res://scripts/army.gd")
+const ENG := preload("res://scripts/engines.gd")
 const HALF := 34.0
 const MAX_ACTIVE := 32
 const ORDERS := ["¡Cargad!", "Mantened la posición", "Seguidme"]
@@ -34,6 +35,9 @@ var enemy_dead := 0
 var res_box: VBoxContainer
 var back_btn: Button
 var lbl: Label
+var engines: Array = []  # máquinas de guerra: {n, arm, kind, team, cd}
+var eff_wall := 0
+var siege_notes: Array = []
 var morale := [100.0, 100.0]  # moral de cada bando: al bajar, los heridos huyen
 var fled := [0, 0]
 var rout_cd := 1.0
@@ -63,7 +67,7 @@ func _spawn(kind: String, team: int, pos: Vector3) -> Dictionary:
 		"milicia":
 			opts["hide_hood"] = true
 			parts.append(["hair/Hair_SimpleParted", "hair/Hair_Buzzed", "hair/Hair_Beard"].pick_random() if male else "hair/Hair_Buns")
-		"arquero":
+		"arquero", "arquero_jinete":
 			opts["hide_hood"] = false
 		"lancero":
 			opts["hide_hood"] = true
@@ -80,9 +84,9 @@ func _spawn(kind: String, team: int, pos: Vector3) -> Dictionary:
 		"lancero":
 			a.attach("hand_r", "weapons/Spear.glb", Vector3(0, 0.05, 0), Vector3(0, 0, 90), 2.3)
 			M.recolor(a.attach("lowerarm_l", "weapons/Shield_Round.glb", Vector3(0, 0.15, -0.1), Vector3(0, 0, 90), 0.6), Color(0.12, 0.2, 0.5) if team == 0 else Color(0.5, 0.06, 0.06))
-		"arquero":
+		"arquero", "arquero_jinete":
 			a.attach("hand_l", "weapons/Bow_Wooden.glb", Vector3(0, 0.05, 0), Vector3(0, 90, 0), 1.3)
-	if kind == "jinete":
+	if kind in ARMY.MOUNTED:
 		a.mount([Color(1, 1, 1), Color(1.7, 1.4, 1.1), Color(2.2, 2.1, 2.0), Color(1.3, 0.9, 0.7)].pick_random())
 	a.position = pos
 	a.rotation.y = PI if team == 0 else 0.0
@@ -111,13 +115,29 @@ func _ready() -> void:
 		var r := randf_range(HALF + 4, HALF + 35)
 		M.put(self, "nature/%s%s_%d.glb" % [["CommonTree", "PineTree", "BirchTree"][i % 3], suffix, randi_range(1, 5)], Vector3(cos(a) * r, 0, sin(a) * r), randf() * TAU, randf_range(2.4, 3.4))
 	M.castle(self, Vector3(-20, 0, -100), 4.0)
+	# Maquinaria de asedio: el ariete derriba la puerta y las catapultas abren brecha.
+	var eng: Dictionary = d.get("engines", {})
+	eff_wall = int(siege.get("wall", 0))
+	var rammed := false
+	if siege.get("kind", "") == "asedio":
+		if int(eng.get("ariete", 0)) > 0 and eff_wall > 0:
+			eff_wall -= 1
+			rammed = true
+			siege_notes.append("Tu ariete ha derribado la puerta.")
+		if int(eng.get("catapulta", 0)) >= 2 and eff_wall > 0:
+			eff_wall -= 1
+			siege_notes.append("Tus catapultas han abierto brecha en la muralla.")
 	# Asedio: la batalla se libra delante de las murallas del pueblo.
 	if siege.get("kind", "") == "asedio" and int(siege["wall"]) >= 1:
+		if rammed:
+			var r := ENG.ram(self)
+			r.position = Vector3(0, 0, -HALF - 1.5)
+			r.rotation.y = PI
 		var stone := int(siege["wall"]) == 2
 		var piece := 4.5 if stone else 2.3
 		for k in range(-int(60 / piece), int(60 / piece) + 1):
 			var x := k * piece
-			if stone:
+			if stone and not (rammed and k == 0):
 				M.recolor(M.put(self, "castle/TallWallEntrance.glb" if k == 0 else "castle/TallWall.glb", Vector3(x, 0, -HALF - 5), 0.0, 3.0), Color(0.52, 0.5, 0.46))
 			elif absi(k) > 1:
 				M.put(self, "village/Fence.glb", Vector3(x, 0, -HALF - 4), 0.0, 3.0)
@@ -214,7 +234,7 @@ func _ready() -> void:
 	if not siege.is_empty():
 		for u in units:
 			if u["team"] == 1:
-				u["hp"] *= 1.0 + 0.2 * int(siege["wall"])
+				u["hp"] *= 1.0 + 0.2 * eff_wall
 				u["max"] = u["hp"]
 	var cap := _spawn("infante", 1, Vector3(0, 0, -19))
 	cap["captain"] = true
@@ -223,6 +243,8 @@ func _ready() -> void:
 	cap["dmg"] = 14.0
 	cap["a"].scale = Vector3.ONE * 1.12
 	enemy_total += 1
+
+	_setup_engines()
 
 	cam = CAM.new()
 	cam.target = pl["a"]
@@ -234,6 +256,8 @@ func _ready() -> void:
 	_build_hud()
 	SFX.music("batalla")
 	_set_order(1)
+	if not siege_notes.is_empty():
+		lbl_order.text += "\n" + " ".join(siege_notes)
 
 
 func _build_hud() -> void:
@@ -369,6 +393,7 @@ func _process(delta: float) -> void:
 	hp_bar.value = pl["hp"]
 	_reinforce(delta)
 	_check_rout(delta)
+	_update_engines(delta)
 	_player_step(delta)
 	for u in units:
 		if over:
@@ -533,9 +558,10 @@ func _update_arrows(delta: float) -> void:
 	for ar in arrows.duplicate():
 		ar["t"] += delta / ar["dur"]
 		var k: float = minf(ar["t"], 1.0)
-		var p: Vector3 = ar["from"].lerp(ar["to"], k) + Vector3(0, sin(k * PI) * ar["from"].distance_to(ar["to"]) * 0.15, 0)
+		var arc: float = ar.get("arc", 0.15)
+		var p: Vector3 = ar["from"].lerp(ar["to"], k) + Vector3(0, sin(k * PI) * ar["from"].distance_to(ar["to"]) * arc, 0)
 		var m: MeshInstance3D = ar["m"]
-		var next: Vector3 = ar["from"].lerp(ar["to"], minf(k + 0.05, 1.0)) + Vector3(0, sin(minf(k + 0.05, 1.0) * PI) * ar["from"].distance_to(ar["to"]) * 0.15, 0)
+		var next: Vector3 = ar["from"].lerp(ar["to"], minf(k + 0.05, 1.0)) + Vector3(0, sin(minf(k + 0.05, 1.0) * PI) * ar["from"].distance_to(ar["to"]) * arc, 0)
 		if next.distance_to(p) > 0.001:
 			m.look_at_from_position(p, next, Vector3.UP)
 			m.rotate_object_local(Vector3.RIGHT, PI / 2)
@@ -547,10 +573,118 @@ func _update_arrows(delta: float) -> void:
 			if over:
 				continue
 			var src: Dictionary = ar["src"]
+			var land: Vector3 = ar["to"] - Vector3(0, 1, 0)
+			if ar.has("aoe"):
+				SFX.play("golpe", -land.distance_to(pl["a"].position) * 0.4, 0.1)
+				for o in units.duplicate():
+					if o["alive"] and o["team"] != src["team"] and o["a"].position.distance_to(land) < ar["aoe"]:
+						_damage(o, src["dmg"] * randf_range(0.7, 1.1), src)
+				continue
 			for o in units:
-				if o["alive"] and o["team"] != src["team"] and o["a"].position.distance_to(ar["to"] - Vector3(0, 1, 0)) < 1.3:
+				if o["alive"] and o["team"] != src["team"] and o["a"].position.distance_to(land) < 1.3:
 					_damage(o, src["dmg"] * randf_range(0.8, 1.2), src)
 					break
+
+
+# ---------------- Maquinaria de guerra ----------------
+
+func _setup_engines() -> void:
+	var d = GS.data
+	var kind: String = siege.get("kind", "")
+	if kind == "torneo":
+		return
+	var eng: Dictionary = d.get("engines", {})
+	var mine := []
+	for i in int(eng.get("balista", 0)):
+		mine.append("balista")
+	for i in int(eng.get("catapulta", 0)):
+		mine.append("catapulta")
+	for i in mini(mine.size(), 6):
+		_add_engine(mine[i], 0, Vector3(-10 + (i % 6) * 4.0, 0, 25 + (i / 6) * 4.0))
+	# Defensas del enemigo: balistas en la muralla; los ejércitos grandes traen catapulta.
+	if kind == "asedio":
+		for i in eff_wall:
+			_add_engine("balista", 1, Vector3(-14 + i * 28, 6.6 if int(siege["wall"]) == 2 else 0.0, -HALF - (5.0 if int(siege["wall"]) == 2 else 2.0)))
+	elif kind == "campo" and int(siege.get("troops", 0)) >= 30:
+		_add_engine("catapulta", 1, Vector3(randf_range(-8, 8), 0, -29))
+
+
+func _add_engine(kind: String, team: int, pos: Vector3) -> void:
+	var n: Node3D = ENG.ballista(self) if kind == "balista" else ENG.catapult(self)
+	n.position = pos
+	n.rotation.y = PI if team == 0 else 0.0
+	engines.append({"n": n, "arm": n.get_node("arm"), "kind": kind, "team": team, "cd": randf_range(1.0, 3.0)})
+
+
+func _update_engines(delta: float) -> void:
+	for e in engines:
+		e["cd"] -= delta
+		if e["cd"] > 0:
+			continue
+		var n: Node3D = e["n"]
+		var foes := units.filter(func(u): return u["alive"] and u["team"] != e["team"] and not u.has("flee"))
+		if foes.is_empty():
+			continue
+		var src := {"team": e["team"], "a": n, "dmg": 34.0 if e["kind"] == "balista" else 30.0}
+		if e["kind"] == "balista":
+			var best = null
+			var bd := 48.0
+			for o in foes:
+				var dd: float = o["a"].position.distance_to(n.position)
+				if dd < bd:
+					bd = dd
+					best = o
+			if best == null:
+				e["cd"] = 1.0
+				continue
+			e["cd"] = 3.5
+			var to: Vector3 = best["a"].position + Vector3(0, 1.0, 0)
+			n.rotation.y = atan2(to.x - n.position.x, to.z - n.position.z)
+			_projectile(n.position + Vector3(0, 1.4, 0), to, src, Vector3(0.07, 0.07, 1.4), Color(0.3, 0.22, 0.12), 0.03, maxf(0.25, bd / 45.0), 0.0)
+			SFX.play("espada", -n.position.distance_to(pl["a"].position) * 0.3, 0.2)
+		else:
+			# La catapulta apunta adonde más enemigos se apiñan.
+			var best = foes[0]
+			var most := -1
+			for i in mini(8, foes.size()):
+				var c = foes.pick_random()
+				var near := foes.filter(func(o): return o["a"].position.distance_to(c["a"].position) < 3.0).size()
+				if near > most:
+					most = near
+					best = c
+			var dist: float = best["a"].position.distance_to(n.position)
+			if dist > 70.0:
+				e["cd"] = 1.5
+				continue
+			e["cd"] = 6.5
+			var miss := dist / 30.0
+			var to: Vector3 = best["a"].position + Vector3(randf_range(-miss, miss), 1.0, randf_range(-miss, miss))
+			var arm: Node3D = e["arm"]
+			var tw := create_tween()
+			tw.tween_property(arm, "rotation:x", 1.7, 0.22)
+			tw.tween_property(arm, "rotation:x", 0.0, 1.6)
+			_projectile(n.position + Vector3(0, 3.0, 0), to, src, Vector3(0.7, 0.7, 0.7), Color(0.4, 0.4, 0.38), 0.4, maxf(1.2, dist / 18.0), 2.8)
+			SFX.play("talar", -n.position.distance_to(pl["a"].position) * 0.3, 0.2)
+
+
+func _projectile(from: Vector3, to: Vector3, src: Dictionary, size: Vector3, col: Color, arc: float, dur: float, aoe: float) -> void:
+	var m := MeshInstance3D.new()
+	if aoe > 0:
+		var sm := SphereMesh.new()
+		sm.radius = size.x / 2
+		sm.height = size.x
+		m.mesh = sm
+	else:
+		var bm := BoxMesh.new()
+		bm.size = Vector3(size.x, size.z, size.y)
+		m.mesh = bm
+	m.material_override = M.flat(col)
+	add_child(m)
+	m.position = from
+	var ar := {"m": m, "from": from, "to": to, "t": 0.0, "dur": dur, "src": src, "arc": arc}
+	if aoe > 0:
+		ar["aoe"] = aoe
+	arrows.append(ar)
 
 
 ## Aplica el golpe cuando la animación de ataque llega al impacto.
@@ -602,6 +736,9 @@ func _damage(t: Dictionary, amount: float, src: Dictionary) -> void:
 		flash.color.a = 0.35
 	elif t["type"] == "infante":
 		amount *= 0.8
+	# Las lanzas paran a los caballos.
+	if src.get("type", "") == "lancero" and t["type"] in ARMY.MOUNTED:
+		amount *= 2.0
 	# Golpe por la espalda: mucho más dañino.
 	var tf := Vector3(sin(t["a"].rotation.y), 0, cos(t["a"].rotation.y))
 	var from: Vector3 = src["a"].position - t["a"].position

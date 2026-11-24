@@ -271,9 +271,13 @@ func _town_panel(id: int) -> void:
 				GS.pay({"piedra": 120, "oro": 80})
 				t["wall"] = 2
 				_town_panel(id), int(t["wall"]) == 1 and GS.can_pay({"piedra": 120, "oro": 80})],
+			["Instalar una balista en las torres (40 madera, 6 hierro, 30 oro) — tiene %d de 3" % int(t.get("towers", 0)), func():
+				GS.pay({"madera": 40, "hierro": 6, "oro": 30})
+				t["towers"] = int(t.get("towers", 0)) + 1
+				_town_panel(id), int(t["wall"]) >= 1 and int(t.get("towers", 0)) < 3 and GS.can_pay({"madera": 40, "hierro": 6, "oro": 30})],
 			["Dejar 5 soldados de guarnición", func():
 				var left := 5
-				for k in ["milicia", "lancero", "infante", "arquero", "jinete"]:
+				for k in ["milicia", "lancero", "infante", "arquero", "arquero_jinete", "jinete"]:
 					var n := mini(left, int(d["army"][k]))
 					d["army"][k] = int(d["army"][k]) - n
 					left -= n

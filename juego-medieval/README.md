@@ -28,6 +28,8 @@ Juego de estrategia medieval para PC (Windows) en 3D, hecho con Godot 4.3. Model
 
 **Tu familia en la guerra:** desde tu casa (Ver familia) das cargos a tus hijos adultos: capitán (lucha a tu lado en cada batalla, gana experiencia y puede morir) o gobernador de uno de tus pueblos del mapa (sus rentas suben un 50%).
 
+**Tropas y maquinaria:** milicia, lanceros (el doble de daño contra la caballería), arqueros, hombres de armas, caballería y arqueros a caballo (estos dos, solo en una ciudad). En el taller de asedio del cuartel construyes ariete (derriba la puerta: las murallas defienden un nivel menos), balistas (virotes de largo alcance) y catapultas (piedras que aplastan grupos; con dos o más abren brecha). Los enemigos defienden sus murallas con balistas y los ejércitos grandes traen catapulta. En tus pueblos del mapa puedes instalar hasta 3 balistas en las torres, y tus máquinas también defienden tu pueblo.
+
 **Eventos del pueblo:** de vez en cuando ocurre algo y tú decides: incendios, sequías, ratas en el granero, fiebres, fiestas, peregrinos, mercaderes ambulantes, buenas cosechas y, si eres jefe, pleitos entre vecinos. Cada decisión cuesta oro, salud o comida, o cambia el ánimo del pueblo y tu prestigio.
 
 **Caballo:** cómpralo en el mercado (150 oro). H para montar o desmontar en la aldea; viajas más rápido por el mapa y en batalla luchas a caballo (más rápido, más vida y golpes más fuertes).
