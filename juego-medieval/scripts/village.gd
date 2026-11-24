@@ -1,32 +1,46 @@
-extends Node2D
-## La aldea: vida del personaje, recursos, casa, familia y llamadas del rey.
+extends Node3D
+## La aldea en 3D: vida del personaje, recursos, casa, familia y llamadas del rey.
 
 const Art = preload("res://scripts/art.gd")
-const WORLD := Vector2(2400, 1600)
-const SPEED := 230.0
-const PLAZA := Vector2(1200, 800)
-const PLOT := Vector2(1040, 640)
-const MARKET := Vector2(1390, 880)
-const HALL := Vector2(1200, 420)
-const CAMP := Vector2(2230, 820)
-const TUNICS := [Color(0.6, 0.3, 0.2), Color(0.3, 0.5, 0.3), Color(0.55, 0.45, 0.25), Color(0.45, 0.3, 0.5), Color(0.35, 0.45, 0.55), Color(0.6, 0.55, 0.4), Color(0.5, 0.2, 0.25), Color(0.25, 0.4, 0.35)]
+const M := preload("res://scripts/models.gd")
+const ACTOR := preload("res://scripts/actor.gd")
+const CAM := preload("res://scripts/cam_rig.gd")
+
+const SIZE := Vector2(120, 80)
+const PLAZA := Vector3(60, 0, 40)
+const PLOT := Vector3(52, 0, 31)
+const MARKET := Vector3(69, 0, 46)
+const HALL := Vector3(60, 0, 19)
+const CAMP := Vector3(111, 0, 41)
+const RUN_SPEED := 4.2
+const SPRINT_SPEED := 7.0
 const GREETINGS := ["Buenos días. Dicen que este invierno será duro.", "¿Has visto los lobos cerca del bosque?", "El rey sube los impuestos otra vez...", "Mi abuelo luchó en la frontera, ¿sabes?", "El pan del mercado está más caro cada día.", "Si necesitas ayuda con la cosecha, avísame."]
+const MALE_HAIR := ["hair/Hair_SimpleParted", "hair/Hair_Buzzed", "hair/Hair_Beard"]
+const FEMALE_HAIR := ["hair/Hair_Long", "hair/Hair_Buns", "hair/Hair_BuzzedFemale"]
 
 var main
-var ppos := PLAZA + Vector2(0, -60)
-var walk := 0.0
+var env: Dictionary
+var cam
+var player
+var player_sig := ""
 var cooldown := 0.0
 var trees: Array = []
 var rocks: Array = []
 var fields: Array = []
-var flowers: Array = []
-var vpos: Array = []
+var obstacles: Array = []
+var villagers: Array = []
 var vtarget: Array = []
-var floats: Array = []
+var vlabels: Array = []
+var family: Array = []
+var family_sig := ""
+var house_node: Node3D
+var house_level := -1
+var season := -1
+var nature_node: Node3D
+var crops: Array = []
+var camp_banner: Node3D
+var camp_fire: Node3D
 var inter := {}
-var font: Font
-var cam: Camera2D
-var shade: CanvasModulate
 var lbl_res: Label
 var lbl_info: Label
 var lbl_log: Label
@@ -36,44 +50,279 @@ var box: VBoxContainer
 
 
 func _ready() -> void:
-	font = ThemeDB.fallback_font
+	env = M.make_env(self, Vector3(SIZE.x / 2, 0, SIZE.y / 2), 400)
 	var r := RandomNumberGenerator.new()
 	r.seed = 1234
 	for i in 70:
-		trees.append({"p": Vector2(r.randf_range(60, 640), r.randf_range(60, 900)), "s": r.randf_range(0.8, 1.3)})
+		trees.append({"p": Vector3(r.randf_range(3, 32), 0, r.randf_range(3, 45)), "k": i % 3, "i": r.randi_range(1, 5), "s": r.randf_range(2.2, 3.2), "r": r.randf() * TAU})
 	for i in 26:
-		trees.append({"p": Vector2(r.randf_range(60, 2340), r.randf_range(1460, 1570)), "s": r.randf_range(0.8, 1.2)})
+		trees.append({"p": Vector3(r.randf_range(3, 117), 0, r.randf_range(74, 79)), "k": i % 3, "i": r.randi_range(1, 5), "s": r.randf_range(2.2, 3.2), "r": r.randf() * TAU})
+	for i in 90:
+		var a := r.randf() * TAU
+		var p := Vector3(60 + cos(a) * r.randf_range(75, 110), 0, 40 + sin(a) * r.randf_range(55, 90))
+		trees.append({"p": p, "k": i % 3, "i": r.randi_range(1, 5), "s": r.randf_range(2.5, 3.5), "r": r.randf() * TAU})
 	for i in 22:
-		rocks.append({"p": Vector2(r.randf_range(150, 650), r.randf_range(1100, 1400)), "s": r.randf_range(0.7, 1.4)})
+		rocks.append({"p": Vector3(r.randf_range(8, 32), 0, r.randf_range(55, 70)), "i": r.randi_range(1, 7), "s": r.randf_range(1.3, 2.4), "r": r.randf() * TAU})
 	for i in 3:
 		for j in 2:
-			fields.append(Rect2(1800 + j * 190, 250 + i * 170, 170, 140))
-	for i in 180:
-		flowers.append({"p": Vector2(r.randf_range(0, WORLD.x), r.randf_range(0, WORLD.y)), "c": r.randi_range(0, 2)})
-
-	shade = CanvasModulate.new()
-	add_child(shade)
-	cam = Camera2D.new()
-	cam.limit_left = 0
-	cam.limit_top = 0
-	cam.limit_right = int(WORLD.x)
-	cam.limit_bottom = int(WORLD.y)
-	cam.position_smoothing_enabled = true
-	add_child(cam)
-	cam.make_current()
+			fields.append(Rect2(90 + j * 9.5, 12.5 + i * 8.5, 8.5, 7))
+	_build_static()
 	_build_hud()
 	_reset_villagers()
+	cam = CAM.new()
+	add_child(cam)
+	_update_player_model()
+	cam.target = player
+	cam.global_position = player.global_position + Vector3(0, 1.6, 0)
 	GS.notify.connect(func(_t): _refresh_log())
 	_refresh_log()
 
 
+# ---------------- Mundo ----------------
+
+func _build_static() -> void:
+	var dirt := Color(0.42, 0.34, 0.24)
+	var plaza := MeshInstance3D.new()
+	var cm := CylinderMesh.new()
+	cm.top_radius = 10
+	cm.bottom_radius = 10
+	cm.height = 0.05
+	plaza.mesh = cm
+	plaza.material_override = M.flat(dirt)
+	plaza.position = PLAZA + Vector3(0, 0.01, 0)
+	add_child(plaza)
+	for t in [HALL, CAMP, Vector3(95, 0, 24), Vector3(30, 0, 26), Vector3(28, 0, 60), PLOT, Vector3(60, 0, 80), Vector3(38, 0, 50), Vector3(82, 0, 52), Vector3(83, 0, 28), Vector3(45, 0, 16.5), Vector3(76, 0, 15), Vector3(49, 0, 59), Vector3(69, 0, 59)]:
+		M.road(self, PLAZA, t, 3.2, dirt)
+	M.put(self, "village/Well.glb", PLAZA, 0, 1.6)
+	obstacles.append([Vector2(PLAZA.x, PLAZA.z), 1.6])
+
+	var kinds := ["village/House_1.glb", "village/House_2.glb", "village/House_3.glb", "village/House_4.glb", "village/Blacksmith.glb", "village/House_2.glb", "village/Stable.glb", "village/House_3.glb"]
+	for i in GS.HOMES.size():
+		var h: Vector3 = Vector3(GS.HOMES[i].x, 0, GS.HOMES[i].y) * 0.05
+		M.put(self, kinds[i], h, _face_plaza(h), 1.7)
+		obstacles.append([Vector2(h.x, h.z), 3.2])
+	M.put(self, "village/Bell_Tower.glb", HALL, _face_plaza(HALL), 2.0)
+	var banner := M.put(self, "castle/Banner.glb", HALL + Vector3(4, 0, 3), 0, 1.6)
+	M.recolor(banner, Color(0.15, 0.3, 0.7))
+	obstacles.append([Vector2(HALL.x, HALL.z), 4.0])
+	M.put(self, "village/MarketStand_1.glb", MARKET + Vector3(-2.5, 0, 0), _face_plaza(MARKET), 1.7)
+	M.put(self, "village/MarketStand_2.glb", MARKET + Vector3(0.5, 0, 0.5), _face_plaza(MARKET), 1.7)
+	M.put(self, "village/MarketStand_1.glb", MARKET + Vector3(3.5, 0, 0), _face_plaza(MARKET), 1.7)
+	M.put(self, "village/Cart.glb", MARKET + Vector3(5.5, 0, 3), 0.6, 1.5)
+	for o in [Vector3(-4, 0, 2), Vector3(-4.6, 0, 2.8), Vector3(2, 0, 2.6)]:
+		M.put(self, "village/Barrel.glb", MARKET + o, randf(), 1.5)
+	M.put(self, "village/Crate.glb", MARKET + Vector3(-1.5, 0, 2.6), 0.3, 1.5)
+	M.put(self, "village/Bags.glb", MARKET + Vector3(4.5, 0, 1.5), 0.3, 1.5)
+	for o in [-2.5, 0.5, 3.5]:
+		obstacles.append([Vector2(MARKET.x + o, MARKET.z), 1.0])
+	for i in 6:
+		var a := float(i) / 6.0 * TAU + 0.4
+		M.tent(self, CAMP + Vector3(cos(a) * 6, 0, sin(a) * 6), -a, Color(0.82, 0.76, 0.6))
+		obstacles.append([Vector2(CAMP.x + cos(a) * 6, CAMP.z + sin(a) * 6), 1.6])
+	camp_fire = M.put(self, "village/Bonfire_Lit.glb", CAMP + Vector3(0, 0, 0), 0, 1.5)
+	camp_banner = M.put(self, "castle/Banner.glb", CAMP + Vector3(2.5, 0, -2.5), 0, 1.6)
+	M.put(self, "animals/Horse.glb", Vector3(85, 0, 33), 2.0, 0.42)
+	M.castle(self, Vector3(60, 0, -45), 4.0)
+	for i in 9:
+		var rk := M.put(self, "nature/Rock_%d.glb" % (i % 7 + 1), Vector3(-60 + i * 30, -6, -110 - (i % 3) * 20), randf() * TAU, randf_range(28, 38))
+		M.recolor(rk, Color(0.42, 0.44, 0.4))
+	nature_node = Node3D.new()
+	add_child(nature_node)
+	for f in fields:
+		var soil := MeshInstance3D.new()
+		var bm := BoxMesh.new()
+		bm.size = Vector3(f.size.x, 0.06, f.size.y)
+		soil.mesh = bm
+		soil.material_override = M.flat(Color(0.33, 0.24, 0.15))
+		soil.position = Vector3(f.get_center().x, 0.02, f.get_center().y)
+		add_child(soil)
+	_build_crops()
+
+
+func _face_plaza(p: Vector3) -> float:
+	return atan2(PLAZA.x - p.x, PLAZA.z - p.z)
+
+
+func _build_crops() -> void:
+	var src := M.inst("nature/Wheat.glb")
+	var mi: MeshInstance3D = src.find_children("*", "MeshInstance3D", true, false)[0]
+	for f: Rect2 in fields:
+		var mm := MultiMesh.new()
+		mm.transform_format = MultiMesh.TRANSFORM_3D
+		mm.mesh = mi.mesh
+		var pts := []
+		var x := f.position.x + 0.6
+		while x < f.end.x - 0.4:
+			var z := f.position.y + 0.6
+			while z < f.end.y - 0.4:
+				pts.append(Vector3(x + randf_range(-0.15, 0.15), 0.05, z))
+				z += 0.9
+			x += 1.1
+		mm.instance_count = pts.size()
+		for i in pts.size():
+			mm.set_instance_transform(i, Transform3D(Basis(Vector3.UP, randf() * TAU).scaled(Vector3.ONE * 1.4), pts[i]))
+		var mmi := MultiMeshInstance3D.new()
+		mmi.multimesh = mm
+		add_child(mmi)
+		crops.append(mmi)
+	src.free()
+
+
+## Árboles y rocas cambian con la estación (otoño / nieve).
+func _build_nature(s: int) -> void:
+	for c in nature_node.get_children():
+		c.queue_free()
+	var suffix: String = ["", "", "_Autumn", "_Snow"][s]
+	for t in trees:
+		var kind: String = ["CommonTree", "PineTree", "BirchTree"][t["k"]]
+		M.put(nature_node, "nature/%s%s_%d.glb" % [kind, suffix, t["i"]], t["p"], t["r"], t["s"])
+		if season == -1:
+			obstacles.append([Vector2(t["p"].x, t["p"].z), 0.6])
+	for rk in rocks:
+		var kind := "Rock_Snow" if s == 3 else "Rock_Moss"
+		M.put(nature_node, "nature/%s_%d.glb" % [kind, rk["i"]], rk["p"], rk["r"], rk["s"])
+		if season == -1:
+			obstacles.append([Vector2(rk["p"].x, rk["p"].z), 0.9 * rk["s"] / 1.5])
+	for i in 40:
+		var p := Vector3(randf_range(2, 118), 0, randf_range(2, 78))
+		if p.distance_to(PLAZA) > 14:
+			M.put(nature_node, "nature/%s_%d.glb" % ["Bush_Snow" if s == 3 else "Bush", 1 + i % 2], p, randf() * TAU, randf_range(1.2, 2.0))
+	for c in crops:
+		c.visible = s != 3
+	M.set_season_ground(env["grad"], s)
+	season = s
+
+
+func _rebuild_house() -> void:
+	if house_node:
+		house_node.queue_free()
+	house_node = Node3D.new()
+	add_child(house_node)
+	house_level = int(GS.data["house_level"])
+	var rot := _face_plaza(PLOT)
+	match house_level:
+		0:
+			for o in [Vector3(-3, 0, -3), Vector3(3, 0, -3), Vector3(-3, 0, 3), Vector3(3, 0, 3)]:
+				M.put(house_node, "village/Fence.glb", PLOT + o, 0.0 if o.z != 0 else PI / 2, 1.2)
+			M.put(house_node, "village/Hay.glb", PLOT + Vector3(-1, 0, -1), 0.3, 1.3)
+		1:
+			M.put(house_node, "village/House_1.glb", PLOT, rot, 1.3)
+		2:
+			M.put(house_node, "village/House_4.glb", PLOT, rot, 1.8)
+		3:
+			M.put(house_node, "village/Inn.glb", PLOT, rot, 1.8)
+			M.recolor(M.put(house_node, "castle/Banner.glb", PLOT + Vector3(4.5, 0, 3), 0, 1.4), Color(0.6, 0.1, 0.1))
+	var lbl := M.label3d("Tu parcela" if house_level == 0 else "Casa %s" % GS.data["dynasty"], 40)
+	lbl.position = PLOT + Vector3(0, 7.0 if house_level > 0 else 2.5, 0)
+	lbl.modulate = Color(1, 0.9, 0.6)
+	house_node.add_child(lbl)
+
+
+func _actor(parts: Array, opts := {}) -> Node3D:
+	var a := ACTOR.new()
+	add_child(a)
+	a.build(parts, opts)
+	return a
+
+
 func _reset_villagers() -> void:
-	vpos.clear()
+	for v in villagers:
+		v.queue_free()
+	villagers.clear()
 	vtarget.clear()
+	vlabels.clear()
+	var i := 0
 	for v in GS.data["villagers"]:
-		var p := Vector2(v["hx"], v["hy"]) + Vector2(randf_range(-60, 60), randf_range(30, 120))
-		vpos.append(p)
-		vtarget.append(p)
+		var parts: Array
+		var opts := {"hair_color": M.SKIN_HAIR[i % 4]}
+		if v["male"]:
+			parts = ["ubc/Superhero_Male_FullBody", "out/Male_Peasant", MALE_HAIR[i % 3]]
+		else:
+			parts = ["ubc/Superhero_Female_FullBody", "out/Female_Ranger", FEMALE_HAIR[i % 2]]
+			opts["hide_hood"] = true
+			if i % 2 == 0:
+				opts["faction"] = "bandido"
+		var a := _actor(parts, opts)
+		var home := _door(v)
+		a.position = home + Vector3(randf_range(-4, 4), 0, randf_range(-4, 4))
+		var l := M.label3d(v["name"], 36)
+		l.position = Vector3(0, 2.15, 0)
+		a.add_child(l)
+		villagers.append(a)
+		vtarget.append(a.position)
+		vlabels.append(l)
+		i += 1
+
+
+func _door(v: Dictionary) -> Vector3:
+	var h := Vector3(v["hx"], 0, v["hy"]) * 0.05
+	return h + (PLAZA - h).normalized() * 4.0
+
+
+func _update_player_model() -> void:
+	var d = GS.data
+	var p = d["player"]
+	var armor := int(d["armor"])
+	var sig := "%s-%d-%d-%s" % [p["male"], mini(armor, 2), mini(int(d["weapon"]), 1), p["name"]]
+	if sig == player_sig:
+		return
+	player_sig = sig
+	var pos := PLAZA + Vector3(-4, 0, -12)
+	var rot := 0.0
+	if player:
+		pos = player.position
+		rot = player.rotation.y
+		player.queue_free()
+	var male: bool = p["male"]
+	var opts := {"hide_hood": true, "hair_color": M.SKIN_HAIR[0], "sword": int(d["weapon"]) >= 1}
+	var parts: Array
+	if armor >= 1:
+		parts = ["ubc/Superhero_Male_FullBody", "out/Male_Ranger"] if male else ["ubc/Superhero_Female_FullBody", "out/Female_Ranger"]
+		opts["faction"] = "azul"
+		opts["shield"] = true
+		if armor >= 2:
+			opts["helmet"] = "Helmet2"
+		else:
+			parts.append("hair/Hair_SimpleParted" if male else "hair/Hair_Buns")
+	else:
+		parts = ["ubc/Superhero_Male_FullBody", "out/Male_Peasant", "hair/Hair_SimpleParted"] if male else ["ubc/Superhero_Female_FullBody", "out/Female_Ranger", "hair/Hair_Long"]
+		if not male:
+			opts["faction"] = "bandido"
+	player = _actor(parts, opts)
+	player.position = pos
+	player.rotation.y = rot
+	if cam:
+		cam.target = player
+
+
+func _update_family() -> void:
+	var d = GS.data
+	var sig := str(d["spouse"]) + str(d["children"]) + str(d["generation"])
+	if sig == family_sig:
+		return
+	family_sig = sig
+	for f in family:
+		f["a"].queue_free()
+	family.clear()
+	var members := []
+	if d["spouse"] != null:
+		members.append(d["spouse"])
+	members.append_array(d["children"])
+	var k := 0
+	for m in members:
+		var male: bool = m["male"]
+		var parts: Array = ["ubc/Superhero_Male_FullBody", "out/Male_Peasant", MALE_HAIR[k % 2]] if male else ["ubc/Superhero_Female_FullBody", "out/Female_Ranger", FEMALE_HAIR[k % 2]]
+		var a := _actor(parts, {"hide_hood": true, "hair_color": M.SKIN_HAIR[(k + 1) % 4], "faction": "bandido"} if not male else {"hair_color": M.SKIN_HAIR[(k + 1) % 4]})
+		var age := int(m["age"])
+		if m != d["spouse"]:
+			a.scale = Vector3.ONE * clampf(0.5 + age * 0.032, 0.5, 1.0)
+		a.position = _front_of_house() + Vector3(randf_range(-3, 3), 0, randf_range(-3, 3))
+		family.append({"a": a, "t": a.position})
+		k += 1
+
+
+func _front_of_house() -> Vector3:
+	return PLOT + (PLAZA - PLOT).normalized() * 6.0
 
 
 # ---------------- HUD ----------------
@@ -126,7 +375,7 @@ func _build_hud() -> void:
 	layer.add_child(lbl_prompt)
 
 	var help := Label.new()
-	help.text = "WASD: mover · E: usar · T: velocidad · Esc: menú"
+	help.text = "WASD: mover · Shift: correr · Clic derecho: girar cámara · Rueda: zoom · E: usar · T: velocidad · Esc: menú"
 	help.add_theme_font_size_override("font_size", 13)
 	help.add_theme_color_override("font_outline_color", Color.BLACK)
 	help.add_theme_constant_override("outline_size", 4)
@@ -217,67 +466,106 @@ func _close_panel() -> void:
 
 func _process(delta: float) -> void:
 	var d = GS.data
+	if season != int(d["season"]):
+		_build_nature(int(d["season"]))
+	if house_level != int(d["house_level"]):
+		_rebuild_house()
+	_update_family()
+	_update_player_model()
 	if not panel.visible and not GS.popups.is_empty():
 		_show_popup(GS.popups.pop_front())
 	if not panel.visible and not d.get("game_over", false):
-		var dir := Vector2(
-			float(Input.is_key_pressed(KEY_D) or Input.is_key_pressed(KEY_RIGHT)) - float(Input.is_key_pressed(KEY_A) or Input.is_key_pressed(KEY_LEFT)),
-			float(Input.is_key_pressed(KEY_S) or Input.is_key_pressed(KEY_DOWN)) - float(Input.is_key_pressed(KEY_W) or Input.is_key_pressed(KEY_UP)))
-		if dir != Vector2.ZERO:
-			ppos = (ppos + dir.normalized() * SPEED * delta).clamp(Vector2(20, 40), WORLD - Vector2(20, 20))
-			walk += delta
+		_move_player(delta)
 		GS.advance(delta)
 		inter = _find_interaction()
 		if Input.is_key_pressed(KEY_E) and inter.get("type", "") in ["tree", "rock", "field"]:
 			_gather(inter["type"])
-		_move_villagers(delta)
+		_move_npcs(delta)
+	else:
+		player.play("Idle")
 	cooldown -= delta
-	for f in floats:
-		f["p"].y -= 35.0 * delta
-		f["life"] -= delta
-	floats = floats.filter(func(f): return f["life"] > 0)
-	cam.position = ppos
-	var t: float = d["time"]
-	var light := clampf(1.55 - absf(t - 0.5) * 2.2, 0.42, 1.0)
-	shade.color = Color(light, light, minf(1.0, light + 0.12))
+	var night: bool = d["time"] < 0.22 or d["time"] > 0.85
+	camp_banner.visible = d["summons"] != null
+	camp_fire.visible = d["summons"] != null or night
+	for i in villagers.size():
+		vlabels[i].visible = villagers[i].position.distance_to(player.position) < 9
+	M.set_daytime(env, d["time"])
 	_update_hud()
-	queue_redraw()
 
 
-func _move_villagers(delta: float) -> void:
+func _move_player(delta: float) -> void:
+	var dir: Vector3 = cam.move_dir()
+	if dir == Vector3.ZERO:
+		if not player.is_playing_once():
+			player.play("Idle")
+		return
+	var sprint := Input.is_key_pressed(KEY_SHIFT)
+	var p: Vector3 = player.position + dir * (SPRINT_SPEED if sprint else RUN_SPEED) * delta
+	p.x = clampf(p.x, 1, SIZE.x - 1)
+	p.z = clampf(p.z, 1, SIZE.y - 1)
+	var obs := obstacles + ([[Vector2(PLOT.x, PLOT.z), 3.6]] if house_level > 0 else [])
+	for o in obs:
+		var v: Vector2 = Vector2(p.x, p.z) - o[0]
+		if v.length() < o[1]:
+			var fix: Vector2 = o[0] + v.normalized() * o[1]
+			p.x = fix.x
+			p.z = fix.y
+	player.position = p
+	player.rotation.y = lerp_angle(player.rotation.y, atan2(dir.x, dir.z), minf(1.0, delta * 12.0))
+	player.play("Sprint" if sprint else "Jog_Fwd")
+
+
+func _move_npcs(delta: float) -> void:
 	var t: float = GS.data["time"]
 	var night := t < 0.22 or t > 0.85
 	var vil: Array = GS.data["villagers"]
-	for i in vpos.size():
-		var home := Vector2(vil[i]["hx"], vil[i]["hy"]) + Vector2(0, 25)
+	for i in villagers.size():
+		var a = villagers[i]
+		var home := _door(vil[i])
 		if night:
 			vtarget[i] = home
-		elif vpos[i].distance_to(vtarget[i]) < 4 and randf() < 0.01:
-			vtarget[i] = home + Vector2(randf_range(-170, 170), randf_range(10, 170))
-		vpos[i] = vpos[i].move_toward(vtarget[i], 55.0 * delta * GS.speed)
+		elif a.position.distance_to(vtarget[i]) < 0.3 and randf() < 0.004 * GS.speed:
+			vtarget[i] = home + Vector3(randf_range(-9, 9), 0, randf_range(-9, 9))
+		_walk_to(a, vtarget[i], 1.3, delta)
+	for f in family:
+		if f["a"].position.distance_to(f["t"]) < 0.3 and randf() < 0.004:
+			f["t"] = _front_of_house() + Vector3(randf_range(-3.5, 3.5), 0, randf_range(-3.5, 3.5))
+		_walk_to(f["a"], f["t"], 1.1, delta)
+
+
+func _walk_to(a, target: Vector3, spd: float, delta: float) -> void:
+	var to: Vector3 = target - a.position
+	to.y = 0
+	if to.length() < 0.3:
+		a.play("Idle")
+		return
+	a.position += to.normalized() * minf(to.length(), spd * delta * GS.speed)
+	a.rotation.y = lerp_angle(a.rotation.y, atan2(to.x, to.z), minf(1.0, delta * 8.0))
+	a.play("Walk")
 
 
 func _find_interaction() -> Dictionary:
 	var d = GS.data
-	for i in vpos.size():
-		if ppos.distance_to(vpos[i]) < 40:
+	var pp: Vector3 = player.position
+	for i in villagers.size():
+		if pp.distance_to(villagers[i].position) < 1.8:
 			return {"type": "villager", "i": i, "label": "Hablar con %s" % d["villagers"][i]["name"]}
-	if ppos.distance_to(PLOT) < 85:
+	if pp.distance_to(PLOT) < 6.5:
 		return {"type": "house", "label": "Tu parcela" if int(d["house_level"]) == 0 else "Tu casa"}
-	if ppos.distance_to(MARKET) < 95:
+	if pp.distance_to(MARKET) < 5.5:
 		return {"type": "market", "label": "Mercado"}
-	if ppos.distance_to(HALL) < 110:
+	if pp.distance_to(HALL) < 7.0:
 		return {"type": "hall", "label": "Casa del Concejo"}
-	if ppos.distance_to(CAMP) < 120:
+	if pp.distance_to(CAMP) < 8.0:
 		return {"type": "camp", "label": "Campamento del rey"}
 	for tr in trees:
-		if ppos.distance_to(tr["p"]) < 40:
-			return {"type": "tree", "label": "Talar leña (mantén E)"}
+		if pp.distance_to(tr["p"]) < 2.0:
+			return {"type": "tree", "label": "Talar leña (mantén E)", "p": tr["p"]}
 	for rk in rocks:
-		if ppos.distance_to(rk["p"]) < 38:
-			return {"type": "rock", "label": "Picar piedra (mantén E)"}
+		if pp.distance_to(rk["p"]) < 1.2 + rk["s"] * 0.6:
+			return {"type": "rock", "label": "Picar piedra (mantén E)", "p": rk["p"]}
 	for f in fields:
-		if f.has_point(ppos):
+		if f.has_point(Vector2(pp.x, pp.z)):
 			return {"type": "field", "label": "Trabajar el campo (mantén E)"}
 	return {}
 
@@ -303,7 +591,14 @@ func _unhandled_input(ev: InputEvent) -> void:
 
 
 func _float(text: String, col: Color) -> void:
-	floats.append({"t": text, "p": ppos + Vector2(0, -45), "life": 1.1, "c": col})
+	var l := M.label3d(text, 44)
+	l.modulate = col
+	l.position = player.position + Vector3(0, 2.3, 0)
+	add_child(l)
+	var tw := create_tween()
+	tw.tween_property(l, "position:y", l.position.y + 1.2, 1.1)
+	tw.parallel().tween_property(l, "modulate:a", 0.0, 1.1)
+	tw.tween_callback(l.queue_free)
 
 
 # ---------------- Interacciones ----------------
@@ -313,6 +608,9 @@ func _interact() -> void:
 		"tree", "rock", "field":
 			_gather(inter["type"])
 		"villager":
+			var v = villagers[inter["i"]]
+			v.rotation.y = atan2(player.position.x - v.position.x, player.position.z - v.position.z)
+			v.play("Idle_Talking")
 			_villager_panel(inter["i"])
 		"house":
 			_house_panel()
@@ -327,6 +625,10 @@ func _interact() -> void:
 func _gather(type: String) -> void:
 	if cooldown > 0:
 		return
+	if inter.has("p"):
+		var to: Vector3 = inter["p"] - player.position
+		player.rotation.y = atan2(to.x, to.z)
+	player.play_once("Interact")
 	var d = GS.data
 	match type:
 		"tree":
@@ -433,6 +735,7 @@ func _market_panel() -> void:
 	var w := int(d["weapon"])
 	var a := int(d["armor"])
 	var text := "Oro %d · Madera %d · Piedra %d · Comida %d\nEspada nivel %d · Armadura nivel %d" % [int(d["gold"]), int(d["wood"]), int(d["stone"]), int(d["food"]), w, a]
+	text += "\n\n(La armadura de nivel 1 te da equipo de soldado y escudo; la de nivel 2, casco.)"
 	var opts := [
 		["Vender 10 madera (+6 oro)", func(): _trade("wood", -10, 6), d["wood"] >= 10],
 		["Vender 10 piedra (+8 oro)", func(): _trade("stone", -10, 8), d["stone"] >= 10],
@@ -510,138 +813,3 @@ func _show_popup(pp: Dictionary) -> void:
 		_open_panel(pp["title"], pp["text"], [["Volver al menú", func(): main.show_menu()]])
 	else:
 		_open_panel(pp["title"], pp["text"], [["Continuar con el heredero", _close_panel]])
-
-
-# ---------------- Dibujo ----------------
-
-func _text(pos: Vector2, txt: String, size: int = 16, col: Color = Color.WHITE) -> void:
-	draw_string_outline(font, pos + Vector2(-200, 0), txt, HORIZONTAL_ALIGNMENT_CENTER, 400, size, 4, Color(0, 0, 0, 0.8))
-	draw_string(font, pos + Vector2(-200, 0), txt, HORIZONTAL_ALIGNMENT_CENTER, 400, size, col)
-
-
-func _draw() -> void:
-	var d = GS.data
-	var season := int(d["season"])
-	draw_rect(Rect2(Vector2.ZERO, WORLD), [Color(0.36, 0.6, 0.28), Color(0.42, 0.62, 0.25), Color(0.52, 0.55, 0.26), Color(0.84, 0.87, 0.9)][season])
-	if season < 2:
-		for f in flowers:
-			draw_circle(f["p"], 3, [Color(1, 0.9, 0.3), Color(1, 0.55, 0.65), Color.WHITE][f["c"]])
-	var dirt := Color(0.56, 0.45, 0.31) if season != 3 else Color(0.72, 0.7, 0.68)
-	for target in [HALL, CAMP, Vector2(1950, 470), Vector2(450, 520), Vector2(450, 1250), PLOT, Vector2(1200, 1600), Vector2(760, 1000), Vector2(1640, 1040)]:
-		draw_line(PLAZA, target, dirt, 44)
-	draw_circle(PLAZA, 190, dirt)
-	draw_circle(PLAZA, 26, Color(0.45, 0.45, 0.48))
-	draw_circle(PLAZA, 17, Color(0.15, 0.25, 0.4))
-	for f in fields:
-		_draw_field(f, season)
-	for rk in rocks:
-		_draw_rock(rk["p"], rk["s"])
-
-	for i in GS.HOMES.size():
-		_draw_house(GS.HOMES[i], 0.85, Color(0.55, 0.38, 0.2) if i % 2 == 0 else Color(0.66, 0.64, 0.6), Color(0.78, 0.66, 0.35) if i % 2 == 0 else Color(0.55, 0.25, 0.18))
-	_draw_player_house(int(d["house_level"]))
-	_draw_house(HALL, 1.6, Color(0.62, 0.6, 0.56), Color(0.3, 0.32, 0.4))
-	draw_line(HALL + Vector2(90, -60), HALL + Vector2(90, -150), Color(0.3, 0.2, 0.1), 4)
-	draw_rect(Rect2(HALL + Vector2(90, -150), Vector2(40, 26)), Color(0.15, 0.3, 0.7))
-	_text(HALL + Vector2(0, 26), "Casa del Concejo")
-	for k in 3:
-		_draw_stall(MARKET + Vector2((k - 1) * 75, 0), [Color(0.75, 0.2, 0.2), Color(0.2, 0.45, 0.75), Color(0.8, 0.65, 0.2)][k])
-	_text(MARKET + Vector2(0, 40), "Mercado")
-	_draw_camp(d["summons"] != null)
-
-	var vil: Array = d["villagers"]
-	for i in vpos.size():
-		Art.person(self, vpos[i], TUNICS[i % TUNICS.size()], vil[i]["male"], vpos[i].x * 0.05)
-		if ppos.distance_to(vpos[i]) < 140:
-			_text(vpos[i] + Vector2(0, -30), vil[i]["name"], 13)
-	var now := Time.get_ticks_msec() / 1000.0
-	if d["spouse"] != null:
-		Art.person(self, PLOT + Vector2(80 + sin(now * 0.5) * 20, 20), Color(0.7, 0.55, 0.3), d["spouse"]["male"], now * 0.3)
-	var k := 0
-	for c in d["children"]:
-		var s := clampf(0.45 + float(c["age"]) * 0.035, 0.45, 1.0)
-		Art.person(self, PLOT + Vector2(-70 + k * 26 + sin(now + k) * 10, 62), Color(0.4, 0.6, 0.75), c["male"], now + k, s)
-		k += 1
-
-	draw_arc(ppos + Vector2(0, 18), 14, 0, TAU, 20, Color(1, 0.85, 0.3, 0.8), 2)
-	Art.person(self, ppos, Color(0.15, 0.3, 0.75), d["player"]["male"], walk)
-	if int(d["title"]) == 1:
-		draw_colored_polygon(PackedVector2Array([ppos + Vector2(-7, -21), ppos + Vector2(7, -21), ppos + Vector2(8, -29), ppos + Vector2(3, -25), ppos + Vector2(0, -31), ppos + Vector2(-3, -25), ppos + Vector2(-8, -29)]), Color(1, 0.82, 0.2))
-
-	for tr in trees:
-		_draw_tree(tr["p"], tr["s"], season)
-	for f in floats:
-		_text(f["p"], f["t"], 16, f["c"])
-
-
-func _draw_field(r: Rect2, season: int) -> void:
-	draw_rect(r, Color(0.45, 0.32, 0.18))
-	var crop: Color = [Color(0.5, 0.75, 0.3), Color(0.3, 0.6, 0.2), Color(0.88, 0.72, 0.25), Color(0.92, 0.93, 0.96)][season]
-	var y := r.position.y + 14
-	while y < r.end.y - 6:
-		draw_line(Vector2(r.position.x + 8, y), Vector2(r.end.x - 8, y), crop, 7)
-		y += 18
-	draw_rect(r, Color(0.35, 0.25, 0.12), false, 3)
-
-
-func _draw_tree(p: Vector2, s: float, season: int) -> void:
-	draw_circle(p + Vector2(4, 8), 24 * s, Color(0, 0, 0, 0.18))
-	draw_rect(Rect2(p.x - 5 * s, p.y - 4, 10 * s, 22 * s), Color(0.4, 0.26, 0.12))
-	var leaf: Color = [Color(0.22, 0.52, 0.22), Color(0.16, 0.44, 0.16), Color(0.78, 0.46, 0.15), Color(0.86, 0.9, 0.93)][season]
-	draw_circle(p + Vector2(0, -14) * s, 24 * s, leaf)
-	draw_circle(p + Vector2(-12, -4) * s, 16 * s, leaf.darkened(0.12))
-	draw_circle(p + Vector2(12, -6) * s, 17 * s, leaf.lightened(0.08))
-
-
-func _draw_rock(p: Vector2, s: float) -> void:
-	draw_colored_polygon(PackedVector2Array([p + Vector2(-20, 8) * s, p + Vector2(-14, -12) * s, p + Vector2(4, -18) * s, p + Vector2(20, -4) * s, p + Vector2(16, 10) * s]), Color(0.48, 0.48, 0.5))
-	draw_colored_polygon(PackedVector2Array([p + Vector2(-12, -10) * s, p + Vector2(4, -16) * s, p + Vector2(2, -4) * s]), Color(0.65, 0.65, 0.68))
-
-
-func _draw_house(p: Vector2, s: float, wall: Color, roof: Color) -> void:
-	var w := 90.0 * s
-	var h := 60.0 * s
-	draw_rect(Rect2(p.x - w / 2 + 6, p.y - h + 6, w, h), Color(0, 0, 0, 0.2))
-	draw_rect(Rect2(p.x - w / 2, p.y - h, w, h), wall)
-	draw_colored_polygon(PackedVector2Array([Vector2(p.x - w / 2 - 8, p.y - h), Vector2(p.x + w / 2 + 8, p.y - h), Vector2(p.x, p.y - h - 45 * s)]), roof)
-	draw_rect(Rect2(p.x - 8 * s, p.y - 24 * s, 16 * s, 24 * s), Color(0.3, 0.18, 0.08))
-	draw_rect(Rect2(p.x + w / 4 - 6 * s, p.y - h + 14 * s, 12 * s, 12 * s), Color(0.95, 0.85, 0.45))
-
-
-func _draw_player_house(lvl: int) -> void:
-	var d = GS.data
-	match lvl:
-		0:
-			draw_rect(Rect2(PLOT.x - 60, PLOT.y - 70, 120, 70), Color(0.6, 0.5, 0.3, 0.35))
-			for c in [Vector2(-60, -70), Vector2(60, -70), Vector2(-60, 0), Vector2(60, 0)]:
-				draw_line(PLOT + c, PLOT + c + Vector2(0, -14), Color(0.4, 0.26, 0.12), 4)
-			_text(PLOT + Vector2(0, -30), "Tu parcela", 15, Color(1, 0.9, 0.6))
-			return
-		1:
-			_draw_house(PLOT, 0.8, Color(0.55, 0.38, 0.2), Color(0.82, 0.7, 0.36))
-		2:
-			_draw_house(PLOT, 1.05, Color(0.7, 0.68, 0.63), Color(0.6, 0.24, 0.17))
-		3:
-			draw_rect(Rect2(PLOT.x + 50, PLOT.y - 130, 40, 130), Color(0.6, 0.58, 0.54))
-			draw_colored_polygon(PackedVector2Array([Vector2(PLOT.x + 44, PLOT.y - 130), Vector2(PLOT.x + 96, PLOT.y - 130), Vector2(PLOT.x + 70, PLOT.y - 170)]), Color(0.3, 0.32, 0.4))
-			_draw_house(PLOT, 1.3, Color(0.74, 0.72, 0.66), Color(0.55, 0.2, 0.15))
-			draw_rect(Rect2(PLOT.x + 72, PLOT.y - 195, 30, 20), Color(0.6, 0.1, 0.1))
-	_text(PLOT + Vector2(0, 30), "Casa %s" % d["dynasty"], 15, Color(1, 0.9, 0.6))
-
-
-func _draw_stall(p: Vector2, col: Color) -> void:
-	draw_rect(Rect2(p.x - 30, p.y - 20, 60, 26), Color(0.45, 0.3, 0.15))
-	for i in 4:
-		draw_rect(Rect2(p.x - 34 + i * 17, p.y - 44, 17, 16), col if i % 2 == 0 else Color(0.95, 0.92, 0.85))
-	draw_circle(p + Vector2(-12, -24), 6, Color(0.9, 0.5, 0.2))
-	draw_circle(p + Vector2(8, -24), 6, Color(0.6, 0.8, 0.3))
-
-
-func _draw_camp(active: bool) -> void:
-	for o in [Vector2(-70, -40), Vector2(40, -60), Vector2(-20, 50), Vector2(80, 30)]:
-		var p: Vector2 = CAMP + o
-		draw_colored_polygon(PackedVector2Array([p + Vector2(-28, 16), p + Vector2(28, 16), p + Vector2(0, -26)]), Color(0.85, 0.8, 0.65))
-		draw_line(p + Vector2(0, -26), p + Vector2(0, 16), Color(0.5, 0.4, 0.3), 2)
-	draw_line(CAMP + Vector2(0, 10), CAMP + Vector2(0, -90), Color(0.3, 0.2, 0.1), 4)
-	draw_rect(Rect2(CAMP + Vector2(0, -90), Vector2(44, 28)), Color(0.75, 0.1, 0.1) if active else Color(0.5, 0.5, 0.5))
-	_text(CAMP + Vector2(0, 90), "Campamento del rey" + ("  ¡A LAS ARMAS!" if active else ""), 15, Color(1, 0.6, 0.5) if active else Color.WHITE)
