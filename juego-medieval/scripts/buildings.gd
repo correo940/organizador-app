@@ -260,6 +260,7 @@ func workshop_panel(id: String) -> void:
 		"granero":
 			text += "\n\nTus cosechas ya rinden más gracias al granero."
 		"capilla":
-			text += "\n\nEl párroco bendice a tu familia. El pueblo te respeta más cada estación."
+			text += "\n\nEl párroco bendice a tu familia. El pueblo te respeta más cada estación.\nLos domingos por la mañana los vecinos vienen a misa."
+			opts.append_array(GS.SOCIAL.priest_options(v))
 	opts.append(["Cerrar", v._close_panel])
 	v._open_panel(b["name"], text, opts)

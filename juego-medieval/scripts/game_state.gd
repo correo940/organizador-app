@@ -8,6 +8,7 @@ const ARMY := preload("res://scripts/army.gd")
 const REGION := preload("res://scripts/region_sim.gd")
 const EVENTS := preload("res://scripts/events.gd")
 const QUESTS := preload("res://scripts/quests.gd")
+const SOCIAL := preload("res://scripts/social.gd")
 
 const SAVE_PATH := "user://partida.json"
 const SECONDS_PER_DAY := 40.0
@@ -218,6 +219,7 @@ func next_day() -> void:
 	ARMY.day()
 	REGION.day()
 	EVENTS.day()
+	SOCIAL.day()
 	QUESTS.check()
 	if data["spouse"] != null and data["children"].size() < 6 and p["age"] >= 16 and p["age"] < 48 and data["spouse"]["age"] < 46 and randf() < 0.06:
 		var m := randf() < 0.5

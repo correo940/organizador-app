@@ -12,7 +12,7 @@ static func day() -> void:
 	if randf() > 0.09:
 		return
 	var s := int(d["season"])
-	var pool := ["fuego", "peregrinos", "ratas", "mercader"]
+	var pool := ["fuego", "peregrinos", "ratas", "mercader", "rumor"]
 	if s in [0, 1]:
 		pool.append("fiesta")
 	if s == 1:
@@ -22,7 +22,9 @@ static func day() -> void:
 	if s in [2, 3]:
 		pool.append_array(["fiebre", "fiebre"])
 	if int(d["title"]) == 1:
-		pool.append_array(["pleito", "pleito"])
+		pool.append_array(["pleito", "pleito", "ladron"])
+	else:
+		pool.append("robo")
 	d["last_event"] = int(d["total_days"])
 	trigger(pool.pick_random())
 
@@ -38,6 +40,9 @@ static func trigger(id: String) -> void:
 		"cosecha": _harvest()
 		"fiebre": _fever()
 		"pleito": _lawsuit()
+		"rumor": _rumor()
+		"ladron": _thief()
+		"robo": _robbed()
 
 
 static func _popup(title: String, text: String, options: Array) -> void:
@@ -273,3 +278,73 @@ static func _judge(win: Dictionary, lose: Dictionary) -> void:
 	lose["affection"] = maxi(0, int(lose.get("affection", 0)) - 15)
 	GS.data["prestige"] += 4
 	GS.say("Das la razón a %s. %s se marcha enfadado. (+4 prestigio)" % [win["name"], lose["name"]])
+
+
+static func _rumor() -> void:
+	var d = GS.data
+	var who: String = d["villagers"].pick_random()["name"] if not d["villagers"].is_empty() else "alguien"
+	var what: String = ["tu familia esconde deudas con un prestamista", "has pactado en secreto con un señor vecino", "tu casa está maldita", "tu cosecha es robada"].pick_random()
+	_popup("Habladurías", "En la fuente se murmura que %s. Parece que todo empezó con %s." % [what, who], [
+		["Invitar a vino a todo el pueblo para acallarlo (15 oro)", func():
+			d["gold"] = maxi(0, int(d["gold"]) - 15)
+			_mood_all(6)
+			GS.say("Con unas jarras de vino, el rumor se olvida pronto.")],
+		["Desmentirlo en público", func():
+			if randf() < 0.6:
+				d["prestige"] += 3
+				GS.say("Desmientes el rumor con aplomo y la gente te cree. (+3 prestigio)")
+			else:
+				d["prestige"] = maxi(0, int(d["prestige"]) - 6)
+				GS.say("Nadie te cree del todo; el rumor sigue corriendo. (-6 prestigio)")],
+		["Hablar con %s" % who, func():
+			var v := _find(who)
+			if not v.is_empty():
+				v["affection"] = maxi(0, int(v["affection"]) - 10)
+			GS.say("%s jura que no fue con mala intención. El rumor se apaga, pero queda cierta frialdad entre vosotros." % who)],
+	])
+
+
+static func _find(n: String) -> Dictionary:
+	for v in GS.data["villagers"]:
+		if v["name"] == n:
+			return v
+	return {}
+
+
+static func _thief() -> void:
+	var d = GS.data
+	var thief: String = GS.rng_name(true)
+	_popup("Un ladrón", "Los vecinos han atrapado a %s, un forastero, robando gallinas y aperos. Esperan que el jefe haga justicia." % thief, [
+		["Ponerlo en el cepo de la plaza", func():
+			_mood_all(5)
+			d["prestige"] += 3
+			GS.say("%s pasa dos días en el cepo. Los vecinos se sienten más seguros. (+3 prestigio)" % thief)],
+		["Imponerle una multa (+15 oro)", func():
+			d["gold"] = int(d["gold"]) + 15
+			GS.say("%s paga la multa y se marcha del pueblo. (+15 oro)" % thief)],
+		["Perdonarlo y darle trabajo", func():
+			d["commons"] = int(d["commons"]) + 1
+			if randf() < 0.3:
+				d["gold"] = maxi(0, int(d["gold"]) - 20)
+				GS.say("%s se escapa una noche con 20 de tu oro. Lección aprendida." % thief)
+			else:
+				d["prestige"] += 2
+				GS.say("%s se queda en el pueblo y resulta ser un buen trabajador. (+2 prestigio)" % thief)],
+	])
+
+
+static func _robbed() -> void:
+	var d = GS.data
+	var lost := mini(int(d["gold"]), randi_range(8, 20))
+	d["gold"] = int(d["gold"]) - lost
+	_popup("¡Te han robado!", "Al volver a casa ves la puerta forzada: te faltan %d monedas de oro." % lost, [
+		["Denunciarlo ante el jefe del pueblo", func():
+			if randf() < 0.45:
+				d["gold"] = int(d["gold"]) + lost
+				GS.say("El jefe atrapa al ladrón y recuperas tu oro.")
+			else:
+				GS.say("Nadie vio nada. Tu oro no aparece.")],
+		["Poner una buena cerradura (5 oro)", func():
+			d["gold"] = maxi(0, int(d["gold"]) - 5)
+			GS.say("Con la cerradura nueva duermes más tranquilo.")],
+	])

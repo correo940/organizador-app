@@ -41,6 +41,7 @@ var champion = null  # capitán enemigo (su campeón)
 var duel_offer := 0.0
 var duel := false
 var foe_lord := -1
+var blessed := false
 var weather := "despejado"
 var weather_fx: Node3D
 var hill := Vector3.ZERO  # centro de la colina (y = altura); radio en hill_r
@@ -291,6 +292,9 @@ func _ready() -> void:
 		foe_lord = int(GS.REGION.town(int(siege["town"])).get("lord", -1))
 
 	_setup_engines()
+	if d.get("blessed", false) and siege.get("kind", "") != "torneo":
+		blessed = true
+		d.erase("blessed")
 
 	cam = CAM.new()
 	cam.target = pl["a"]
@@ -370,9 +374,9 @@ func _build_hud() -> void:
 	result_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	box.add_child(result_label)
 	var b := Button.new()
-	b.text = "Volver al pueblo" if siege.is_empty() else "Volver al mapa"
+	b.text = "Volver al pueblo" if siege.is_empty() or siege.get("home", false) or siege["kind"] == "bandidos" or (siege["kind"] == "defensa" and GS.REGION.town(int(siege["town"])).get("home", false)) else "Volver al mapa"
 	b.custom_minimum_size.y = 40
-	b.pressed.connect(func(): main.start_village() if siege.is_empty() or siege["kind"] == "bandidos" or (siege["kind"] == "defensa" and GS.REGION.town(int(siege["town"])).get("home", false)) else main.start_region())
+	b.pressed.connect(func(): main.start_village() if siege.is_empty() or siege["kind"] == "bandidos" or siege.get("home", false) or (siege["kind"] == "defensa" and GS.REGION.town(int(siege["town"])).get("home", false)) else main.start_region())
 	back_btn = b
 	box.add_child(b)
 
@@ -983,7 +987,10 @@ func _damage(t: Dictionary, amount: float, src: Dictionary) -> void:
 	# Cada baja hunde la moral de su bando y anima al contrario.
 	var side: int = t["team"]
 	var alive_side := _count(side) + (ally_reserve.size() if side == 0 else enemy_reserve.size()) / 2
-	morale[side] = maxf(0.0, morale[side] - 160.0 / (alive_side + 8.0) - (25.0 if t.get("captain", false) else 0.0))
+	var loss := 160.0 / (alive_side + 8.0) + (25.0 if t.get("captain", false) else 0.0)
+	if side == 0 and blessed:
+		loss *= 0.6
+	morale[side] = maxf(0.0, morale[side] - loss)
 	morale[1 - side] = minf(100.0, morale[1 - side] + 1.5)
 	if t["team"] == 0 and t.get("real", false):
 		dead_by_type[t["type"]] = int(dead_by_type.get(t["type"], 0)) + 1

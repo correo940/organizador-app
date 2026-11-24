@@ -536,6 +536,9 @@ func _update_hud() -> void:
 		lines.append("¡LLAMADA DEL REY!")
 		lines.append("Contra %s" % d["summons"]["enemy"])
 		lines.append("Quedan %d días · Campamento al este" % maxi(left, 0))
+	var ft: String = GS.SOCIAL.favor_text()
+	if ft != "":
+		lines.append(ft)
 	GS.QUESTS.check()
 	var q: Dictionary = GS.QUESTS.current()
 	if not q.is_empty():
@@ -690,13 +693,16 @@ func _move_npcs(delta: float) -> void:
 		var a = villagers[i]
 		var v = vil[i]
 		var job_off: bool = winter and SIM.JOBS[v["job"]].get("no_winter", false)
-		vtarget[i] = _door(v) if night or job_off else _work_spot(v, i)
+		var rt = _routine_spot(i, t)
+		vtarget[i] = rt if rt != null else (_door(v) if night or job_off else _work_spot(v, i))
 		var far: bool = a.position.distance_to(vtarget[i]) > 0.4
 		var spd := 3.2 if far and a.position.distance_to(vtarget[i]) > 25 else 1.4
 		if far:
 			_walk_to(a, vtarget[i], spd, delta)
 			if spd > 2:
 				a.play("Jog_Fwd")
+		elif rt != null:
+			a.play("Idle_Talking")
 		elif not night and not job_off:
 			vwork[i] -= delta
 			if vwork[i] <= 0:
@@ -712,6 +718,19 @@ func _move_npcs(delta: float) -> void:
 		if f["a"].position.distance_to(f["t"]) < 0.3 and randf() < 0.004:
 			f["t"] = _front_of_house() + Vector3(randf_range(-3.5, 3.5), 0, randf_range(-3.5, 3.5))
 		_walk_to(f["a"], f["t"], 1.1, delta)
+
+
+## Rutinas: misa los domingos por la mañana (si hay capilla) y tertulia en la plaza al atardecer.
+func _routine_spot(i: int, t: float) -> Variant:
+	var d = GS.data
+	var ang := float(i) * 2.399
+	if int(d["day"]) % 7 == 0 and t > 0.32 and t < 0.45:
+		for k in d["buildings"]:
+			if d["buildings"][k] == "capilla":
+				return BLD.SLOTS[int(k)] + Vector3(cos(ang), 0, sin(ang)) * (3.0 + i % 3) + Vector3(0, 0, 6)
+	if t > 0.74 and t < 0.84 and i % 2 == 0:
+		return PLAZA + Vector3(cos(ang), 0, sin(ang)) * (3.0 + (i % 4) * 0.8)
+	return null
 
 
 func _walk_to(a, target: Vector3, spd: float, delta: float) -> void:
@@ -981,6 +1000,9 @@ func _villager_panel(i: int) -> void:
 	if int(v["affection"]) >= 100:
 		text += "\n\nSe le ve muy feliz de verte..."
 	var opts := []
+	var fo: Array = GS.SOCIAL.favor_option(v, func(): _villager_panel(i))
+	if not fo.is_empty():
+		opts.append(fo)
 	opts.append(["Comerciar", func(): TRADE.open(self, i)])
 	opts.append(["Charlar (una vez al día)", func():
 		v["affection"] = mini(100, int(v["affection"]) + randi_range(6, 12))
@@ -1035,6 +1057,7 @@ func _hall_panel() -> void:
 			GS.say("Cobras los impuestos del pueblo.")
 			_hall_panel(), can_tax])
 	text += "\n\n" + _town_report()
+	opts.append_array(GS.SOCIAL.hall_options(self))
 	opts.append(["Cerrar", _close_panel])
 	_open_panel("Casa del Concejo", text, opts)
 

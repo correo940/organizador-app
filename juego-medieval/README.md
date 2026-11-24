@@ -36,6 +36,8 @@ Juego de estrategia medieval para PC (Windows) en 3D, hecho con Godot 4.3. Model
 
 **Clima y terreno:** las batallas pueden ser con lluvia o nieve (los arqueros fallan más y alcanzan menos; la nieve frena a todos) o con niebla (alcance muy corto). Puede haber una colina (desde lo alto se golpea un 25% más) y bosquecillos (frenan a la caballería y protegen de las flechas).
 
+**Vida social:** los vecinos van a misa los domingos por la mañana (si hay capilla) y se juntan en la plaza al atardecer. A veces te piden favores (traerles algo antes de 6 días, a cambio de oro y afecto). En la capilla el párroco cobra el diezmo, bendice tu próxima batalla (tus hombres pierden la moral más despacio) y te confiesa (+salud). Como jefe de una villa puedes organizar una feria o un torneo cada año. Hay rumores, ladrones a los que juzgar y robos.
+
 **Eventos del pueblo:** de vez en cuando ocurre algo y tú decides: incendios, sequías, ratas en el granero, fiebres, fiestas, peregrinos, mercaderes ambulantes, buenas cosechas y, si eres jefe, pleitos entre vecinos. Cada decisión cuesta oro, salud o comida, o cambia el ánimo del pueblo y tu prestigio.
 
 **Caballo:** cómpralo en el mercado (150 oro). H para montar o desmontar en la aldea; viajas más rápido por el mapa y en batalla luchas a caballo (más rápido, más vida y golpes más fuertes).
