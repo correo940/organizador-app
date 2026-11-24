@@ -4,12 +4,12 @@ importer="scene"
 importer_version=1
 type="PackedScene"
 uid="uid://skvcex56wfdb"
-path="res://.godot/imported/Male_Peasant.gltf-bf5f781ef7045f0ab5f39d18ef69c7b2.scn"
+path="res://.godot/imported/Male_Peasant.gltf-5e750fd6dd9163112ae0047ab7910cc7.scn"
 
 [deps]
 
-source_file="res://out/Male_Peasant.gltf"
-dest_files=["res://.godot/imported/Male_Peasant.gltf-bf5f781ef7045f0ab5f39d18ef69c7b2.scn"]
+source_file="res://assets/out/Male_Peasant.gltf"
+dest_files=["res://.godot/imported/Male_Peasant.gltf-5e750fd6dd9163112ae0047ab7910cc7.scn"]
 
 [params]
 

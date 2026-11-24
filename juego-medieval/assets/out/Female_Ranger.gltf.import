@@ -4,12 +4,12 @@ importer="scene"
 importer_version=1
 type="PackedScene"
 uid="uid://dhmgerq1bkaks"
-path="res://.godot/imported/Female_Ranger.gltf-441fca4d76c61a7bab2ed307322a7fac.scn"
+path="res://.godot/imported/Female_Ranger.gltf-0a12277e67576f4df358e99f5e29e67a.scn"
 
 [deps]
 
-source_file="res://out/Female_Ranger.gltf"
-dest_files=["res://.godot/imported/Female_Ranger.gltf-441fca4d76c61a7bab2ed307322a7fac.scn"]
+source_file="res://assets/out/Female_Ranger.gltf"
+dest_files=["res://.godot/imported/Female_Ranger.gltf-0a12277e67576f4df358e99f5e29e67a.scn"]
 
 [params]
 

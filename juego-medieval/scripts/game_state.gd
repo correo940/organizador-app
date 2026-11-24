@@ -19,6 +19,32 @@ const FEMALE_NAMES := ["Urraca", "Jimena", "Elvira", "Sancha", "Teresa", "Leonor
 const ENEMIES := ["los bandidos del bosque", "el señor de Valdeoscuro", "los invasores del norte", "un barón rebelde", "los saqueadores del río"]
 const HOMES := [Vector2(760, 620), Vector2(760, 1000), Vector2(980, 1180), Vector2(1380, 1180), Vector2(1640, 1040), Vector2(1660, 560), Vector2(900, 330), Vector2(1520, 300)]
 
+## Objetos de inventario: id -> [nombre, precio, raciones de comida (0 = no se come)]
+const ITEMS := {
+	"trigo": ["Trigo", 2, 0], "harina": ["Harina", 4, 0], "pan": ["Pan", 6, 3],
+	"zanahoria": ["Zanahorias", 2, 1], "remolacha": ["Remolachas", 2, 1], "col": ["Coles", 2, 1], "calabaza": ["Calabazas", 5, 2],
+	"manzana": ["Manzanas", 2, 1], "bayas": ["Bayas", 1, 1], "setas": ["Setas", 3, 1],
+	"huevos": ["Huevos", 2, 1], "leche": ["Leche", 3, 1], "carne": ["Carne", 7, 3], "pescado": ["Pescado", 4, 2],
+	"lana": ["Lana", 6, 0], "cuero": ["Cuero", 9, 0],
+}
+## Orden en que la familia se come las cosas (primero lo perecedero y barato).
+const EAT_ORDER := ["bayas", "setas", "leche", "huevos", "manzana", "col", "zanahoria", "remolacha", "pescado", "calabaza", "carne", "pan"]
+const CROPS := {
+	"trigo": {"name": "Trigo", "model": "Wheat", "days": 8, "yield": [10, 14], "seed": 3},
+	"zanahoria": {"name": "Zanahorias", "model": "Carrot", "days": 5, "yield": [6, 9], "seed": 2},
+	"remolacha": {"name": "Remolachas", "model": "Beet", "days": 5, "yield": [6, 9], "seed": 2},
+	"col": {"name": "Coles", "model": "Lettuce", "days": 4, "yield": [5, 7], "seed": 2},
+	"calabaza": {"name": "Calabazas", "model": "Pumpkin", "days": 7, "yield": [3, 5], "seed": 3},
+}
+## Animales de granja: precio, máximo, pienso en invierno (raciones de trigo/remolacha), producto.
+const ANIMALS := {
+	"gallina": {"name": "Gallinas", "price": 8, "max": 12, "feed": 0.25, "product": "huevos", "per_day": 1.0},
+	"oveja": {"name": "Ovejas", "price": 25, "max": 8, "feed": 0.5, "product": "lana", "per_day": 0.5},
+	"cerdo": {"name": "Cerdos", "price": 20, "max": 8, "feed": 0.5, "product": "", "per_day": 0.0},
+	"vaca": {"name": "Vacas", "price": 40, "max": 4, "feed": 1.0, "product": "leche", "per_day": 2.0},
+}
+const FIELD_PRICE := 25
+
 var data := {}
 var speed := 1.0
 var popups: Array = []  # mensajes importantes (muertes) que la aldea muestra en ventana
@@ -36,7 +62,7 @@ func new_villager(home: Vector2) -> Dictionary:
 func new_game(pname: String, dynasty: String, male: bool) -> void:
 	data = {
 		"day": 1, "season": 0, "year": 1100, "time": 0.3, "total_days": 0, "taxed": -1,
-		"gold": 15, "wood": 0, "stone": 0, "food": 12,
+		"gold": 15, "wood": 0, "stone": 0,
 		"prestige": 0, "title": 0, "house_level": 0, "weapon": 0, "armor": 0,
 		"dynasty": dynasty, "generation": 1,
 		"player": {"name": pname, "male": male, "age": 18, "health": 100.0},
@@ -45,6 +71,7 @@ func new_game(pname: String, dynasty: String, male: bool) -> void:
 	}
 	for h in HOMES:
 		data["villagers"].append(new_villager(h))
+	ensure_economy()
 	popups.clear()
 	say("%s %s llega a la aldea con lo puesto. Empieza tu linaje." % [pname, dynasty])
 
@@ -91,13 +118,12 @@ func next_day() -> void:
 	data["day"] += 1
 	data["talked"] = []
 	var p = data["player"]
-	data["food"] -= family_size()
-	if data["food"] < 0:
-		data["food"] = 0
+	if eat(family_size()):
+		p["health"] = minf(100.0, p["health"] + 4.0)
+	else:
 		p["health"] -= 15.0
 		say("Tu familia pasa hambre. (-15 salud)")
-	else:
-		p["health"] = minf(100.0, p["health"] + 4.0)
+	farm_day()
 	if data["spouse"] != null and data["children"].size() < 6 and p["age"] >= 16 and p["age"] < 48 and data["spouse"]["age"] < 46 and randf() < 0.06:
 		var m := randf() < 0.5
 		var cname := rng_name(m)
@@ -122,6 +148,8 @@ func next_season() -> void:
 		data["season"] = 0
 		data["year"] += 1
 		new_year()
+	if int(data["season"]) == 3:
+		frost()
 	if data.get("game_over", false):
 		return
 	say("Comienza %s del año %d." % [["la primavera", "el verano", "el otoño", "el invierno"][int(data["season"])], int(data["year"])])
@@ -243,5 +271,205 @@ func load_game() -> bool:
 	if typeof(parsed) != TYPE_DICTIONARY:
 		return false
 	data = parsed
+	ensure_economy()
 	popups.clear()
 	return true
+
+
+# ---------------- Economía del pueblo ----------------
+
+## Crea (o migra desde partidas antiguas) inventario, parcelas y animales.
+func ensure_economy() -> void:
+	if not data.has("inv"):
+		data["inv"] = {"pan": 4, "zanahoria": 6}
+		if data.has("food"):
+			data["inv"]["zanahoria"] = int(data["food"])
+			data.erase("food")
+	if not data.has("fields"):
+		data["fields"] = []
+		for i in 6:
+			data["fields"].append({"owned": i < 2, "crop": "", "age": 0})
+	if not data.has("animals"):
+		data["animals"] = {"gallina": 0, "oveja": 0, "cerdo": 0, "vaca": 0}
+	if not data.has("barn"):
+		data["barn"] = {}
+	if not data.has("picked"):
+		data["picked"] = {}
+	if not data.has("tools"):
+		data["tools"] = []
+	if not data.has("feed_debt"):
+		data["feed_debt"] = 0.0
+
+
+func inv(item: String) -> int:
+	return int(data["inv"].get(item, 0))
+
+
+func add(item: String, n: int) -> void:
+	data["inv"][item] = inv(item) + n
+
+
+func take(item: String, n: int) -> bool:
+	if inv(item) < n:
+		return false
+	data["inv"][item] = inv(item) - n
+	return true
+
+
+func food_total() -> int:
+	var t := 0
+	for k in data["inv"]:
+		t += inv(k) * int(ITEMS[k][2])
+	return t
+
+
+## La familia come 'need' raciones. Devuelve false si no hay suficiente.
+func eat(need: int) -> bool:
+	for k in EAT_ORDER:
+		while need > 0 and inv(k) > 0:
+			take(k, 1)
+			need -= int(ITEMS[k][2])
+	return need <= 0
+
+
+## Recursos de recolección (manzanos, bayas, setas) se reponen cada estación.
+func can_pick(id: String) -> bool:
+	return int(data["picked"].get(id, -1)) != season_index()
+
+
+func mark_picked(id: String) -> void:
+	data["picked"][id] = season_index()
+
+
+func field_ready(f: Dictionary) -> bool:
+	return f["crop"] != "" and int(f["age"]) >= int(CROPS[f["crop"]]["days"])
+
+
+func field_stage(f: Dictionary) -> int:
+	if f["crop"] == "":
+		return 0
+	return clampi(1 + int(f["age"]) * 4 / int(CROPS[f["crop"]]["days"]), 1, 4)
+
+
+func plant(i: int, crop: String) -> String:
+	var f = data["fields"][i]
+	if int(data["season"]) == 3:
+		return "En invierno la tierra está helada."
+	var seed: int = CROPS[crop]["seed"]
+	if data["gold"] < seed:
+		return "No tienes oro para las semillas."
+	data["gold"] -= seed
+	f["crop"] = crop
+	f["age"] = 0
+	return ""
+
+
+func harvest(i: int) -> String:
+	var f = data["fields"][i]
+	if not field_ready(f):
+		return ""
+	var c = CROPS[f["crop"]]
+	var n := randi_range(int(c["yield"][0]), int(c["yield"][1]))
+	add(f["crop"], n)
+	f["crop"] = ""
+	f["age"] = 0
+	return "+%d %s" % [n, String(c["name"]).to_lower()]
+
+
+func buy_field(i: int) -> String:
+	if data["gold"] < FIELD_PRICE:
+		return "Necesitas %d de oro." % FIELD_PRICE
+	data["gold"] -= FIELD_PRICE
+	data["fields"][i]["owned"] = true
+	say("Has comprado una parcela de cultivo.")
+	return ""
+
+
+func frost() -> void:
+	var lost := 0
+	for f in data["fields"]:
+		if f["crop"] != "" and not field_ready(f):
+			f["crop"] = ""
+			f["age"] = 0
+			lost += 1
+	if lost > 0:
+		say("La helada del invierno arruina %d parcelas sin cosechar." % lost)
+
+
+## Un día en la granja: crecen los cultivos y los animales producen, comen y crían.
+func farm_day() -> void:
+	var winter := int(data["season"]) == 3
+	if not winter:
+		for f in data["fields"]:
+			if f["crop"] != "" and not field_ready(f):
+				f["age"] += 1
+				if field_ready(f):
+					say("Tu parcela de %s está lista para cosechar." % String(CROPS[f["crop"]]["name"]).to_lower())
+	var an = data["animals"]
+	var fed := true
+	if winter:
+		data["feed_debt"] += _feed_need()
+		while data["feed_debt"] >= 1.0 and (inv("trigo") > 0 or inv("remolacha") > 0):
+			take("remolacha" if inv("remolacha") > 0 else "trigo", 1)
+			data["feed_debt"] -= 1.0
+		if data["feed_debt"] >= 2.0:
+			fed = false
+			data["feed_debt"] = 0.0
+			for k in ["gallina", "oveja", "cerdo", "vaca"]:
+				if int(an[k]) > 0 and randf() < 0.35:
+					an[k] -= 1
+					say("Un animal de tu corral ha muerto de hambre. (%s)" % ANIMALS[k]["name"].to_lower())
+					break
+	if not fed:
+		return
+	var barn = data["barn"]
+	for k in ANIMALS:
+		var a = ANIMALS[k]
+		if a["product"] != "" and int(an[k]) > 0:
+			var amount: float = float(barn.get(a["product"], 0.0)) + a["per_day"] * int(an[k])
+			barn[a["product"]] = amount
+	for k in ["gallina", "oveja", "cerdo"]:
+		if int(an[k]) >= 2 and int(an[k]) < int(ANIMALS[k]["max"]) and not winter and randf() < 0.12:
+			an[k] += 1
+			say("¡Ha nacido un animal en tu corral! (%s)" % ANIMALS[k]["name"].to_lower())
+
+
+func _feed_need() -> float:
+	var t := 0.0
+	for k in ANIMALS:
+		t += ANIMALS[k]["feed"] * int(data["animals"][k])
+	return t
+
+
+## Recoge del corral los productos acumulados.
+func collect_barn() -> String:
+	var parts := []
+	for k in data["barn"].keys():
+		var n := int(floor(float(data["barn"][k])))
+		if n > 0:
+			add(k, n)
+			data["barn"][k] = float(data["barn"][k]) - n
+			parts.append("+%d %s" % [n, String(ITEMS[k][0]).to_lower()])
+	return ", ".join(parts) if not parts.is_empty() else ""
+
+
+func buy_animal(k: String) -> String:
+	var a = ANIMALS[k]
+	if int(data["house_level"]) < 1:
+		return "Necesitas una casa para tener animales."
+	if int(data["animals"][k]) >= int(a["max"]):
+		return "No caben más en el corral."
+	if data["gold"] < a["price"]:
+		return "No tienes suficiente oro."
+	data["gold"] -= a["price"]
+	data["animals"][k] += 1
+	return ""
+
+
+func slaughter_pig() -> String:
+	if int(data["animals"]["cerdo"]) < 1:
+		return "No tienes cerdos."
+	data["animals"]["cerdo"] -= 1
+	add("carne", 6)
+	add("cuero", 1)
+	return "+6 carne, +1 cuero"

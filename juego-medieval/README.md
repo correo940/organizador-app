@@ -4,6 +4,8 @@ Juego de estrategia medieval para PC (Windows) en 3D, hecho con Godot 4.3. Model
 
 **Fase 1 (actual):** controlas a un personaje en una aldea. Talas, picas piedra, cultivas y comercias. Construyes y mejoras tu casa, te casas y tienes hijos, que heredan cuando mueres. El rey te llama a la guerra y luchas en batallas en tiempo real. Con prestigio llegas a jefe del pueblo.
 
+**Economía del pueblo:** parcelas de cultivo (trigo, zanahorias, remolachas, coles, calabazas), corral con gallinas, ovejas, cerdos y vacas, manzanos, bayas, setas, pesca en el estanque, caza de ciervos, molino (trigo → harina) y horno (harina → pan). Tecla I: inventario.
+
 **Próximas fases:** gobernar el pueblo y dirigir ejércitos (fase 2), y un mapa del mundo para viajar y combatir (fase 3).
 
 ## Controles

@@ -5,6 +5,7 @@ const Art = preload("res://scripts/art.gd")
 const M := preload("res://scripts/models.gd")
 const ACTOR := preload("res://scripts/actor.gd")
 const CAM := preload("res://scripts/cam_rig.gd")
+const FARM := preload("res://scripts/farm.gd")
 
 const SIZE := Vector2(120, 80)
 const PLAZA := Vector3(60, 0, 40)
@@ -26,7 +27,7 @@ var player_sig := ""
 var cooldown := 0.0
 var trees: Array = []
 var rocks: Array = []
-var fields: Array = []
+var farm
 var obstacles: Array = []
 var villagers: Array = []
 var vtarget: Array = []
@@ -37,7 +38,6 @@ var house_node: Node3D
 var house_level := -1
 var season := -1
 var nature_node: Node3D
-var crops: Array = []
 var camp_banner: Node3D
 var camp_fire: Node3D
 var inter := {}
@@ -63,10 +63,11 @@ func _ready() -> void:
 		trees.append({"p": p, "k": i % 3, "i": r.randi_range(1, 5), "s": r.randf_range(2.5, 3.5), "r": r.randf() * TAU})
 	for i in 22:
 		rocks.append({"p": Vector3(r.randf_range(8, 32), 0, r.randf_range(55, 70)), "i": r.randi_range(1, 7), "s": r.randf_range(1.3, 2.4), "r": r.randf() * TAU})
-	for i in 3:
-		for j in 2:
-			fields.append(Rect2(90 + j * 9.5, 12.5 + i * 8.5, 8.5, 7))
 	_build_static()
+	farm = FARM.new()
+	farm.v = self
+	add_child(farm)
+	obstacles.append_array(farm.obstacles)
 	_build_hud()
 	_reset_villagers()
 	cam = CAM.new()
@@ -128,44 +129,10 @@ func _build_static() -> void:
 		M.recolor(rk, Color(0.42, 0.44, 0.4))
 	nature_node = Node3D.new()
 	add_child(nature_node)
-	for f in fields:
-		var soil := MeshInstance3D.new()
-		var bm := BoxMesh.new()
-		bm.size = Vector3(f.size.x, 0.06, f.size.y)
-		soil.mesh = bm
-		soil.material_override = M.flat(Color(0.33, 0.24, 0.15))
-		soil.position = Vector3(f.get_center().x, 0.02, f.get_center().y)
-		add_child(soil)
-	_build_crops()
 
 
 func _face_plaza(p: Vector3) -> float:
 	return atan2(PLAZA.x - p.x, PLAZA.z - p.z)
-
-
-func _build_crops() -> void:
-	var src := M.inst("nature/Wheat.glb")
-	var mi: MeshInstance3D = src.find_children("*", "MeshInstance3D", true, false)[0]
-	for f: Rect2 in fields:
-		var mm := MultiMesh.new()
-		mm.transform_format = MultiMesh.TRANSFORM_3D
-		mm.mesh = mi.mesh
-		var pts := []
-		var x := f.position.x + 0.6
-		while x < f.end.x - 0.4:
-			var z := f.position.y + 0.6
-			while z < f.end.y - 0.4:
-				pts.append(Vector3(x + randf_range(-0.15, 0.15), 0.05, z))
-				z += 0.9
-			x += 1.1
-		mm.instance_count = pts.size()
-		for i in pts.size():
-			mm.set_instance_transform(i, Transform3D(Basis(Vector3.UP, randf() * TAU).scaled(Vector3.ONE * 1.4), pts[i]))
-		var mmi := MultiMeshInstance3D.new()
-		mmi.multimesh = mm
-		add_child(mmi)
-		crops.append(mmi)
-	src.free()
 
 
 ## Árboles y rocas cambian con la estación (otoño / nieve).
@@ -185,10 +152,8 @@ func _build_nature(s: int) -> void:
 			obstacles.append([Vector2(rk["p"].x, rk["p"].z), 0.9 * rk["s"] / 1.5])
 	for i in 40:
 		var p := Vector3(randf_range(2, 118), 0, randf_range(2, 78))
-		if p.distance_to(PLAZA) > 14:
+		if p.distance_to(PLAZA) > 14 and p.distance_to(FARM.POND) > 12 and not Rect2(86, 9, 26, 33).has_point(Vector2(p.x, p.z)) and p.distance_to(FARM.CORRAL) > 7:
 			M.put(nature_node, "nature/%s_%d.glb" % ["Bush_Snow" if s == 3 else "Bush", 1 + i % 2], p, randf() * TAU, randf_range(1.2, 2.0))
-	for c in crops:
-		c.visible = s != 3
 	M.set_season_ground(env["grad"], s)
 	season = s
 
@@ -375,7 +340,7 @@ func _build_hud() -> void:
 	layer.add_child(lbl_prompt)
 
 	var help := Label.new()
-	help.text = "WASD: mover · Shift: correr · Clic derecho: girar cámara · Rueda: zoom · E: usar · T: velocidad · Esc: menú"
+	help.text = "WASD: mover · Shift: correr · Clic derecho: girar cámara · Rueda: zoom · E: usar · I: inventario · T: velocidad · Esc: menú"
 	help.add_theme_font_size_override("font_size", 13)
 	help.add_theme_color_override("font_outline_color", Color.BLACK)
 	help.add_theme_constant_override("outline_size", 4)
@@ -401,7 +366,7 @@ func _build_hud() -> void:
 
 func _update_hud() -> void:
 	var d = GS.data
-	lbl_res.text = "   Oro: %d      Madera: %d      Piedra: %d      Comida: %d      Prestigio: %d      Tiempo: x%d" % [int(d["gold"]), int(d["wood"]), int(d["stone"]), int(d["food"]), int(d["prestige"]), int(GS.speed)]
+	lbl_res.text = "   Oro: %d      Madera: %d      Piedra: %d      Comida: %d raciones      Prestigio: %d      Tiempo: x%d" % [int(d["gold"]), int(d["wood"]), int(d["stone"]), GS.food_total(), int(d["prestige"]), int(GS.speed)]
 	var p = d["player"]
 	var lines := []
 	lines.append("%s %s" % [p["name"], d["dynasty"]])
@@ -458,6 +423,25 @@ func _open_panel(title: String, text: String, options: Array) -> void:
 		first.grab_focus.call_deferred()
 
 
+## Panel con contenido libre (mercado).
+func _open_custom(title: String, content: Control) -> void:
+	for c in box.get_children():
+		c.queue_free()
+	var t := Label.new()
+	t.text = title
+	t.add_theme_font_size_override("font_size", 26)
+	t.add_theme_color_override("font_color", Color(0.9, 0.75, 0.4))
+	box.add_child(t)
+	box.add_child(content)
+	var close := Button.new()
+	close.text = "Cerrar"
+	close.custom_minimum_size.y = 36
+	close.pressed.connect(_close_panel)
+	box.add_child(close)
+	panel.visible = true
+	close.grab_focus.call_deferred()
+
+
 func _close_panel() -> void:
 	panel.visible = false
 
@@ -478,8 +462,10 @@ func _process(delta: float) -> void:
 		_move_player(delta)
 		GS.advance(delta)
 		inter = _find_interaction()
-		if Input.is_key_pressed(KEY_E) and inter.get("type", "") in ["tree", "rock", "field"]:
+		if Input.is_key_pressed(KEY_E) and inter.get("type", "") in ["tree", "rock"]:
 			_gather(inter["type"])
+		elif Input.is_key_pressed(KEY_E) and inter.get("type", "") == "fish":
+			farm.fish()
 		_move_npcs(delta)
 	else:
 		player.play("Idle")
@@ -564,9 +550,9 @@ func _find_interaction() -> Dictionary:
 	for rk in rocks:
 		if pp.distance_to(rk["p"]) < 1.2 + rk["s"] * 0.6:
 			return {"type": "rock", "label": "Picar piedra (mantén E)", "p": rk["p"]}
-	for f in fields:
-		if f.has_point(Vector2(pp.x, pp.z)):
-			return {"type": "field", "label": "Trabajar el campo (mantén E)"}
+	var fi: Dictionary = farm.find_interaction(pp)
+	if not fi.is_empty():
+		return fi
 	return {}
 
 
@@ -585,6 +571,9 @@ func _unhandled_input(ev: InputEvent) -> void:
 				_pause_menu()
 		KEY_T:
 			GS.speed = {1.0: 3.0, 3.0: 6.0}.get(GS.speed, 1.0)
+		KEY_I:
+			if not panel.visible:
+				farm.inventory_panel()
 		KEY_F5:
 			GS.save_game()
 			_float("Partida guardada", Color.WHITE)
@@ -605,7 +594,7 @@ func _float(text: String, col: Color) -> void:
 
 func _interact() -> void:
 	match inter.get("type", ""):
-		"tree", "rock", "field":
+		"tree", "rock":
 			_gather(inter["type"])
 		"villager":
 			var v = villagers[inter["i"]]
@@ -615,11 +604,15 @@ func _interact() -> void:
 		"house":
 			_house_panel()
 		"market":
-			_market_panel()
+			farm.market_panel()
 		"hall":
 			_hall_panel()
 		"camp":
 			_camp_panel()
+		"":
+			pass
+		_:
+			farm.interact(inter)
 
 
 func _gather(type: String) -> void:
@@ -639,15 +632,6 @@ func _gather(type: String) -> void:
 			d["stone"] += 1
 			cooldown = 0.6
 			_float("+1 piedra", Color(0.85, 0.85, 0.9))
-		"field":
-			var amt: int = [1, 2, 2, 0][int(d["season"])]
-			if amt == 0:
-				cooldown = 1.5
-				_float("La tierra está helada", Color(0.7, 0.85, 1.0))
-			else:
-				d["food"] += amt
-				cooldown = 0.7
-				_float("+%d comida" % amt, Color(0.6, 1.0, 0.5))
 
 
 func _house_panel() -> void:
@@ -710,10 +694,10 @@ func _villager_panel(i: int) -> void:
 		d["talked"].append(v["name"])
 		_float(GREETINGS.pick_random(), Color(1, 1, 0.85))
 		_villager_panel(i), not talked])
-	opts.append(["Regalar 5 de comida (+15 afecto)", func():
-		d["food"] -= 5
+	opts.append(["Regalar comida, 5 raciones (+15 afecto)", func():
+		GS.eat(5)
 		v["affection"] = mini(100, int(v["affection"]) + 15)
-		_villager_panel(i), d["food"] >= 5])
+		_villager_panel(i), GS.food_total() >= 5])
 	opts.append(["Regalar 5 de oro (+20 afecto)", func():
 		d["gold"] -= 5
 		v["affection"] = mini(100, int(v["affection"]) + 20)
@@ -728,32 +712,6 @@ func _villager_panel(i: int) -> void:
 				_open_panel("¡Boda!", "Te has casado con %s. Pronto podréis tener hijos que continúen el linaje." % d["spouse"]["name"], [["Cerrar", _close_panel]])])
 	opts.append(["Adiós", _close_panel])
 	_open_panel(v["name"], text, opts)
-
-
-func _market_panel() -> void:
-	var d = GS.data
-	var w := int(d["weapon"])
-	var a := int(d["armor"])
-	var text := "Oro %d · Madera %d · Piedra %d · Comida %d\nEspada nivel %d · Armadura nivel %d" % [int(d["gold"]), int(d["wood"]), int(d["stone"]), int(d["food"]), w, a]
-	text += "\n\n(La armadura de nivel 1 te da equipo de soldado y escudo; la de nivel 2, casco.)"
-	var opts := [
-		["Vender 10 madera (+6 oro)", func(): _trade("wood", -10, 6), d["wood"] >= 10],
-		["Vender 10 piedra (+8 oro)", func(): _trade("stone", -10, 8), d["stone"] >= 10],
-		["Vender 10 comida (+5 oro)", func(): _trade("food", -10, 5), d["food"] >= 10],
-		["Comprar 5 comida (-4 oro)", func(): _trade("food", 5, -4), d["gold"] >= 4],
-	]
-	if w < 3:
-		opts.append(["Comprar espada nivel %d (-%d oro)" % [w + 1, 25 * (w + 1)], func(): _trade("weapon", 1, -25 * (w + 1)), d["gold"] >= 25 * (w + 1)])
-	if a < 3:
-		opts.append(["Comprar armadura nivel %d (-%d oro)" % [a + 1, 25 * (a + 1)], func(): _trade("armor", 1, -25 * (a + 1)), d["gold"] >= 25 * (a + 1)])
-	opts.append(["Cerrar", _close_panel])
-	_open_panel("Mercado", text, opts)
-
-
-func _trade(key: String, amount: int, gold: int) -> void:
-	GS.data[key] += amount
-	GS.data["gold"] += gold
-	_market_panel()
 
 
 func _hall_panel() -> void:

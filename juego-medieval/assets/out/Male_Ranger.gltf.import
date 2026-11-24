@@ -4,12 +4,12 @@ importer="scene"
 importer_version=1
 type="PackedScene"
 uid="uid://c3d4b73yckyvc"
-path="res://.godot/imported/Male_Ranger.gltf-8343a9bbe1ca3def687429e0fb747e9c.scn"
+path="res://.godot/imported/Male_Ranger.gltf-067bd3ae9bedd486178e6852c40462ad.scn"
 
 [deps]
 
-source_file="res://out/Male_Ranger.gltf"
-dest_files=["res://.godot/imported/Male_Ranger.gltf-8343a9bbe1ca3def687429e0fb747e9c.scn"]
+source_file="res://assets/out/Male_Ranger.gltf"
+dest_files=["res://.godot/imported/Male_Ranger.gltf-067bd3ae9bedd486178e6852c40462ad.scn"]
 
 [params]
 
