@@ -10,6 +10,7 @@ const BLD := preload("res://scripts/buildings.gd")
 const SIM := preload("res://scripts/village_sim.gd")
 const TRADE := preload("res://scripts/trade_ui.gd")
 const TOWN := preload("res://scripts/town.gd")
+const WILD := preload("res://scripts/wildlife.gd")
 
 const PLAZA := Vector3(60, 0, 40)
 const PLOT := Vector3(52, 0, 31)
@@ -44,6 +45,7 @@ var lands_node: Node3D
 var lands_sig := ""
 var house_land := -2
 var town
+var wild
 var built_tier := 0
 var bnd: Rect2
 var family: Array = []
@@ -79,7 +81,7 @@ func _ready() -> void:
 		trees.append({"p": p, "k": i % 3, "i": r.randi_range(1, 5), "s": r.randf_range(2.5, 3.5), "r": r.randf() * TAU})
 	for i in 22:
 		rocks.append({"p": Vector3(r.randf_range(8, 32), 0, r.randf_range(55, 70)), "i": r.randi_range(1, 7), "s": r.randf_range(1.3, 2.4), "r": r.randf() * TAU})
-	trees = trees.filter(func(t): return BLD.SLOTS.all(func(sl): return t["p"].distance_to(sl) > 7.0) and t["p"].distance_to(BLD.MINE) > 6.0 and SIM.LANDS.all(func(l): return Vector2(t["p"].x, t["p"].z).distance_to(l) > 9.0) and TOWN.clear_rects(built_tier).all(func(r): return not r.has_point(Vector2(t["p"].x, t["p"].z))))
+	trees = trees.filter(func(t): return t["p"].distance_to(WILD.CAMP) > 6.0 and BLD.SLOTS.all(func(sl): return t["p"].distance_to(sl) > 7.0) and t["p"].distance_to(BLD.MINE) > 6.0 and SIM.LANDS.all(func(l): return Vector2(t["p"].x, t["p"].z).distance_to(l) > 9.0) and TOWN.clear_rects(built_tier).all(func(r): return not r.has_point(Vector2(t["p"].x, t["p"].z))))
 	_build_static()
 	farm = FARM.new()
 	farm.v = self
@@ -92,6 +94,9 @@ func _ready() -> void:
 	town = TOWN.new()
 	town.v = self
 	add_child(town)
+	wild = WILD.new()
+	wild.v = self
+	add_child(wild)
 	obstacles.append_array(town.obstacles)
 	_build_hud()
 	_reset_villagers()
@@ -709,6 +714,9 @@ func _walk_to(a, target: Vector3, spd: float, delta: float) -> void:
 func _find_interaction() -> Dictionary:
 	var d = GS.data
 	var pp: Vector3 = player.position
+	var wi: Dictionary = wild.find_interaction(pp)
+	if not wi.is_empty():
+		return wi
 	for i in villagers.size():
 		if pp.distance_to(villagers[i].position) < 1.8:
 			return {"type": "villager", "i": i, "label": "Hablar con %s" % d["villagers"][i]["name"]}
@@ -807,6 +815,8 @@ func _interact() -> void:
 			_land_panel(inter["i"])
 		"barracks":
 			town.barracks_panel()
+		"wolf", "bandits":
+			wild.interact(inter)
 		_:
 			farm.interact(inter)
 

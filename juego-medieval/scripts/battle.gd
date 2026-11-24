@@ -272,7 +272,7 @@ func _build_hud() -> void:
 	var b := Button.new()
 	b.text = "Volver al pueblo" if siege.is_empty() else "Volver al mapa"
 	b.custom_minimum_size.y = 40
-	b.pressed.connect(func(): main.start_village() if siege.is_empty() else main.start_region())
+	b.pressed.connect(func(): main.start_village() if siege.is_empty() or siege["kind"] == "bandidos" else main.start_region())
 	back_btn = b
 	box.add_child(b)
 
@@ -616,6 +616,23 @@ func _end_siege(victory: bool, losses: int) -> void:
 		else:
 			d["player"]["health"] = maxf(pl["hp"], 30.0)
 			result_label.text = "DERROTA EN EL TORNEO\n\nEl campeón te ha descabalgado. Sin heridas graves, solo el orgullo."
+		GS.next_day()
+		GS.save_game()
+		result_panel.visible = true
+		return
+	if siege["kind"] == "bandidos":
+		if victory:
+			var loot := 12 * int(siege["troops"])
+			d["gold"] = int(d["gold"]) + loot
+			d["prestige"] += 10 + kills
+			d["player"]["health"] = maxf(pl["hp"], 10.0)
+			d.erase("bandits")
+			result_label.text = "¡VICTORIA!\n\nHas echado a los bandidos del bosque.\nBotín: +%d oro · Prestigio: +%d" % [loot, 10 + kills]
+			GS.say("Echas a los bandidos del bosque. +%d oro." % loot)
+		else:
+			d["player"]["health"] = 15.0
+			result_label.text = "DERROTA\n\nLos bandidos te dejan malherido junto al camino."
+			GS.say("Los bandidos te vencen. Vuelves herido al pueblo.")
 		GS.next_day()
 		GS.save_game()
 		result_panel.visible = true
