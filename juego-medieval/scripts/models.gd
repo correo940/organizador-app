@@ -1,7 +1,7 @@
 extends RefCounted
 ## Utilidades 3D compartidas: animaciones, entorno, carga de modelos.
 
-const LOOPS := ["Idle", "Walk", "Jog_Fwd", "Sprint", "Sword_Idle", "Idle_Talking", "Sitting_Idle", "Crouch_Idle", "Walk_Formal", "Dance"]
+const LOOPS := ["Idle", "Walk", "Jog_Fwd", "Sprint", "Sword_Idle", "Idle_Talking", "Sitting_Idle", "Crouch_Idle", "Walk_Formal", "Dance", "Driving"]
 const SKIN_HAIR := [Color(0.25, 0.16, 0.09), Color(0.12, 0.09, 0.07), Color(0.45, 0.3, 0.15), Color(0.6, 0.45, 0.25)]
 
 static var _lib: AnimationLibrary
@@ -33,6 +33,17 @@ static func put(parent: Node, path: String, pos: Vector3, rot := 0.0, s := 1.0) 
 	n.scale = Vector3.ONE * s
 	parent.add_child(n)
 	return n
+
+
+## Tiñe un animal multiplicando su color (pelaje de caballos).
+static func recolor_coat(n: Node, col: Color) -> void:
+	for mi in n.find_children("*", "MeshInstance3D", true, false):
+		for i in mi.mesh.get_surface_count():
+			var m = mi.get_active_material(i)
+			if m is StandardMaterial3D and m.albedo_color.v > 0.3:
+				var mm: StandardMaterial3D = m.duplicate()
+				mm.albedo_color = m.albedo_color * col
+				mi.set_surface_override_material(i, mm)
 
 
 static func recolor(n: Node, col: Color) -> void:

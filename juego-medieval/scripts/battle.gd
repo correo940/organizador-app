@@ -76,6 +76,8 @@ func _spawn(kind: String, team: int, pos: Vector3) -> Dictionary:
 			M.recolor(a.attach("lowerarm_l", "weapons/Shield_Round.glb", Vector3(0, 0.15, -0.1), Vector3(0, 0, 90), 0.6), Color(0.12, 0.2, 0.5) if team == 0 else Color(0.5, 0.06, 0.06))
 		"arquero":
 			a.attach("hand_l", "weapons/Bow_Wooden.glb", Vector3(0, 0.05, 0), Vector3(0, 90, 0), 1.3)
+	if kind == "jinete":
+		a.mount([Color(1, 1, 1), Color(1.7, 1.4, 1.1), Color(2.2, 2.1, 2.0), Color(1.3, 0.9, 0.7)].pick_random())
 	a.position = pos
 	a.rotation.y = PI if team == 0 else 0.0
 	var u := {"a": a, "team": team, "type": kind, "hp": st["hp"], "max": st["hp"], "dmg": st["dmg"], "speed": st["speed"],
@@ -159,7 +161,7 @@ func _ready() -> void:
 		if enemy_faction == "bandido":
 			foes.append("arquero" if roll < 0.15 else ("milicia" if roll < 0.75 else "lancero"))
 		else:
-			foes.append("arquero" if roll < 0.2 else ("lancero" if roll < 0.45 else ("infante" if roll < 0.8 else "milicia")))
+			foes.append("arquero" if roll < 0.2 else ("lancero" if roll < 0.45 else ("infante" if roll < 0.75 else ("jinete" if roll < 0.85 and enemy_total > 15 else "milicia"))))
 	for i in foes.size():
 		if i >= MAX_ACTIVE:
 			enemy_reserve.append(foes[i])

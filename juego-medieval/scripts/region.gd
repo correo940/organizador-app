@@ -388,7 +388,7 @@ func _town_panel(id: int) -> void:
 				_town_panel(id), int(t["wall"]) == 1 and GS.can_pay({"piedra": 120, "oro": 80})],
 			["Dejar 5 soldados de guarnición", func():
 				var left := 5
-				for k in ["milicia", "lancero", "infante", "arquero"]:
+				for k in ["milicia", "lancero", "infante", "arquero", "jinete"]:
 					var n := mini(left, int(d["army"][k]))
 					d["army"][k] = int(d["army"][k]) - n
 					left -= n

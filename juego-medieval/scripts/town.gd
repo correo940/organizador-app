@@ -229,7 +229,7 @@ func _update_drill() -> void:
 		var a := ACTOR.new()
 		add_child(a)
 		var k: String = kinds[i]
-		var opts := {"faction": "azul", "hide_hood": k != "arquero", "sword": k in ["infante", "milicia"], "shield": k in ["infante"], "helmet": "Helmet2" if k in ["infante", "lancero"] else ""}
+		var opts := {"faction": "azul", "hide_hood": k != "arquero", "sword": k in ["infante", "milicia", "jinete"], "shield": k in ["infante", "jinete"], "helmet": "Helmet2" if k in ["infante", "lancero", "jinete"] else ""}
 		a.build(["ubc/Superhero_Male_FullBody", "out/Male_Ranger"], opts)
 		if k == "lancero":
 			a.attach("hand_r", "weapons/Spear.glb", Vector3(0, 0.05, 0), Vector3(0, 0, 90), 2.3)
@@ -237,6 +237,8 @@ func _update_drill() -> void:
 			a.attach("hand_l", "weapons/Bow_Wooden.glb", Vector3(0, 0.05, 0), Vector3(0, 90, 0), 1.3)
 		a.position = BARRACKS + Vector3(-9 - (i / 5) * 2.2, 0, -4 + (i % 5) * 2.0)
 		a.rotation.y = PI / 2
+		if k == "jinete":
+			a.mount(Color(1.7, 1.4, 1.1))
 		drill.append({"a": a, "kind": k, "cd": randf() * 2.0})
 
 
@@ -273,7 +275,7 @@ func barracks_panel() -> void:
 		for n in [1, 5]:
 			var b := Button.new()
 			b.text = "Reclutar %d" % n
-			b.disabled = not (err == "" and GS.can_pay(u["cost"], n) and ARMY.total() + n <= ARMY.capacity())
+			b.disabled = not (err == "" and int(d["tier"]) >= int(u.get("tier", 1)) and GS.can_pay(u["cost"], n) and ARMY.total() + n <= ARMY.capacity())
 			b.pressed.connect(func():
 				v._float(ARMY.recruit(k, n), Color(0.8, 0.9, 1.0))
 				barracks_panel())

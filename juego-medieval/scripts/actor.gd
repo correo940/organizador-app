@@ -6,12 +6,17 @@ const M := preload("res://scripts/models.gd")
 var skel: Skeleton3D
 var anim: AnimationPlayer
 var current := ""
+var horse: Node3D
+var horse_anim: AnimationPlayer
+var body: Node3D
+const SADDLE := 1.05
+const RIDE := {"Jog_Fwd": "Gallop", "Sprint": "Gallop", "Walk": "Walk", "Death01": "Death", "Hit_Chest": "Idle_HitReact_Left"}
 
 
 ## parts: rutas bajo assets/ sin extensión (ej. "ubc/Superhero_Male_FullBody").
 ## opts: faction (azul/rojo/bandido), hair_color, hide_hood, sword, shield, helmet.
 func build(parts: Array, opts := {}) -> void:
-	var body := M.inst(parts[0] + ".gltf")
+	body = M.inst(parts[0] + ".gltf")
 	add_child(body)
 	skel = body.find_child("Skeleton3D", true, false)
 	M.fix_body(body)
@@ -81,17 +86,42 @@ func _skel_scale() -> float:
 	return t.basis.get_scale().x
 
 
+## Sube al personaje a un caballo (caballería). Las animaciones se reparten entre jinete y montura.
+func mount(coat: Color) -> void:
+	horse = M.inst("animals/Horse.glb")
+	var bb := M.aabb_of(horse)
+	horse.scale = Vector3.ONE * (2.3 / maxf(bb.size.x, maxf(bb.size.y, bb.size.z)))
+	add_child(horse)
+	M.recolor_coat(horse, coat)
+	horse_anim = horse.find_child("AnimationPlayer", true, false)
+	for n in ["Idle", "Gallop", "Walk"]:
+		horse_anim.get_animation("AnimalArmature|" + n).loop_mode = Animation.LOOP_LINEAR
+	body.position = Vector3(0, SADDLE, -0.1)
+	current = ""
+	play("Idle")
+
+
+func _rider(anim_name: String) -> String:
+	if horse == null:
+		return anim_name
+	horse_anim.play("AnimalArmature|" + RIDE.get(anim_name, "Idle"), 0.2)
+	if anim_name == "Death01":
+		body.position = Vector3(0.9, 0, 0)
+		return anim_name
+	return anim_name if anim_name in ["Sword_Attack", "Hit_Chest", "Spell_Simple_Shoot"] else "Driving"
+
+
 func play(anim_name: String, blend := 0.2) -> void:
 	if current == anim_name:
 		return
 	current = anim_name
-	anim.play(anim_name, blend)
+	anim.play(_rider(anim_name), blend)
 
 
 ## Reproduce desde el principio aunque ya esté sonando (ataques, golpes).
 func play_once(anim_name: String, blend := 0.1) -> void:
 	current = anim_name
-	anim.play(anim_name, blend)
+	anim.play(_rider(anim_name), blend)
 	anim.seek(0.0, true)
 
 

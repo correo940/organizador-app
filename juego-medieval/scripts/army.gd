@@ -6,14 +6,18 @@ const UNITS := {
 	"lancero": {"name": "Lanceros", "cost": {"oro": 8, "hierro": 2}, "pay": 0.2, "hp": 45.0, "dmg": 10.0, "speed": 3.5, "reach": 2.4},
 	"arquero": {"name": "Arqueros", "cost": {"oro": 10, "madera": 2}, "pay": 0.25, "hp": 35.0, "dmg": 9.0, "speed": 3.6, "reach": 18.0, "ranged": true},
 	"infante": {"name": "Hombres de armas", "cost": {"oro": 20, "hierro": 3, "piel": 1}, "pay": 0.4, "hp": 75.0, "dmg": 13.0, "speed": 3.3, "reach": 1.8},
+	"jinete": {"name": "Caballería", "cost": {"oro": 45, "hierro": 3, "piel": 2}, "pay": 0.7, "hp": 95.0, "dmg": 16.0, "speed": 6.5, "reach": 2.4, "tier": 2},
 }
-const ORDER := ["infante", "lancero", "milicia", "arquero"]
+const ORDER := ["jinete", "infante", "lancero", "milicia", "arquero"]
 
 
 static func ensure() -> void:
 	var d = GS.data
 	if not d.has("army"):
-		d["army"] = {"milicia": 0, "lancero": 0, "arquero": 0, "infante": 0}
+		d["army"] = {}
+	for k in UNITS:
+		if not d["army"].has(k):
+			d["army"][k] = 0
 	if not d.has("pay_debt"):
 		d["pay_debt"] = 0.0
 
@@ -47,6 +51,8 @@ static func recruit(k: String, n: int) -> String:
 	n = mini(n, capacity() - total())
 	if n <= 0:
 		return "No hay sitio en el cuartel o no queda gente para reclutar."
+	if int(GS.data["tier"]) < int(UNITS[k].get("tier", 1)):
+		return "La caballería solo se puede reclutar en una ciudad."
 	var cost: Dictionary = UNITS[k]["cost"]
 	if not GS.can_pay(cost, n):
 		return "Te faltan recursos: %s por soldado." % GS.cost_text(cost)
@@ -82,7 +88,7 @@ static func day() -> void:
 		return
 	d["pay_debt"] = 0.0
 	var lost := 0
-	for k in ["infante", "arquero", "lancero"]:
+	for k in ["jinete", "infante", "arquero", "lancero"]:
 		var n := int(ceil(int(d["army"][k]) * 0.1))
 		dismiss(k, n)
 		lost += n

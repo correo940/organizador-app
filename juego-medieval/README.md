@@ -12,7 +12,7 @@ Juego de estrategia medieval para PC (Windows) en 3D, hecho con Godot 4.3. Model
 
 **De aldea a ciudad:** además de los vecinos con nombre, el pueblo llano crece por inmigración según el ánimo, la comida y los edificios. Aldea (hasta 100 habitantes) → Villa (barrio este, empalizada, cuartel; hasta 400) → Ciudad (barrios del norte, murallas de piedra, catedral; hasta 1.200). Las casas se dibujan según la población.
 
-**Ejército:** como jefe de una villa o ciudad, recluta en el cuartel milicia, lanceros, arqueros y hombres de armas sacados del pueblo llano (con coste y paga diaria; sin paga, desertan). En batalla tus tropas te siguen con órdenes (1: ¡Cargad!, 2: Mantened, 3: Seguidme), los arqueros disparan flechas, entran refuerzos por oleadas y las bajas se descuentan del ejército.
+**Ejército:** como jefe de una villa o ciudad, recluta en el cuartel milicia, lanceros, arqueros, hombres de armas y, en una ciudad, caballería (jinetes a caballo, rápidos y fuertes) sacados del pueblo llano (con coste y paga diaria; sin paga, desertan). En batalla tus tropas te siguen con órdenes (1: ¡Cargad!, 2: Mantened, 3: Seguidme), los arqueros disparan flechas, entran refuerzos por oleadas y las bajas se descuentan del ejército.
 
 **Mapa de la región (tecla M):** marcha con tu ejército entre pueblos (viajar consume días). Cuatro señores con sus pueblos que crecen y fundan aldeas nuevas. Puedes fundar tus propias aldeas en lugares libres, darles empalizada o murallas, guarnición y colonos; atacar pueblos y, si ganas, saquearlos, conquistarlos o hacerlos vasallos. Los señores enemistados asaltan tus aldeas mal defendidas.
 
