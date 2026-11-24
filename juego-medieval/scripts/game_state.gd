@@ -3,15 +3,19 @@ extends Node
 
 signal notify(text: String)
 
+const SIM := preload("res://scripts/village_sim.gd")
+
 const SAVE_PATH := "user://partida.json"
 const SECONDS_PER_DAY := 40.0
 const DAYS_PER_SEASON := 5
 const SEASONS := ["Primavera", "Verano", "Otoño", "Invierno"]
-const HOUSE_NAMES := ["Sin casa", "Choza", "Casa de piedra", "Casa solariega"]
+const HOUSE_NAMES := ["Sin casa", "Choza", "Casa de piedra", "Casa solariega", "Casona", "Casa fuerte"]
 const HOUSE_COSTS := [
 	{"wood": 20, "stone": 10, "gold": 0},
 	{"wood": 40, "stone": 30, "gold": 20},
 	{"wood": 60, "stone": 60, "gold": 50},
+	{"wood": 100, "stone": 120, "gold": 150},
+	{"wood": 150, "stone": 220, "gold": 300},
 ]
 const CHIEF_PRESTIGE := 150
 const MALE_NAMES := ["Rodrigo", "Sancho", "Alonso", "Fernando", "Gonzalo", "Diego", "Martín", "Pedro", "Íñigo", "Bermudo", "Ramiro", "García", "Nuño", "Álvaro", "Tello"]
@@ -27,7 +31,7 @@ const ITEMS := {
 	"huevos": ["Huevos", 2, 1], "leche": ["Leche", 3, 1], "carne": ["Carne", 7, 3], "pescado": ["Pescado", 4, 2],
 	"lana": ["Lana", 6, 0], "cuero": ["Cuero", 9, 0],
 	"tela": ["Tela", 18, 0], "piel": ["Piel curtida", 22, 0], "queso": ["Queso", 12, 3],
-	"cerveza": ["Cerveza", 9, 1], "miel": ["Miel", 8, 2], "hierro": ["Hierro", 10, 0],
+	"cerveza": ["Cerveza", 9, 1], "miel": ["Miel", 8, 2], "hierro": ["Hierro", 10, 0], "herramientas": ["Herramientas", 15, 0],
 }
 ## Orden en que la familia se come las cosas (primero lo perecedero y barato).
 const EAT_ORDER := ["bayas", "setas", "leche", "huevos", "manzana", "col", "zanahoria", "remolacha", "pescado", "calabaza", "carne", "miel", "queso", "pan"]
@@ -83,7 +87,9 @@ func rng_name(male: bool) -> String:
 
 func new_villager(home: Vector2) -> Dictionary:
 	var m := randf() < 0.5
-	return {"name": rng_name(m), "male": m, "age": randi_range(17, 34), "affection": 0, "hx": home.x, "hy": home.y}
+	var v := {"name": rng_name(m), "male": m, "age": randi_range(17, 34), "affection": 0, "hx": home.x, "hy": home.y}
+	SIM.setup(v)
+	return v
 
 
 func new_game(pname: String, dynasty: String, male: bool) -> void:
@@ -151,6 +157,7 @@ func next_day() -> void:
 		p["health"] -= 15.0
 		say("Tu familia pasa hambre. (-15 salud)")
 	farm_day()
+	SIM.day()
 	if data["spouse"] != null and data["children"].size() < 6 and p["age"] >= 16 and p["age"] < 48 and data["spouse"]["age"] < 46 and randf() < 0.06:
 		var m := randf() < 0.5
 		var cname := rng_name(m)
@@ -179,6 +186,7 @@ func next_season() -> void:
 		frost()
 	if has_building("capilla"):
 		data["prestige"] += 3
+	SIM.season()
 	if data.get("game_over", false):
 		return
 	say("Comienza %s del año %d." % [["la primavera", "el verano", "el otoño", "el invierno"][int(data["season"])], int(data["year"])])
@@ -241,8 +249,10 @@ func player_death(reason: String) -> void:
 
 func try_build_house() -> String:
 	var lvl := int(data["house_level"])
-	if lvl >= 3:
+	if lvl >= 5:
 		return "Tu casa ya es la mejor del pueblo."
+	if lvl >= 3 and int(data.get("player_land", -1)) < 0:
+		return "Para una casa más grande necesitas un terreno en el barrio nuevo."
 	var c = HOUSE_COSTS[lvl]
 	if data["wood"] < c["wood"] or data["stone"] < c["stone"] or data["gold"] < c["gold"]:
 		return "Te faltan materiales."
@@ -334,6 +344,7 @@ func ensure_economy() -> void:
 		data["mine"] = false
 	if not data.has("honey"):
 		data["honey"] = 0.0
+	SIM.ensure()
 
 
 func inv(item: String) -> int:

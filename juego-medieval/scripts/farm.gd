@@ -9,6 +9,7 @@ const POND := Vector3(98, 0, 62)
 const POND_R := 7.0
 const MILL := Vector3(87, 0, 44)
 const OVEN := Vector3(66, 0, 29)
+const COMMONS := Rect2(86.5, 48.5, 8, 5)
 const CROP_SCALE := {"Wheat": 1.4, "Carrot": 0.5, "Beet": 0.5, "Lettuce": 0.5, "Pumpkin": 0.55}
 const ANIMAL_MODEL := {
 	"gallina": ["animals/Chicken.fbx", 0.45, "CharacterArmature|"],
@@ -31,6 +32,7 @@ var fish_nodes: Array = []
 var pick_sig := ""
 var obstacles: Array = []
 var fish_cd := 0.0
+var commons_node: Node3D
 
 
 func _ready() -> void:
@@ -225,8 +227,12 @@ func _rebuild_field(i: int) -> void:
 		return
 	if f["crop"] == "":
 		return
-	var model: String = GS.CROPS[f["crop"]]["model"]
-	var src := M.inst("crops/%s_%d.glb" % [model, GS.field_stage(f)])
+	make_patch(node, r, GS.CROPS[f["crop"]]["model"], GS.field_stage(f))
+
+
+## Siembra visual: una cuadrícula de plantas del modelo y fase indicados.
+func make_patch(node: Node3D, r: Rect2, model: String, stage: int) -> void:
+	var src := M.inst("crops/%s_%d.glb" % [model, stage])
 	var pts := []
 	var x := r.position.x + 0.6
 	while x < r.end.x - 0.4:
@@ -277,6 +283,23 @@ func _rebuild_pickables() -> void:
 	for m in mushrooms:
 		if s in [0, 2] and GS.can_pick(m["id"]):
 			m["n"] = M.put(self, "crops/Mushroom_%d.glb" % m["k"], m["p"], randf() * TAU, 0.9)
+	# Huerta comunal de los agricultores del pueblo.
+	if commons_node:
+		commons_node.queue_free()
+	commons_node = Node3D.new()
+	add_child(commons_node)
+	var soil := MeshInstance3D.new()
+	var bm := BoxMesh.new()
+	bm.size = Vector3(COMMONS.size.x, 0.06, COMMONS.size.y)
+	soil.mesh = bm
+	soil.material_override = M.flat(Color(0.33, 0.24, 0.15))
+	soil.position = Vector3(COMMONS.get_center().x, 0.02, COMMONS.get_center().y)
+	commons_node.add_child(soil)
+	if s != 3:
+		make_patch(commons_node, COMMONS, "Wheat", [2, 3, 4][s])
+	var cl := M.label3d("Huerta comunal", 36)
+	cl.position = Vector3(COMMONS.get_center().x, 2.0, COMMONS.get_center().y)
+	commons_node.add_child(cl)
 
 
 func _rebuild_corral() -> void:

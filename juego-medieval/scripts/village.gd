@@ -7,8 +7,10 @@ const ACTOR := preload("res://scripts/actor.gd")
 const CAM := preload("res://scripts/cam_rig.gd")
 const FARM := preload("res://scripts/farm.gd")
 const BLD := preload("res://scripts/buildings.gd")
+const SIM := preload("res://scripts/village_sim.gd")
+const TRADE := preload("res://scripts/trade_ui.gd")
 
-const SIZE := Vector2(120, 80)
+const SIZE := Vector2(120, 97)
 const PLAZA := Vector3(60, 0, 40)
 const PLOT := Vector3(52, 0, 31)
 const MARKET := Vector3(69, 0, 46)
@@ -34,6 +36,10 @@ var obstacles: Array = []
 var villagers: Array = []
 var vtarget: Array = []
 var vlabels: Array = []
+var vwork: Array = []
+var lands_node: Node3D
+var lands_sig := ""
+var house_land := -2
 var family: Array = []
 var family_sig := ""
 var house_node: Node3D
@@ -65,7 +71,7 @@ func _ready() -> void:
 		trees.append({"p": p, "k": i % 3, "i": r.randi_range(1, 5), "s": r.randf_range(2.5, 3.5), "r": r.randf() * TAU})
 	for i in 22:
 		rocks.append({"p": Vector3(r.randf_range(8, 32), 0, r.randf_range(55, 70)), "i": r.randi_range(1, 7), "s": r.randf_range(1.3, 2.4), "r": r.randf() * TAU})
-	trees = trees.filter(func(t): return BLD.SLOTS.all(func(sl): return t["p"].distance_to(sl) > 7.0) and t["p"].distance_to(BLD.MINE) > 6.0)
+	trees = trees.filter(func(t): return BLD.SLOTS.all(func(sl): return t["p"].distance_to(sl) > 7.0) and t["p"].distance_to(BLD.MINE) > 6.0 and SIM.LANDS.all(func(l): return Vector2(t["p"].x, t["p"].z).distance_to(l) > 9.0))
 	_build_static()
 	farm = FARM.new()
 	farm.v = self
@@ -101,7 +107,11 @@ func _build_static() -> void:
 	add_child(plaza)
 	for t in [HALL, CAMP, Vector3(95, 0, 24), Vector3(30, 0, 26), Vector3(28, 0, 60), PLOT, Vector3(60, 0, 80), Vector3(38, 0, 50), Vector3(82, 0, 52), Vector3(83, 0, 28), Vector3(45, 0, 16.5), Vector3(76, 0, 15), Vector3(49, 0, 59), Vector3(69, 0, 59)]:
 		M.road(self, PLAZA, t, 3.2, dirt)
+	M.road(self, Vector3(60, 0, 80), Vector3(60, 0, 93), 3.2, dirt)
+	M.road(self, Vector3(8, 0, 82), Vector3(110, 0, 82), 3.2, dirt)
 	M.put(self, "village/Well.glb", PLAZA, 0, 1.6)
+	lands_node = Node3D.new()
+	add_child(lands_node)
 	obstacles.append([Vector2(PLAZA.x, PLAZA.z), 1.6])
 
 	var kinds := ["village/House_1.glb", "village/House_2.glb", "village/House_3.glb", "village/House_4.glb", "village/Blacksmith.glb", "village/House_2.glb", "village/Stable.glb", "village/House_3.glb"]
@@ -159,10 +169,18 @@ func _build_nature(s: int) -> void:
 			obstacles.append([Vector2(rk["p"].x, rk["p"].z), 0.9 * rk["s"] / 1.5])
 	for i in 40:
 		var p := Vector3(randf_range(2, 118), 0, randf_range(2, 78))
-		if p.distance_to(PLAZA) > 14 and p.distance_to(FARM.POND) > 12 and not Rect2(86, 9, 26, 33).has_point(Vector2(p.x, p.z)) and p.distance_to(FARM.CORRAL) > 7 and BLD.SLOTS.all(func(sl): return p.distance_to(sl) > 6.0):
+		if p.distance_to(PLAZA) > 14 and p.distance_to(FARM.POND) > 12 and not Rect2(86, 9, 26, 33).has_point(Vector2(p.x, p.z)) and p.distance_to(FARM.CORRAL) > 7 and BLD.SLOTS.all(func(sl): return p.distance_to(sl) > 6.0) and p.z < 78:
 			M.put(nature_node, "nature/%s_%d.glb" % ["Bush_Snow" if s == 3 else "Bush", 1 + i % 2], p, randf() * TAU, randf_range(1.2, 2.0))
 	M.set_season_ground(env["grad"], s)
 	season = s
+
+
+## Posición de la casa del jugador: la parcela original o su terreno del barrio nuevo.
+func house_pos() -> Vector3:
+	var i := int(GS.data.get("player_land", -1))
+	if i >= 0:
+		return Vector3(SIM.LANDS[i].x, 0, SIM.LANDS[i].y)
+	return PLOT
 
 
 func _rebuild_house() -> void:
@@ -171,23 +189,65 @@ func _rebuild_house() -> void:
 	house_node = Node3D.new()
 	add_child(house_node)
 	house_level = int(GS.data["house_level"])
-	var rot := _face_plaza(PLOT)
+	house_land = int(GS.data.get("player_land", -1))
+	var hp := house_pos()
+	var rot := _face_plaza(hp) if house_land < 0 else PI
 	match house_level:
 		0:
 			for o in [Vector3(-3, 0, -3), Vector3(3, 0, -3), Vector3(-3, 0, 3), Vector3(3, 0, 3)]:
-				M.put(house_node, "village/Fence.glb", PLOT + o, 0.0 if o.z != 0 else PI / 2, 1.2)
-			M.put(house_node, "village/Hay.glb", PLOT + Vector3(-1, 0, -1), 0.3, 1.3)
+				M.put(house_node, "village/Fence.glb", hp + o, 0.0 if o.z != 0 else PI / 2, 1.2)
+			M.put(house_node, "village/Hay.glb", hp + Vector3(-1, 0, -1), 0.3, 1.3)
 		1:
-			M.put(house_node, "village/House_1.glb", PLOT, rot, 1.3)
+			M.put(house_node, "village/House_1.glb", hp, rot, 1.3)
 		2:
-			M.put(house_node, "village/House_4.glb", PLOT, rot, 1.8)
+			M.put(house_node, "village/House_4.glb", hp, rot, 1.8)
 		3:
-			M.put(house_node, "village/Inn.glb", PLOT, rot, 1.8)
-			M.recolor(M.put(house_node, "castle/Banner.glb", PLOT + Vector3(4.5, 0, 3), 0, 1.4), Color(0.6, 0.1, 0.1))
+			M.put(house_node, "village/Inn.glb", hp, rot, 1.8)
+			M.recolor(M.put(house_node, "castle/Banner.glb", hp + Vector3(4.5, 0, 3), 0, 1.4), Color(0.6, 0.1, 0.1))
+		4:
+			M.put(house_node, "village/Inn.glb", hp, rot, 2.2)
+			M.put(house_node, "village/Bell_Tower.glb", hp + Vector3(6, 0, 1), rot, 1.5)
+			M.recolor(M.put(house_node, "castle/Banner.glb", hp + Vector3(-5.5, 0, -3), 0, 1.6), Color(0.6, 0.1, 0.1))
+		5:
+			M.castle(house_node, hp + Vector3(0, 0, 3.5), 1.6)
+			M.put(house_node, "village/Inn.glb", hp + Vector3(0, 0, -2), rot, 1.7)
+			M.recolor(M.put(house_node, "castle/Banner.glb", hp + Vector3(-7, 0, -4), 0, 1.8), Color(0.6, 0.1, 0.1))
 	var lbl := M.label3d("Tu parcela" if house_level == 0 else "Casa %s" % GS.data["dynasty"], 40)
-	lbl.position = PLOT + Vector3(0, 7.0 if house_level > 0 else 2.5, 0)
+	lbl.position = hp + Vector3(0, 7.0 if house_level > 0 else 2.5, 0)
 	lbl.modulate = Color(1, 0.9, 0.6)
 	house_node.add_child(lbl)
+
+
+## Terrenos del barrio nuevo: en venta, en obras o con la casa de los forasteros.
+func _rebuild_lands() -> void:
+	for c in lands_node.get_children():
+		c.queue_free()
+	var d = GS.data
+	var kinds := ["village/House_2.glb", "village/House_3.glb", "village/House_1.glb", "village/House_4.glb", "village/House_2.glb", "village/House_3.glb"]
+	for i in d["lands"].size():
+		var l = d["lands"][i]
+		if not l["open"] or i == int(d["player_land"]):
+			continue
+		var p := Vector3(SIM.LANDS[i].x, 0, SIM.LANDS[i].y)
+		var text := ""
+		if l["owner"] == "":
+			text = "Terreno en venta (%d oro)" % SIM.land_price(i)
+		elif l["owner"] == "jugador":
+			text = "Tu terreno"
+		elif int(d["total_days"]) < int(l["built"]):
+			text = "En obras (%s)" % l["owner"]
+			M.put(lands_node, "village/Package_1.glb", p + Vector3(-1.5, 0, 0), 0.3, 1.4)
+			M.put(lands_node, "village/Crate.glb", p + Vector3(1.5, 0, 1), 0.8, 1.4)
+		else:
+			text = "Casa de %s" % l["owner"]
+			M.put(lands_node, kinds[i], p, PI, 1.7)
+		if l["owner"] == "" or l["owner"] == "jugador":
+			for o in [Vector3(-4, 0, -4), Vector3(4, 0, -4), Vector3(-4, 0, 4), Vector3(4, 0, 4)]:
+				M.put(lands_node, "village/Fence.glb", p + o, 0.0, 1.0)
+		var lb := M.label3d(text, 40)
+		lb.position = p + Vector3(0, 2.5 if l["owner"] in ["", "jugador"] else 7.5, 0)
+		lb.modulate = Color(1, 0.9, 0.6)
+		lands_node.add_child(lb)
 
 
 func _actor(parts: Array, opts := {}) -> Node3D:
@@ -203,6 +263,7 @@ func _reset_villagers() -> void:
 	villagers.clear()
 	vtarget.clear()
 	vlabels.clear()
+	vwork.clear()
 	var i := 0
 	for v in GS.data["villagers"]:
 		var parts: Array
@@ -217,12 +278,13 @@ func _reset_villagers() -> void:
 		var a := _actor(parts, opts)
 		var home := _door(v)
 		a.position = home + Vector3(randf_range(-4, 4), 0, randf_range(-4, 4))
-		var l := M.label3d(v["name"], 36)
-		l.position = Vector3(0, 2.15, 0)
+		var l := M.label3d("%s\n%s" % [v["name"], SIM.job_name(v)], 32)
+		l.position = Vector3(0, 2.25, 0)
 		a.add_child(l)
 		villagers.append(a)
 		vtarget.append(a.position)
 		vlabels.append(l)
+		vwork.append(randf() * 2.0)
 		i += 1
 
 
@@ -294,7 +356,37 @@ func _update_family() -> void:
 
 
 func _front_of_house() -> Vector3:
-	return PLOT + (PLAZA - PLOT).normalized() * 6.0
+	var hp := house_pos()
+	if int(GS.data.get("player_land", -1)) >= 0:
+		return hp + Vector3(0, 0, -6)
+	return hp + (PLAZA - hp).normalized() * 6.0
+
+
+## Lugar de trabajo de cada aldeano según su oficio.
+func _work_spot(v: Dictionary, i: int) -> Vector3:
+	match v["job"]:
+		"leñador":
+			return Vector3(33.5, 0, 10 + (i * 7) % 34)
+		"cantero":
+			return Vector3(14 + (i * 5) % 16, 0, 54)
+		"agricultor":
+			return Vector3(FARM.COMMONS.get_center().x + (i % 3) * 2.5 - 2.5, 0, FARM.COMMONS.get_center().y + (i % 2) * 2 - 1)
+		"pescador":
+			var a := float(i) * 1.3
+			return FARM.POND + Vector3(cos(a), 0, sin(a)) * (FARM.POND_R + 1.4)
+		"cazador":
+			return Vector3(10 + (i * 9) % 18, 0, 12 + (i * 13) % 28)
+		"pastor":
+			return FARM.CORRAL + Vector3(-2 + (i % 3) * 2, 0, FARM.CORRAL_HALF.y + 1.3)
+		"minero":
+			return BLD.MINE + Vector3(2.5, 0, 3.5)
+		"panadero":
+			return FARM.OVEN + Vector3(0, 0, -2.3)
+		"tejedor":
+			return MARKET + Vector3(-3, 0, 2.6)
+		"herrero":
+			return MARKET + Vector3(6, 0, -1.5)
+	return PLAZA
 
 
 # ---------------- HUD ----------------
@@ -384,6 +476,7 @@ func _update_hud() -> void:
 	else:
 		lines.append("Soltero" if p["male"] else "Soltera")
 	lines.append("Hijos: %d · Generación %d" % [d["children"].size(), int(d["generation"])])
+	lines.append("Pueblo: %d habitantes · Prosperidad %d" % [d["villagers"].size(), int(d["prosperity"])])
 	lines.append("%s, día %d · Año %d · %02d:00" % [GS.SEASONS[int(d["season"])], int(d["day"]), int(d["year"]), int(d["time"] * 24.0)])
 	if d["summons"] != null:
 		var left: int = int(d["summons"]["deadline"]) - int(d["total_days"])
@@ -459,8 +552,14 @@ func _process(delta: float) -> void:
 	var d = GS.data
 	if season != int(d["season"]):
 		_build_nature(int(d["season"]))
-	if house_level != int(d["house_level"]):
+	if house_level != int(d["house_level"]) or house_land != int(d["player_land"]):
 		_rebuild_house()
+	if d["villagers"].size() != villagers.size():
+		_reset_villagers()
+	var ls := str(d["lands"]) + str(d["total_days"]) + str(d["player_land"])
+	if ls != lands_sig:
+		lands_sig = ls
+		_rebuild_lands()
 	_update_family()
 	_update_player_model()
 	if not panel.visible and not GS.popups.is_empty():
@@ -498,7 +597,12 @@ func _move_player(delta: float) -> void:
 	var p: Vector3 = player.position + dir * (SPRINT_SPEED if sprint else RUN_SPEED) * delta
 	p.x = clampf(p.x, 1, SIZE.x - 1)
 	p.z = clampf(p.z, 1, SIZE.y - 1)
-	var obs := obstacles + ([[Vector2(PLOT.x, PLOT.z), 3.6]] if house_level > 0 else [])
+	var hp := house_pos()
+	var obs := obstacles + ([[Vector2(hp.x, hp.z), 3.6 if house_level < 4 else 6.0]] if house_level > 0 else [])
+	for li in GS.data["lands"].size():
+		var l = GS.data["lands"][li]
+		if l["owner"] != "" and l["owner"] != "jugador" and int(GS.data["total_days"]) >= int(l["built"]):
+			obs.append([SIM.LANDS[li], 3.4])
 	for o in obs:
 		var v: Vector2 = Vector2(p.x, p.z) - o[0]
 		if v.length() < o[1]:
@@ -514,14 +618,25 @@ func _move_npcs(delta: float) -> void:
 	var t: float = GS.data["time"]
 	var night := t < 0.22 or t > 0.85
 	var vil: Array = GS.data["villagers"]
+	var winter := int(GS.data["season"]) == 3
 	for i in villagers.size():
 		var a = villagers[i]
-		var home := _door(vil[i])
-		if night:
-			vtarget[i] = home
-		elif a.position.distance_to(vtarget[i]) < 0.3 and randf() < 0.004 * GS.speed:
-			vtarget[i] = home + Vector3(randf_range(-9, 9), 0, randf_range(-9, 9))
-		_walk_to(a, vtarget[i], 1.3, delta)
+		var v = vil[i]
+		var job_off: bool = winter and SIM.JOBS[v["job"]].get("no_winter", false)
+		vtarget[i] = _door(v) if night or job_off else _work_spot(v, i)
+		var far: bool = a.position.distance_to(vtarget[i]) > 0.4
+		var spd := 3.2 if far and a.position.distance_to(vtarget[i]) > 25 else 1.4
+		if far:
+			_walk_to(a, vtarget[i], spd, delta)
+			if spd > 2:
+				a.play("Jog_Fwd")
+		elif not night and not job_off:
+			vwork[i] -= delta
+			if vwork[i] <= 0:
+				vwork[i] = randf_range(2.0, 3.5)
+				a.play_once("Interact")
+		else:
+			a.play("Idle")
 	for f in family:
 		if f["a"].position.distance_to(f["t"]) < 0.3 and randf() < 0.004:
 			f["t"] = _front_of_house() + Vector3(randf_range(-3.5, 3.5), 0, randf_range(-3.5, 3.5))
@@ -545,7 +660,11 @@ func _find_interaction() -> Dictionary:
 	for i in villagers.size():
 		if pp.distance_to(villagers[i].position) < 1.8:
 			return {"type": "villager", "i": i, "label": "Hablar con %s" % d["villagers"][i]["name"]}
-	if pp.distance_to(PLOT) < 6.5:
+	for li in d["lands"].size():
+		var l = d["lands"][li]
+		if l["open"] and li != int(d["player_land"]) and l["owner"] in ["", "jugador"] and Vector2(pp.x, pp.z).distance_to(SIM.LANDS[li]) < 6.0:
+			return {"type": "land", "i": li, "label": "Comprar terreno (%d oro)" % SIM.land_price(li) if l["owner"] == "" else "Tu terreno"}
+	if pp.distance_to(house_pos()) < (6.5 if house_level < 4 else 9.0):
 		return {"type": "house", "label": "Tu parcela" if int(d["house_level"]) == 0 else "Tu casa"}
 	if pp.distance_to(MARKET) < 5.5:
 		return {"type": "market", "label": "Mercado"}
@@ -625,6 +744,8 @@ func _interact() -> void:
 			pass
 		"solar", "mine":
 			bld.interact(inter)
+		"land":
+			_land_panel(inter["i"])
 		_:
 			farm.interact(inter)
 
@@ -657,13 +778,15 @@ func _house_panel() -> void:
 	var text := "Tu hogar: %s.\nMadera %d · Piedra %d · Oro %d" % [GS.HOUSE_NAMES[lvl], int(d["wood"]), int(d["stone"]), int(d["gold"])]
 	if lvl == 0:
 		text += "\n\nNecesitas una casa para casarte y para dormir."
-	if lvl < 3:
+	if lvl >= 3 and int(d["player_land"]) < 0:
+		text += "\n\nPara ampliar más tu casa necesitas un terreno grande. Se abren al sur del pueblo cuando prospera."
+	if lvl < 5:
 		var c = GS.HOUSE_COSTS[lvl]
 		opts.append(["%s %s (%d madera, %d piedra, %d oro)" % ["Construir" if lvl == 0 else "Mejorar a", GS.HOUSE_NAMES[lvl + 1], c["wood"], c["stone"], c["gold"]], func():
 			var err: String = GS.try_build_house()
 			if err != "":
 				_float(err, Color(1, 0.5, 0.4))
-			_house_panel()])
+			_house_panel(), lvl < 3 or int(d["player_land"]) >= 0])
 	if lvl >= 1:
 		opts.append(["Dormir hasta el amanecer", func():
 			GS.sleep()
@@ -701,10 +824,11 @@ func _villager_panel(i: int) -> void:
 	var d = GS.data
 	var v = d["villagers"][i]
 	var talked: bool = v["name"] in d["talked"]
-	var text := "%s, %d años.\nAfecto: %d / 100" % [v["name"], int(v["age"]), int(v["affection"])]
+	var text := "%s, %d años. %s.\nAfecto: %d / 100" % [v["name"], int(v["age"]), SIM.job_name(v), int(v["affection"])]
 	if int(v["affection"]) >= 100:
 		text += "\n\nSe le ve muy feliz de verte..."
 	var opts := []
+	opts.append(["Comerciar", func(): TRADE.open(self, i)])
 	opts.append(["Charlar (una vez al día)", func():
 		v["affection"] = mini(100, int(v["affection"]) + randi_range(6, 12))
 		d["talked"].append(v["name"])
@@ -744,13 +868,58 @@ func _hall_panel() -> void:
 	else:
 		var can_tax: bool = int(d["taxed"]) != GS.season_index()
 		text = "Eres el jefe del pueblo.\nCuando el rey llame a las armas, llevarás a la milicia contigo.\n\n(Próxima fase: gobernar la aldea, reclutar y dirigir ejércitos.)"
-		opts.append(["Cobrar impuestos (una vez por estación, +%d oro)" % (5 * d["villagers"].size()), func():
-			d["gold"] += 5 * d["villagers"].size()
+		var tax := 0
+		for vv in d["villagers"]:
+			tax += mini(5, int(vv["gold"]))
+		opts.append(["Cobrar impuestos (una vez por estación, +%d oro)" % tax, func():
+			for vv in d["villagers"]:
+				var t := mini(5, int(vv["gold"]))
+				vv["gold"] -= t
+				vv["mood"] = maxi(0, int(vv["mood"]) - 5)
+				d["gold"] += t
 			d["taxed"] = GS.season_index()
 			GS.say("Cobras los impuestos del pueblo.")
 			_hall_panel(), can_tax])
+	text += "\n\n" + _town_report()
 	opts.append(["Cerrar", _close_panel])
 	_open_panel("Casa del Concejo", text, opts)
+
+
+func _town_report() -> String:
+	var d = GS.data
+	var jobs := {}
+	for vv in d["villagers"]:
+		var jn := SIM.job_name(vv)
+		jobs[jn] = int(jobs.get(jn, 0)) + 1
+	var parts := []
+	for k in jobs:
+		parts.append("%s %d" % [k.to_lower(), jobs[k]])
+	var next := ""
+	for i in d["lands"].size():
+		if not d["lands"][i]["open"]:
+			next = "Próximo terreno al llegar a %d de prosperidad." % SIM.LAND_THRESH[i]
+			break
+	return "Prosperidad del pueblo: %d · Habitantes: %d\nOficios: %s\n%s" % [int(d["prosperity"]), d["villagers"].size(), ", ".join(parts), next]
+
+
+func _land_panel(i: int) -> void:
+	var d = GS.data
+	var l = d["lands"][i]
+	if l["owner"] == "":
+		_open_panel("Terreno en venta", "Un terreno amplio en el barrio nuevo. Cuesta %d de oro.\nSi no lo compras, pronto lo comprarán forasteros para vivir aquí.\n\nTu oro: %d" % [SIM.land_price(i), int(d["gold"])], [
+			["Comprar terreno", func():
+				var err: String = SIM.buy_land(i)
+				if err != "":
+					_float(err, Color(1, 0.5, 0.4))
+				_land_panel(i), int(d["gold"]) >= SIM.land_price(i)],
+			["Cerrar", _close_panel]])
+	else:
+		_open_panel("Tu terreno", "Aquí puedes levantar una casa más grande (Casona y Casa fuerte).\nSi te mudas, tu casa actual se traslada aquí con su nivel y tu familia te acompaña.", [
+			["Mudarte a este terreno", func():
+				d["player_land"] = i
+				GS.say("Tu familia se muda al barrio nuevo.")
+				_close_panel(), true],
+			["Cerrar", _close_panel]])
 
 
 func _camp_panel() -> void:

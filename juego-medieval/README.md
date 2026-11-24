@@ -8,6 +8,8 @@ Juego de estrategia medieval para PC (Windows) en 3D, hecho con Godot 4.3. Model
 
 **Edificios y talleres:** 8 solares donde construir herrería (herramientas, espadas y armaduras con hierro), telar (lana → tela), curtiduría (cuero → piel), quesería (leche → queso), cervecería (trigo → cerveza), establo, granero, colmenar y capilla. Mina de hierro al oeste del pueblo.
 
+**Pueblo vivo:** cada aldeano tiene su oficio (leñador, cantero, agricultor, pescador, cazador, pastor, minero, panadero, tejedor, herrero), su oro y su inventario; trabajan de día, comercian entre ellos y con mercaderes, y cambian de oficio si les va mal. Puedes comerciar con ellos (comprar, vender o trueque). La prosperidad del pueblo abre terrenos en el barrio sur: cómpralos para levantar una Casona o una Casa fuerte, o llegarán forasteros a vivir en ellos.
+
 **Próximas fases:** gobernar el pueblo y dirigir ejércitos (fase 2), y un mapa del mundo para viajar y combatir (fase 3).
 
 ## Controles
