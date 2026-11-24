@@ -3,6 +3,7 @@ extends RefCounted
 ## bodas nobles, torneos y la vida de corte con el jugador.
 
 const FEMALE_TITLE := {"Conde": "Condesa", "Barón": "Baronesa", "Señor": "Señora", "Duque": "Duquesa"}
+const MAX_HOUSES := 10
 
 
 static func reg() -> Dictionary:
@@ -82,6 +83,57 @@ static func ensure() -> void:
 	for a in r["lords"].size():
 		for b in range(a + 1, r["lords"].size()):
 			r["lrel"][_key(a, b)] = randi_range(-30, 40)
+
+
+## Nace una casa noble nueva (reutiliza el hueco de una casa sin tierras). Devuelve su índice o -1.
+static func new_house() -> int:
+	var r := reg()
+	var idx := -1
+	for i in r["lords"].size():
+		if not _landed(i) and not r["armies"].any(func(a): return int(a["lord"]) == i):
+			idx = i
+			break
+	if idx == -1:
+		if r["lords"].size() >= MAX_HOUSES:
+			return -1
+		r["lords"].append({})
+		idx = r["lords"].size() - 1
+	var male := randf() < 0.75
+	var l := {"title": ["Señor", "Barón", "Conde"].pick_random(), "male": male, "first": GS.rng_name(male), "age": randi_range(24, 45),
+		"kids": [], "color": [randf_range(0.1, 0.75), randf_range(0.1, 0.75), randf_range(0.1, 0.75)], "rel": 50, "visit": -1, "feast": -1, "hunt": -1}
+	l["spouse"] = {"name": GS.rng_name(not male), "age": int(l["age"])} if randf() < 0.6 else null
+	for k in randi_range(0, 3):
+		var m := randf() < 0.5
+		l["kids"].append({"name": GS.rng_name(m), "male": m, "age": randi_range(1, 18)})
+	_sync_name(l)
+	r["lords"][idx] = l
+	r["wars"] = r["wars"].filter(func(w): return int(w[0]) != idx and int(w[1]) != idx)
+	r["alliances"] = r["alliances"].filter(func(w): return int(w[0]) != idx and int(w[1]) != idx)
+	for j in r["lords"].size():
+		if j != idx:
+			r["lrel"][_key(idx, j)] = randi_range(-10, 20)
+	return idx
+
+
+## Los señores con demasiados pueblos sufren revueltas: un pueblo lejano se independiza.
+static func revolts() -> void:
+	var r := reg()
+	for i in r["lords"].size():
+		var mine: Array = r["towns"].filter(func(t): return t["owner"] == "señor" and int(t["lord"]) == i and not t["vassal"])
+		if mine.size() <= 4 or randf() > (mine.size() - 4) * 0.08:
+			continue
+		mine.sort_custom(func(a, b): return int(a["pop"]) > int(b["pop"]))
+		var cap = mine[0]
+		mine.sort_custom(func(a, b): return Vector2(a["x"], a["z"]).distance_to(Vector2(cap["x"], cap["z"])) > Vector2(b["x"], b["z"]).distance_to(Vector2(cap["x"], cap["z"])))
+		var t = mine[0]
+		var old := full(lord(i))
+		var ni := new_house()
+		if ni == -1:
+			return
+		t["lord"] = ni
+		t["troops"] = int(t["troops"]) + 5
+		GS.say("¡Revuelta! %s se subleva contra %s: nace la casa de %s." % [t["name"], old, full(lord(ni))])
+		declare_war(i, ni)
 
 
 static func _landed(i: int) -> bool:

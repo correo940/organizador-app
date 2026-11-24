@@ -164,7 +164,9 @@ static func season() -> void:
 		return
 	var reg := region()
 	NOBLES.season()
+	NOBLES.revolts()
 	raise_armies()
+	_settlers()
 	var tribute := 0
 	for t in reg["towns"]:
 		if t["owner"] == "señor" and t["vassal"]:
@@ -390,6 +392,16 @@ static func _assault(a: Dictionary, t: Dictionary) -> void:
 		else:
 			var was_mine: bool = t["owner"] == "jugador"
 			var old_lord: int = -1 if was_mine else int(t["lord"])
+			# Un señor que ya tiene muchos pueblos no puede gobernar más: solo saquea.
+			if not was_mine and lord_towns(int(a["lord"])).size() >= 6:
+				t["troops"] = maxi(2, int(int(t["troops"]) * 0.3))
+				t["gold"] = int(t["gold"]) / 2
+				t["pop"] = int(int(t["pop"]) * 0.85)
+				var back2 := town(int(a["home"]))
+				if not back2.is_empty():
+					back2["troops"] = int(back2["troops"]) + survivors
+				GS.say("%s saquea %s, pero no puede quedárselo." % [lname, t["name"]])
+				return
 			t["owner"] = "señor"
 			t["lord"] = int(a["lord"])
 			t["vassal"] = false
@@ -487,3 +499,37 @@ static func market_trade(t: Dictionary, k: String, n: int, buying: bool) -> void
 static func year() -> void:
 	if GS.data.has("region"):
 		NOBLES.year()
+		_new_sites()
+
+
+## Gente sin señor ocupa un lugar libre y funda su propio señorío.
+static func _settlers() -> void:
+	var free := free_sites()
+	if free.is_empty() or randf() > 0.2:
+		return
+	var ni := NOBLES.new_house()
+	if ni == -1:
+		return
+	var reg := region()
+	var si: int = free.pick_random()
+	var name := _free_name(reg["towns"].map(func(t): return t["name"]))
+	reg["towns"].append(_town(_next_id(), name, reg["sites"][si][0], reg["sites"][si][1], ni, 35))
+	GS.say("Unos colonos fundan %s y forman un señorío nuevo: %s." % [name, NOBLES.full(reg["lords"][ni])])
+
+
+## Cada año aparecen lugares nuevos donde asentarse: el mapa nunca se llena.
+static func _new_sites() -> void:
+	var reg := region()
+	var added := 0
+	for tries in 300:
+		if added >= 2:
+			break
+		var p := Vector2(randf_range(20, SIZE - 20), randf_range(20, SIZE - 20))
+		if p.distance_to(HOME) < 40:
+			continue
+		if reg["sites"].any(func(s): return Vector2(s[0], s[1]).distance_to(p) < 32):
+			continue
+		if reg["towns"].any(func(t): return Vector2(t["x"], t["z"]).distance_to(p) < 32):
+			continue
+		reg["sites"].append([p.x, p.y])
+		added += 1
