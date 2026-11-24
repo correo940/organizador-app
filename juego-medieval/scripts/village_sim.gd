@@ -228,6 +228,7 @@ static func day() -> void:
 				v["gold"] -= 6
 				other["gold"] += 6
 				v["mood"] = mini(100, int(v["mood"]) + 2)
+	_social()
 	_update_prosperity(produced)
 	_lands_and_settlers()
 
@@ -297,6 +298,7 @@ static func _settle_family(i: int) -> void:
 ## Cada año crecen los hijos de los aldeanos; a los 16 empiezan a trabajar.
 static func year() -> void:
 	var d = GS.data
+	_old_age()
 	var grown := []
 	for v in d["villagers"]:
 		for k in v["kids"].duplicate():
@@ -352,3 +354,107 @@ static func buy_land(i: int) -> String:
 	d["prestige"] += 10
 	GS.say("Has comprado un terreno grande en el barrio nuevo. (+10 prestigio)")
 	return ""
+
+
+# ---------------- Vida social: noviazgos, bodas, nacimientos y vejez ----------------
+
+const MAX_POP := 40
+const MAX_KIDS := 4
+
+
+static func by_name(n: String) -> Variant:
+	for v in GS.data["villagers"]:
+		if v["name"] == n:
+			return v
+	return null
+
+
+static func _single(v: Dictionary) -> bool:
+	return not v.has("partner") and int(v["age"]) >= 17 and int(v["age"]) <= 45
+
+
+static func _social() -> void:
+	var d = GS.data
+	var vil: Array = d["villagers"]
+	# Noviazgos que avanzan: boda o ruptura.
+	for v in vil:
+		if not v.has("suitor") or not v["male"]:
+			continue
+		var w = by_name(v["suitor"])
+		if w == null or not _single(w) or not _single(v):
+			v.erase("suitor")
+			if w != null:
+				w.erase("suitor")
+			continue
+		v["court"] = int(v.get("court", 0)) + 1
+		if int(v["court"]) >= 8 and randf() < 0.12:
+			_wedding(v, w)
+		elif randf() < 0.015:
+			v.erase("suitor")
+			w.erase("suitor")
+			v.erase("court")
+			GS.say("%s y %s lo han dejado." % [v["name"], w["name"]])
+	# Nuevos noviazgos entre solteros.
+	for v in vil:
+		if not v["male"] or not _single(v) or v.has("suitor") or randf() > 0.015:
+			continue
+		var options := vil.filter(func(w): return not w["male"] and _single(w) and not w.has("suitor") and absi(int(w["age"]) - int(v["age"])) <= 12)
+		if options.is_empty():
+			continue
+		var w = options.pick_random()
+		v["suitor"] = w["name"]
+		w["suitor"] = v["name"]
+		v["court"] = 0
+		GS.say("%s %s y %s %s se han hecho novios." % [v["name"], v["surname"], w["name"], w["surname"]])
+	# Nacimientos en los matrimonios.
+	if _population() < MAX_POP:
+		for v in vil:
+			if not v["male"] or not v.has("partner"):
+				continue
+			var w = by_name(v["partner"])
+			if w == null or int(w["age"]) > 42 or v["kids"].size() >= MAX_KIDS or randf() > 0.015:
+				continue
+			var m := randf() < 0.5
+			var k := {"name": GS.rng_name(m), "male": m, "age": 0}
+			v["kids"].append(k)
+			v["mood"] = mini(100, int(v["mood"]) + 15)
+			w["mood"] = mini(100, int(w["mood"]) + 15)
+			GS.say("¡Ha nacido %s %s, %s de %s y %s!" % [k["name"], v["surname"], "hijo" if m else "hija", v["name"], w["name"]])
+
+
+static func _population() -> int:
+	var n := 0
+	for v in GS.data["villagers"]:
+		n += 1 + v["kids"].size()
+	return n
+
+
+static func _wedding(v: Dictionary, w: Dictionary) -> void:
+	for x in [v, w]:
+		x.erase("suitor")
+		x.erase("court")
+		x["mood"] = mini(100, int(x["mood"]) + 20)
+	v["partner"] = w["name"]
+	w["partner"] = v["name"]
+	# La pareja vive en casa de él.
+	w["hx"] = v["hx"]
+	w["hy"] = v["hy"]
+	GS.say("¡Boda en el pueblo! %s %s y %s %s se casan." % [v["name"], v["surname"], w["name"], w["surname"]])
+	if int(w["affection"]) >= 50 and GS.data["spouse"] == null:
+		GS.say("%s, a quien tanto apreciabas, ya no está libre." % w["name"])
+
+
+static func _old_age() -> void:
+	var d = GS.data
+	for v in d["villagers"].duplicate():
+		if int(v["age"]) < 55 or randf() > (int(v["age"]) - 50) * 0.03:
+			continue
+		d["villagers"].erase(v)
+		var p = by_name(v.get("partner", ""))
+		if p != null:
+			p.erase("partner")
+			p["mood"] = maxi(0, int(p["mood"]) - 25)
+			p["kids"].append_array(v["kids"])
+		elif not v["kids"].is_empty():
+			GS.say("Los hijos de %s se van a vivir con parientes de fuera." % v["name"])
+		GS.say("Ha fallecido %s %s a los %d años." % [v["name"], v["surname"], int(v["age"])])

@@ -261,9 +261,11 @@ func _actor(parts: Array, opts := {}) -> Node3D:
 
 func _villager_sig() -> String:
 	var n := 0
+	var couples := 0
 	for v in GS.data["villagers"]:
 		n += v.get("kids", []).size()
-	return "%d-%d-%d" % [GS.data["villagers"].size(), n, int(GS.data["year"])]
+		couples += 1 if v.has("partner") else 0
+	return "%d-%d-%d-%d" % [GS.data["villagers"].size(), n, couples, int(GS.data["year"])]
 
 
 func _reset_villagers() -> void:
@@ -857,6 +859,8 @@ func _villager_panel(i: int) -> void:
 	var text := "%s, %d años. %s.\nAfecto: %d / 100" % [GS.full_name(v), int(v["age"]), SIM.job_name(v), int(v["affection"])]
 	if v.has("partner"):
 		text += "\n%s con %s." % ["Casado" if v["male"] else "Casada", v["partner"]]
+	elif v.has("suitor"):
+		text += "\nEs %s de %s." % ["novio" if v["male"] else "novia", v["suitor"]]
 	var kid_names := []
 	for k in v.get("kids", []):
 		kid_names.append("%s (%d)" % [k["name"], int(k["age"])])
