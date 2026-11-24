@@ -32,7 +32,7 @@ var box: VBoxContainer
 
 func _ready() -> void:
 	var d = GS.data
-	env = M.make_env(self, Vector3(R.SIZE / 2, 0, R.SIZE / 2), 900)
+	env = M.make_env(self, Vector3(R.size() / 2, 0, R.size() / 2), R.size() * 3)
 	M.set_season_ground(env["grad"], int(d["season"]))
 	M.set_daytime(env, 0.45)
 	var e: Environment = env["env"]
@@ -43,14 +43,14 @@ func _ready() -> void:
 	var r := RandomNumberGenerator.new()
 	r.seed = 99
 	var reg := R.region()
-	for i in 260:
-		var p := Vector3(r.randf_range(0, R.SIZE), 0, r.randf_range(0, R.SIZE))
-		if reg["sites"].any(func(s): return Vector2(s[0], s[1]).distance_to(Vector2(p.x, p.z)) < 20) or Vector2(p.x, p.z).distance_to(R.HOME) < 24:
+	for i in int(260 * pow(R.size() / 300.0, 2)):
+		var p := Vector3(r.randf_range(0, R.size()), 0, r.randf_range(0, R.size()))
+		if reg["sites"].any(func(s): return Vector2(s[0], s[1]).distance_to(Vector2(p.x, p.z)) < 20) or Vector2(p.x, p.z).distance_to(R.home()) < 24:
 			continue
 		M.put(self, "nature/%s%s_%d.glb" % [["CommonTree", "PineTree", "BirchTree"][i % 3], suffix, r.randi_range(1, 5)], p, r.randf() * TAU, r.randf_range(2.6, 3.6))
 	for i in 28:
 		var a := float(i) / 28.0 * TAU
-		var p := Vector3(R.SIZE / 2, -4, R.SIZE / 2) + Vector3(cos(a), 0, sin(a)) * r.randf_range(R.SIZE * 0.72, R.SIZE * 0.8)
+		var p := Vector3(R.size() / 2, -4, R.size() / 2) + Vector3(cos(a), 0, sin(a)) * r.randf_range(R.size() * 0.72, R.size() * 0.8)
 		M.recolor(M.put(self, "nature/Rock_%d.glb" % (1 + i % 7), p, r.randf() * TAU, r.randf_range(20, 32)), Color(0.42, 0.44, 0.4))
 	towns_node = Node3D.new()
 	add_child(towns_node)
@@ -112,7 +112,10 @@ func _rebuild_towns() -> void:
 		var s = reg["sites"][si]
 		var p := Vector3(s[0], 0, s[1])
 		M.put(towns_node, "village/Package_1.glb", p, 0.0, 2.5)
-		var l := _map_label("Lugar libre", 24)
+		var reserved := Vector2(s[0], s[1]).distance_to(R.home()) <= R.RESERVED_R
+		var l := _map_label("Lugar libre (reservado para ti)" if reserved else "Lugar libre", 24)
+		if reserved:
+			l.modulate = Color(0.7, 0.85, 1.0)
 		l.position = p + Vector3(0, 5, 0)
 		towns_node.add_child(l)
 
@@ -316,7 +319,7 @@ func _unhandled_input(ev: InputEvent) -> void:
 			var dir := cam.project_ray_normal(ev.position)
 			var hit = Plane(Vector3.UP, 0).intersects_ray(from, dir)
 			if hit != null:
-				target = Vector3(clampf(hit.x, 5, R.SIZE - 5), 0, clampf(hit.z, 5, R.SIZE - 5))
+				target = Vector3(clampf(hit.x, 5, R.size() - 5), 0, clampf(hit.z, 5, R.size() - 5))
 	elif ev is InputEventKey and ev.pressed and not ev.echo:
 		match ev.keycode:
 			KEY_E:

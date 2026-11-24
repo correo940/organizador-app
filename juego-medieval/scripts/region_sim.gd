@@ -1,8 +1,10 @@
 extends RefCounted
 ## La región: pueblos de otros señores y tuyos, crecimiento, fundaciones, tributos y asaltos.
 
-const SIZE := 300.0
+const SIZE := 300.0  # tamaño en partidas antiguas
 const HOME := Vector2(150, 150)
+const NEW_SIZE := 420.0
+const RESERVED_R := 70.0  # alrededor de tu pueblo, los lugares quedan para ti
 const LORD_TITLES := ["Conde", "Barón", "Señor", "Duque"]
 const LORD_COLORS := [[0.6, 0.1, 0.1], [0.15, 0.45, 0.15], [0.5, 0.35, 0.05], [0.4, 0.1, 0.45], [0.1, 0.4, 0.45]]
 const TOWN_NAMES := ["Valdeoscuro", "Peñaflor", "Castronuño", "Torremolinos", "Villalba", "Fuentesaúco", "Montenegro", "Rioseco", "Navarredonda", "Peñarroya", "Valverde", "Robledillo", "Cuevas Altas", "Alcázar", "Villafranca", "Torrelobatón", "Hontanares", "Matilla", "San Esteban", "Olmedillo"]
@@ -49,22 +51,32 @@ static func _create() -> void:
 	r.randomize()
 	var sites := []
 	var tries := 0
-	while sites.size() < 22 and tries < 4000:
+	var home_new := Vector2(NEW_SIZE / 2, NEW_SIZE / 2)
+	while sites.size() < 42 and tries < 6000:
 		tries += 1
-		var p := Vector2(r.randf_range(25, SIZE - 25), r.randf_range(25, SIZE - 25))
-		if p.distance_to(HOME) < 45:
+		var p := Vector2(r.randf_range(25, NEW_SIZE - 25), r.randf_range(25, NEW_SIZE - 25))
+		if p.distance_to(home_new) < 45:
 			continue
 		if sites.any(func(s): return Vector2(s[0], s[1]).distance_to(p) < 38):
 			continue
 		sites.append([p.x, p.y])
+	# Al menos 3 lugares en tu zona reservada.
+	for tries2 in 500:
+		if sites.filter(func(s): return Vector2(s[0], s[1]).distance_to(home_new) <= RESERVED_R).size() >= 3:
+			break
+		var a := r.randf() * TAU
+		var p := home_new + Vector2(cos(a), sin(a)) * r.randf_range(45, RESERVED_R - 5)
+		if not sites.any(func(s): return Vector2(s[0], s[1]).distance_to(p) < 30):
+			sites.append([p.x, p.y])
 	var used_names := [d.get("town", "")]
 	var towns := []
-	towns.append({"id": 0, "name": d.get("town", "Tu pueblo"), "x": HOME.x, "z": HOME.y, "owner": "jugador", "home": true})
+	towns.append({"id": 0, "name": d.get("town", "Tu pueblo"), "x": home_new.x, "z": home_new.y, "owner": "jugador", "home": true})
 	var lords := []
 	for i in 4:
 		var male := r.randf() < 0.75
 		lords.append({"name": "%s %s" % [LORD_TITLES[i] if male else ["Condesa", "Baronesa", "Señora", "Duquesa"][i], GS.rng_name(male)], "color": LORD_COLORS[i], "rel": 50})
-	# Cada señor empieza con un pueblo importante y alguna aldea.
+	# Cada señor empieza con un pueblo importante y alguna aldea, fuera de tu zona reservada.
+	sites.sort_custom(func(a, b): return Vector2(a[0], a[1]).distance_to(home_new) > Vector2(b[0], b[1]).distance_to(home_new))
 	var si := 0
 	for li in lords.size():
 		for k in (2 if li < 2 else 1):
@@ -75,7 +87,8 @@ static func _create() -> void:
 			var pop := r.randi_range(150, 350) if k == 0 else r.randi_range(40, 90)
 			towns.append(_town(towns.size(), name, sites[si][0], sites[si][1], li, pop))
 			si += 1
-	d["region"] = {"sites": sites, "towns": towns, "lords": lords, "party": [HOME.x, HOME.y + 10], "walked": 0.0}
+	# Los señores empiezan lejos de tu pueblo: los lugares cercanos quedan reservados para ti.
+	d["region"] = {"sites": sites, "towns": towns, "lords": lords, "party": [home_new.x, home_new.y + 10], "walked": 0.0, "size": NEW_SIZE}
 
 
 static func _free_name(used: Array) -> String:
@@ -88,6 +101,21 @@ static func _town(id: int, name: String, x: float, z: float, lord: int, pop: int
 		"troops": int(pop * 0.08) + 4, "gold": pop, "wall": 2 if pop > 300 else (1 if pop > 120 else 0), "vassal": false, "garrison": 0}
 	_ensure_market(t)
 	return t
+
+
+static func size() -> float:
+	return float(region().get("size", SIZE))
+
+
+static func home() -> Vector2:
+	var t = region()["towns"][0]
+	return Vector2(t["x"], t["z"])
+
+
+## Lugares libres que pueden ocupar los señores y colonos (no los de tu zona reservada).
+static func ai_free_sites() -> Array:
+	var reg := region()
+	return free_sites().filter(func(si): return Vector2(reg["sites"][si][0], reg["sites"][si][1]).distance_to(home()) > RESERVED_R)
 
 
 static func region() -> Dictionary:
@@ -177,10 +205,10 @@ static func season() -> void:
 		d["gold"] = int(d["gold"]) + tribute
 		GS.say("Tus vasallos te pagan %d de oro de tributo." % tribute)
 	# Un señor rico funda una aldea nueva.
-	var free := free_sites()
+	var free := ai_free_sites()
 	for li in reg["lords"].size():
 		var mine: Array = reg["towns"].filter(func(t): return t["owner"] == "señor" and int(t["lord"]) == li)
-		var rich := mine.filter(func(t): return int(t["gold"]) > 500)
+		var rich := mine.filter(func(t): return int(t["gold"]) > 500) if mine.size() < 8 else []
 		if rich.is_empty() or free.is_empty() or randf() > 0.25:
 			continue
 		var src = rich.pick_random()
@@ -370,7 +398,7 @@ static func _assault(a: Dictionary, t: Dictionary) -> void:
 	var defense := 0.0
 	if t.get("home", false):
 		var party := Vector2(reg["party"][0], reg["party"][1])
-		defense = (GS.ARMY.total() if party.distance_to(HOME) < 30 else 0) + int(d["commons"]) * 0.05 + int(d["tier"]) * 12
+		defense = (GS.ARMY.total() if party.distance_to(home()) < 30 else 0) + int(d["commons"]) * 0.05 + int(d["tier"]) * 12
 	elif t["owner"] == "jugador":
 		defense = int(t["garrison"]) * 1.2 * (1.0 + 0.25 * int(t["wall"])) + int(t["pop"]) * 0.02
 	else:
@@ -504,7 +532,7 @@ static func year() -> void:
 
 ## Gente sin señor ocupa un lugar libre y funda su propio señorío.
 static func _settlers() -> void:
-	var free := free_sites()
+	var free := ai_free_sites()
 	if free.is_empty() or randf() > 0.2:
 		return
 	var ni := NOBLES.new_house()
@@ -524,8 +552,8 @@ static func _new_sites() -> void:
 	for tries in 300:
 		if added >= 2:
 			break
-		var p := Vector2(randf_range(20, SIZE - 20), randf_range(20, SIZE - 20))
-		if p.distance_to(HOME) < 40:
+		var p := Vector2(randf_range(20, size() - 20), randf_range(20, size() - 20))
+		if p.distance_to(home()) < 40:
 			continue
 		if reg["sites"].any(func(s): return Vector2(s[0], s[1]).distance_to(p) < 32):
 			continue
