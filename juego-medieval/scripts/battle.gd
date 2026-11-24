@@ -10,6 +10,7 @@ const ARMY := preload("res://scripts/army.gd")
 const HALF := 34.0
 const MAX_ACTIVE := 32
 const ORDERS := ["¡Cargad!", "Mantened la posición", "Seguidme"]
+const HOUSES_BG := ["village/House_1.glb", "village/House_2.glb", "village/House_3.glb", "village/House_4.glb"]
 const KING := {"name": "Soldados del rey", "hp": 55.0, "dmg": 10.0, "speed": 3.5, "reach": 1.8}
 
 var main
@@ -105,6 +106,18 @@ func _ready() -> void:
 		var r := randf_range(HALF + 4, HALF + 35)
 		M.put(self, "nature/%s%s_%d.glb" % [["CommonTree", "PineTree", "BirchTree"][i % 3], suffix, randi_range(1, 5)], Vector3(cos(a) * r, 0, sin(a) * r), randf() * TAU, randf_range(2.4, 3.4))
 	M.castle(self, Vector3(-20, 0, -100), 4.0)
+	# Asedio: la batalla se libra delante de las murallas del pueblo.
+	if siege.get("kind", "") == "asedio" and int(siege["wall"]) >= 1:
+		var stone := int(siege["wall"]) == 2
+		var piece := 4.5 if stone else 2.3
+		for k in range(-int(60 / piece), int(60 / piece) + 1):
+			var x := k * piece
+			if stone:
+				M.recolor(M.put(self, "castle/TallWallEntrance.glb" if k == 0 else "castle/TallWall.glb", Vector3(x, 0, -HALF - 5), 0.0, 3.0), Color(0.52, 0.5, 0.46))
+			elif absi(k) > 1:
+				M.put(self, "village/Fence.glb", Vector3(x, 0, -HALF - 4), 0.0, 3.0)
+		for i in 8:
+			M.put(self, HOUSES_BG[i % 4], Vector3(-40 + i * 11, 0, -HALF - 18 - (i % 3) * 5), randf() * TAU, 1.2)
 	for i in 4:
 		M.tent(self, Vector3(-9 + i * 5, 0, HALF - 2 + (i % 2) * 2), 0.0, Color(0.82, 0.76, 0.6))
 
