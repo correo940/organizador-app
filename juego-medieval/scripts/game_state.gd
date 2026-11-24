@@ -81,6 +81,21 @@ const RECIPES := {
 }
 const TOOLS := {"caña": "Caña de pescar", "hacha": "Hacha (doble de madera)", "pico": "Pico (doble de piedra y más hierro)", "hoz": "Hoz (+25% en las cosechas)"}
 
+## Rasgos de carácter (tú y tus hijos) y educación de los hijos.
+const TRAITS := {
+	"valiente": "Valiente: +20% de daño en batalla",
+	"robusto": "Robusto: +20 de vida en batalla",
+	"astuto": "Astuto: gobierna mejor (+25% de rentas)",
+	"piadoso": "Piadoso: +3 de prestigio cada estación",
+	"enfermizo": "Enfermizo: -20 de vida en batalla",
+}
+const EDU := {
+	"armas": "Armas, con el maestro de armas: +15 de vida y +3 de daño en batalla",
+	"letras": "Letras, en el monasterio: +25% de rentas como gobernador",
+	"oficio": "Oficio, en la herrería: aporta 5 de oro cada estación",
+}
+const EDU_COST := 30
+
 var data := {}
 var speed := 1.0
 var popups: Array = []  # mensajes importantes (muertes) que la aldea muestra en ventana
@@ -139,7 +154,7 @@ func new_game(pname: String, dynasty: String, male: bool) -> void:
 		"gold": 15, "wood": 0, "stone": 0,
 		"prestige": 0, "title": 0, "house_level": 0, "weapon": 0, "armor": 0,
 		"dynasty": dynasty, "generation": 1,
-		"player": {"name": pname, "male": male, "age": 18, "health": 100.0},
+		"player": {"name": pname, "male": male, "age": 18, "health": 100.0, "trait": TRAITS.keys().pick_random()},
 		"spouse": null, "children": [], "villagers": [],
 		"summons": null, "talked": [], "log": [], "quest": 0,
 	}
@@ -207,7 +222,7 @@ func next_day() -> void:
 	if data["spouse"] != null and data["children"].size() < 6 and p["age"] >= 16 and p["age"] < 48 and data["spouse"]["age"] < 46 and randf() < 0.06:
 		var m := randf() < 0.5
 		var cname := rng_name(m)
-		data["children"].append({"name": cname, "male": m, "age": 0})
+		data["children"].append({"name": cname, "male": m, "age": 0, "trait": TRAITS.keys().pick_random()})
 		data["prestige"] += 5
 		say("¡Ha nacido tu %s %s! (+5 prestigio)" % ["hijo" if m else "hija", cname])
 	if data["summons"] != null and data["total_days"] > data["summons"]["deadline"]:
@@ -232,6 +247,15 @@ func next_season() -> void:
 		frost()
 	if has_building("capilla"):
 		data["prestige"] += 3
+	if trait_of(data["player"]) == "piadoso":
+		data["prestige"] += 3
+	var crafts := 0
+	for c in data["children"]:
+		if c.get("edu", "") == "oficio" and int(c["age"]) >= 16:
+			crafts += 5
+	if crafts > 0:
+		data["gold"] = int(data["gold"]) + crafts
+		say("Tus hijos con oficio aportan %d de oro a la casa." % crafts)
 	SIM.season()
 	REGION.season()
 	if data.get("game_over", false):
@@ -267,6 +291,20 @@ func new_year() -> void:
 		player_death("murió de vejez")
 
 
+## Rasgo de una persona (se asigna al azar si aún no tiene, p. ej. en partidas antiguas).
+func trait_of(p: Dictionary) -> String:
+	if not p.has("trait"):
+		p["trait"] = TRAITS.keys().pick_random()
+	return p["trait"]
+
+
+## Bonos de batalla por rasgo y educación: [vida extra, multiplicador de daño, daño extra].
+func battle_bonus(p: Dictionary) -> Array:
+	var t := trait_of(p)
+	var hp := (20.0 if t == "robusto" else 0.0) - (20.0 if t == "enfermizo" else 0.0) + (15.0 if p.get("edu", "") == "armas" else 0.0)
+	return [hp, 1.2 if t == "valiente" else 1.0, 3.0 if p.get("edu", "") == "armas" else 0.0]
+
+
 func player_death(reason: String) -> void:
 	var p = data["player"]
 	var text := "%s %s %s a los %d años." % [p["name"], data["dynasty"], reason, int(p["age"])]
@@ -283,7 +321,7 @@ func player_death(reason: String) -> void:
 			heir_i = i
 	var heir = data["children"][heir_i]
 	var siblings: int = data["children"].size() - 1
-	data["player"] = {"name": heir["name"], "male": heir["male"], "age": heir["age"], "health": 100.0}
+	data["player"] = {"name": heir["name"], "male": heir["male"], "age": heir["age"], "health": 100.0, "trait": trait_of(heir), "edu": heir.get("edu", "")}
 	data["children"] = []
 	data["spouse"] = null
 	data["generation"] += 1

@@ -35,6 +35,11 @@ var enemy_dead := 0
 var res_box: VBoxContainer
 var back_btn: Button
 var lbl: Label
+var weather := "despejado"
+var weather_fx: Node3D
+var hill := Vector3.ZERO  # centro de la colina (y = altura); radio en hill_r
+var hill_r := 0.0
+var woods: Array = []  # [Vector3 centro, radio]
 var engines: Array = []  # máquinas de guerra: {n, arm, kind, team, cd}
 var eff_wall := 0
 var siege_notes: Array = []
@@ -88,10 +93,10 @@ func _spawn(kind: String, team: int, pos: Vector3) -> Dictionary:
 			a.attach("hand_l", "weapons/Bow_Wooden.glb", Vector3(0, 0.05, 0), Vector3(0, 90, 0), 1.3)
 	if kind in ARMY.MOUNTED:
 		a.mount([Color(1, 1, 1), Color(1.7, 1.4, 1.1), Color(2.2, 2.1, 2.0), Color(1.3, 0.9, 0.7)].pick_random())
-	a.position = pos
+	a.position = Vector3(pos.x, _h(pos), pos.z)
 	a.rotation.y = PI if team == 0 else 0.0
 	var u := {"a": a, "team": team, "type": kind, "hp": st["hp"], "max": st["hp"], "dmg": st["dmg"], "speed": st["speed"],
-		"reach": st["reach"], "ranged": st.get("ranged", false), "cd": randf() * 1.0, "alive": true, "hit_at": -1.0,
+		"reach": st["reach"] * (_range_mult() if st.get("ranged", false) else 1.0), "ranged": st.get("ranged", false), "cd": randf() * 1.0, "alive": true, "hit_at": -1.0,
 		"target": null, "anchor": pos}
 	units.append(u)
 	return u
@@ -115,9 +120,11 @@ func _ready() -> void:
 		var r := randf_range(HALF + 4, HALF + 35)
 		M.put(self, "nature/%s%s_%d.glb" % [["CommonTree", "PineTree", "BirchTree"][i % 3], suffix, randi_range(1, 5)], Vector3(cos(a) * r, 0, sin(a) * r), randf() * TAU, randf_range(2.4, 3.4))
 	M.castle(self, Vector3(-20, 0, -100), 4.0)
+	_setup_terrain(suffix)
+	_setup_weather()
 	# Maquinaria de asedio: el ariete derriba la puerta y las catapultas abren brecha.
 	var eng: Dictionary = d.get("engines", {})
-	eff_wall = int(siege.get("wall", 0))
+	eff_wall = int(siege.get("wall", 0)) if siege.get("kind", "") == "asedio" else 0
 	var rammed := false
 	if siege.get("kind", "") == "asedio":
 		if int(eng.get("ariete", 0)) > 0 and eff_wall > 0:
@@ -143,8 +150,20 @@ func _ready() -> void:
 				M.put(self, "village/Fence.glb", Vector3(x, 0, -HALF - 4), 0.0, 3.0)
 		for i in 8:
 			M.put(self, HOUSES_BG[i % 4], Vector3(-40 + i * 11, 0, -HALF - 18 - (i % 3) * 5), randf() * TAU, 1.2)
-	for i in 4:
-		M.tent(self, Vector3(-9 + i * 5, 0, HALF - 2 + (i % 2) * 2), 0.0, Color(0.82, 0.76, 0.6))
+	if siege.get("kind", "") == "defensa":
+		# Defiendes tu pueblo: tus murallas quedan a tu espalda.
+		var w := int(siege["wall"])
+		var piece := 4.5 if w == 2 else 2.3
+		for k in range(-int(60 / piece), int(60 / piece) + 1):
+			if w == 2:
+				M.recolor(M.put(self, "castle/TallWallEntrance.glb" if k == 0 else "castle/TallWall.glb", Vector3(k * piece, 0, HALF + 5), PI, 3.0), Color(0.52, 0.5, 0.46))
+			elif w == 1 and absi(k) > 1:
+				M.put(self, "village/Fence.glb", Vector3(k * piece, 0, HALF + 4), PI, 3.0)
+		for i in 6:
+			M.put(self, HOUSES_BG[i % 4], Vector3(-30 + i * 12, 0, HALF + 16 + (i % 2) * 5), randf() * TAU, 1.2)
+	else:
+		for i in 4:
+			M.tent(self, Vector3(-9 + i * 5, 0, HALF - 2 + (i % 2) * 2), 0.0, Color(0.82, 0.76, 0.6))
 
 	# Tu personaje.
 	var armor := int(d["armor"])
@@ -160,6 +179,10 @@ func _ready() -> void:
 	pl = {"a": pa, "team": 0, "type": "jugador", "hp": maxf(float(d["player"]["health"]), 20.0), "max": 100.0,
 		"dmg": 20.0 + 10.0 * int(d["weapon"]), "speed": 4.6, "reach": 2.4, "ranged": false, "cd": 0.0, "alive": true,
 		"hit_at": -1.0, "target": null, "anchor": pa.position, "player": true}
+	var pb: Array = GS.battle_bonus(d["player"])
+	pl["hp"] = maxf(20.0, pl["hp"] + pb[0])
+	pl["max"] += pb[0]
+	pl["dmg"] = (pl["dmg"] + pb[2]) * pb[1]
 	if d.get("horse", false):
 		pa.mount(Color(1.3, 0.9, 0.7))
 		pl["speed"] = 7.5
@@ -176,9 +199,10 @@ func _ready() -> void:
 			if c.get("role", "") == "capitan" and int(c["age"]) >= 16:
 				var u := _spawn("infante", 0, Vector3(-2.5 + 5.0 * (ci % 2), 0, 13 + ci / 2 * 1.5))
 				var xp := int(c.get("xp", 0))
-				u["hp"] = 90.0 + 8.0 * xp
+				var bb: Array = GS.battle_bonus(c)
+				u["hp"] = 90.0 + 8.0 * xp + bb[0]
 				u["max"] = u["hp"]
-				u["dmg"] = 15.0 + 1.5 * xp
+				u["dmg"] = (15.0 + 1.5 * xp + bb[2]) * bb[1]
 				u["child"] = c["name"]
 				u["a"].scale = Vector3.ONE * 1.06
 				var l := M.label3d(c["name"], 56)
@@ -194,6 +218,11 @@ func _ready() -> void:
 			mine.append(k)
 	if siege.get("kind", "") == "torneo":
 		mine.clear()
+	elif siege.get("kind", "") == "defensa":
+		var dt := GS.REGION.town(int(siege["town"]))
+		var locals := mini(20, int(dt.get("garrison", 0)) + (int(d["commons"]) / 15 if dt.get("home", false) else int(dt.get("pop", 0)) / 30))
+		for n in locals:
+			mine.append("milicia_local")
 	elif mine.is_empty() and int(d["title"]) == 1:
 		for n in 6:
 			mine.append("milicia_local")
@@ -235,6 +264,9 @@ func _ready() -> void:
 		for u in units:
 			if u["team"] == 1:
 				u["hp"] *= 1.0 + 0.2 * eff_wall
+				u["max"] = u["hp"]
+			elif siege["kind"] == "defensa" and u["team"] == 0 and not u.has("player"):
+				u["hp"] *= 1.0 + 0.1 * int(siege["wall"])
 				u["max"] = u["hp"]
 	var cap := _spawn("infante", 1, Vector3(0, 0, -19))
 	cap["captain"] = true
@@ -326,7 +358,7 @@ func _build_hud() -> void:
 	var b := Button.new()
 	b.text = "Volver al pueblo" if siege.is_empty() else "Volver al mapa"
 	b.custom_minimum_size.y = 40
-	b.pressed.connect(func(): main.start_village() if siege.is_empty() or siege["kind"] == "bandidos" else main.start_region())
+	b.pressed.connect(func(): main.start_village() if siege.is_empty() or siege["kind"] == "bandidos" or (siege["kind"] == "defensa" and GS.REGION.town(int(siege["town"])).get("home", false)) else main.start_region())
 	back_btn = b
 	box.add_child(b)
 
@@ -389,7 +421,9 @@ func _process(delta: float) -> void:
 	if over:
 		return
 	lbl.text = "   Batalla contra %s      Tus tropas: %d (+%d de refuerzo)      Enemigos: %d (+%d)      Abatidos por ti: %d" % [enemy_name, _count(0, false), ally_reserve.size(), _count(1), enemy_reserve.size(), kills]
-	lbl.text += "      Moral: %d contra %d" % [int(morale[0]), int(morale[1])]
+	lbl.text += "      Moral: %d contra %d      Tiempo: %s" % [int(morale[0]), int(morale[1]), weather]
+	if weather_fx:
+		weather_fx.position = pl["a"].position + Vector3(0, 16, 0)
 	hp_bar.value = pl["hp"]
 	_reinforce(delta)
 	_check_rout(delta)
@@ -421,6 +455,7 @@ func _reinforce(delta: float) -> void:
 
 func _player_step(delta: float) -> void:
 	var a = pl["a"]
+	a.position.y = _h(a.position)
 	pl["cd"] -= delta
 	var blocking: bool = cam.captured and Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT)
 	pl["blocking"] = blocking
@@ -432,6 +467,7 @@ func _player_step(delta: float) -> void:
 		a.position += dir * spd * delta
 		a.position.x = clampf(a.position.x, -HALF, HALF)
 		a.position.z = clampf(a.position.z, -HALF, HALF)
+		a.position.y = _h(a.position)
 		if not attacking:
 			a.play("Sword_Idle" if blocking else ("Sprint" if sprint else "Jog_Fwd"))
 	elif not attacking:
@@ -528,9 +564,11 @@ func _walk(u: Dictionary, target: Vector3, stop: float, delta: float) -> void:
 			dd.y = 0
 			if dd.length() < 1.1 and dd.length() > 0.01:
 				sep += dd.normalized()
-	a.position += (to.normalized() + sep * 0.7).normalized() * u["speed"] * delta
+	var spd: float = u["speed"] * (0.85 if weather == "nieve" else 1.0) * (0.6 if u["type"] in ARMY.MOUNTED and _in_woods(a.position) else 1.0)
+	a.position += (to.normalized() + sep * 0.7).normalized() * spd * delta
 	a.position.x = clampf(a.position.x, -HALF, HALF)
 	a.position.z = clampf(a.position.z, -HALF, HALF)
+	a.position.y = _h(a.position)
 	a.rotation.y = lerp_angle(a.rotation.y, atan2(to.x, to.z), minf(1.0, delta * 8.0))
 	u["run"] = float(u.get("run", 0.0)) + delta
 	a.play("Jog_Fwd")
@@ -540,7 +578,7 @@ func _walk(u: Dictionary, target: Vector3, stop: float, delta: float) -> void:
 func _shoot(u: Dictionary, tgt: Dictionary) -> void:
 	var from: Vector3 = u["a"].position + Vector3(0, 1.5, 0)
 	var dist: float = from.distance_to(tgt["a"].position)
-	var miss := dist / 18.0 * 1.2
+	var miss := dist / 18.0 * 1.2 * (1.6 if weather in ["lluvia", "nieve"] else 1.0)
 	var to: Vector3 = tgt["a"].position + Vector3(randf_range(-miss, miss), 1.0, randf_range(-miss, miss))
 	var m := MeshInstance3D.new()
 	var cm := CylinderMesh.new()
@@ -586,6 +624,93 @@ func _update_arrows(delta: float) -> void:
 					break
 
 
+# ---------------- Terreno y clima ----------------
+
+func _setup_terrain(suffix: String) -> void:
+	if siege.get("kind", "") in ["torneo", "asedio", "defensa"] or randf() < 0.25:
+		return
+	# Una colina a un lado del campo y uno o dos bosquecillos.
+	hill_r = randf_range(9.0, 12.0)
+	hill = Vector3(randf_range(8, 18) * (1 if randf() < 0.5 else -1), randf_range(2.0, 3.2), randf_range(-6, 6))
+	var m := MeshInstance3D.new()
+	var sm := SphereMesh.new()
+	sm.radius = 1.0
+	sm.height = 2.0
+	sm.radial_segments = 24
+	sm.rings = 12
+	m.mesh = sm
+	m.scale = Vector3(hill_r, hill.y, hill_r)
+	m.position = Vector3(hill.x, 0, hill.z)
+	m.material_override = M.flat(env["grad"].get_color(0).lerp(env["grad"].get_color(1), 0.5).darkened(0.1))
+	add_child(m)
+	for k in randi_range(1, 2):
+		var c := Vector3(-hill.x * randf_range(0.6, 1.0) + randf_range(-4, 4), 0, randf_range(-10, 10) if k == 0 else randf_range(-20, -14))
+		var r := randf_range(4.5, 6.5)
+		woods.append([c, r])
+		for i in int(r * 2.2):
+			var a := randf() * TAU
+			var p := c + Vector3(cos(a), 0, sin(a)) * sqrt(randf()) * r
+			M.put(self, "nature/%s%s_%d.glb" % [["CommonTree", "PineTree", "BirchTree"][i % 3], suffix, randi_range(1, 5)], p, randf() * TAU, randf_range(2.0, 2.8))
+
+
+## Altura del suelo (la colina es una cúpula).
+func _h(p: Vector3) -> float:
+	if hill_r <= 0.0:
+		return 0.0
+	var d := Vector2(p.x - hill.x, p.z - hill.z).length() / hill_r
+	return hill.y * sqrt(1.0 - d * d) if d < 1.0 else 0.0
+
+
+func _in_woods(p: Vector3) -> bool:
+	for w in woods:
+		if Vector2(p.x - w[0].x, p.z - w[0].z).length() < w[1]:
+			return true
+	return false
+
+
+func _range_mult() -> float:
+	return {"lluvia": 0.8, "nieve": 0.8, "niebla": 0.6}.get(weather, 1.0)
+
+
+func _setup_weather() -> void:
+	var winter := int(GS.data["season"]) == 3
+	weather = (["despejado", "despejado", "nieve", "niebla"] if winter else ["despejado", "despejado", "despejado", "lluvia", "niebla"]).pick_random()
+	if siege.get("kind", "") == "torneo":
+		weather = "despejado"
+	var e: Environment = env["env"]
+	match weather:
+		"niebla":
+			e.fog_density = 0.035
+			env["sun"].light_energy = 0.6
+		"lluvia", "nieve":
+			e.fog_density = 0.012
+			env["sun"].light_energy = 0.55
+			env["sky"].sky_top_color = Color(0.45, 0.48, 0.52)
+			env["sky"].sky_horizon_color = Color(0.6, 0.62, 0.64)
+			var p := CPUParticles3D.new()
+			p.amount = 1500 if weather == "lluvia" else 900
+			p.lifetime = 1.2 if weather == "lluvia" else 4.0
+			p.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
+			p.emission_box_extents = Vector3(30, 0.5, 30)
+			p.direction = Vector3(0, -1, 0)
+			p.spread = 5.0 if weather == "lluvia" else 25.0
+			p.initial_velocity_min = 18.0 if weather == "lluvia" else 1.5
+			p.initial_velocity_max = 22.0 if weather == "lluvia" else 2.5
+			p.gravity = Vector3(0, -9.8 if weather == "lluvia" else -0.6, 0)
+			var qm := QuadMesh.new()
+			qm.size = Vector2(0.03, 0.6) if weather == "lluvia" else Vector2(0.12, 0.12)
+			var mat := StandardMaterial3D.new()
+			mat.albedo_color = Color(0.75, 0.8, 0.9, 0.55) if weather == "lluvia" else Color(1, 1, 1, 0.9)
+			mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+			mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+			mat.billboard_mode = BaseMaterial3D.BILLBOARD_FIXED_Y if weather == "lluvia" else BaseMaterial3D.BILLBOARD_ENABLED
+			qm.material = mat
+			p.mesh = qm
+			p.position = Vector3(0, 16, 0)
+			add_child(p)
+			weather_fx = p
+
+
 # ---------------- Maquinaria de guerra ----------------
 
 func _setup_engines() -> void:
@@ -605,7 +730,12 @@ func _setup_engines() -> void:
 	if kind == "asedio":
 		for i in eff_wall:
 			_add_engine("balista", 1, Vector3(-14 + i * 28, 6.6 if int(siege["wall"]) == 2 else 0.0, -HALF - (5.0 if int(siege["wall"]) == 2 else 2.0)))
-	elif kind == "campo" and int(siege.get("troops", 0)) >= 30:
+	elif kind == "defensa":
+		var dt := GS.REGION.town(int(siege["town"]))
+		var stone := int(siege["wall"]) == 2
+		for i in int(dt.get("towers", 0)):
+			_add_engine("balista", 0, Vector3(-16 + i * 16, 6.6 if stone else 0.0, HALF + (5.0 if stone else 2.0)))
+	if kind in ["campo", "defensa"] and int(siege.get("troops", 0)) >= 30:
 		_add_engine("catapulta", 1, Vector3(randf_range(-8, 8), 0, -29))
 
 
@@ -736,6 +866,11 @@ func _damage(t: Dictionary, amount: float, src: Dictionary) -> void:
 		flash.color.a = 0.35
 	elif t["type"] == "infante":
 		amount *= 0.8
+	# El bosque protege de las flechas; desde lo alto se golpea mejor.
+	if src.get("ranged", false) and _in_woods(t["a"].position):
+		amount *= 0.5
+	if src.has("a") and src["a"].position.y > t["a"].position.y + 0.8:
+		amount *= 1.25
 	# Las lanzas paran a los caballos.
 	if src.get("type", "") == "lancero" and t["type"] in ARMY.MOUNTED:
 		amount *= 2.0
@@ -878,6 +1013,26 @@ func _end_siege(victory: bool, losses: int) -> void:
 		else:
 			d["player"]["health"] = clampf(pl["hp"], 30.0, 100.0)
 			result_label.text = "DERROTA EN EL TORNEO\n\nEl campeón te ha descabalgado. Sin heridas graves, solo el orgullo."
+		GS.next_day()
+		GS.save_game()
+		result_panel.visible = true
+		return
+	if siege["kind"] == "defensa":
+		var dt := GS.REGION.town(id)
+		if victory:
+			var loot := GS.REGION.army_defeated(int(siege["army"]))
+			d["prestige"] += 20 + kills
+			d["player"]["health"] = clampf(pl["hp"], 10.0, 100.0)
+			result_label.text = "¡%s RESISTE!\n\nHas rechazado al ejército de %s.\nBotín: +%d oro · Prestigio: +%d · Bajas de tus tropas: %d" % [String(dt.get("name", "")).to_upper(), enemy_name, loot, 20 + kills, losses]
+			GS.say("Defiendes %s y rechazas a %s. +%d oro." % [dt.get("name", ""), enemy_name, loot])
+		else:
+			d["player"]["health"] = 15.0
+			var a := GS.REGION.army_by_id(int(siege["army"]))
+			result_label.text = "DERROTA\n\nNo has podido frenar al ejército de %s ante %s." % [enemy_name, dt.get("name", "")]
+			if not a.is_empty():
+				a["troops"] = maxi(1, int(a["troops"]) - enemy_dead)
+				a.erase("waiting")
+				GS.REGION._assault(a, dt)
 		GS.next_day()
 		GS.save_game()
 		result_panel.visible = true

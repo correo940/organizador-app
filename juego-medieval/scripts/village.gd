@@ -894,7 +894,7 @@ func _house_panel() -> void:
 func _family_panel() -> void:
 	var d = GS.data
 	var p = d["player"]
-	var lines := ["Linaje %s · Generación %d" % [d["dynasty"], int(d["generation"])], "", "%s (%d años) — cabeza de familia" % [p["name"], int(p["age"])]]
+	var lines := ["Linaje %s · Generación %d" % [d["dynasty"], int(d["generation"])], "", "%s (%d años) — cabeza de familia · %s" % [p["name"], int(p["age"]), GS.TRAITS[GS.trait_of(p)]]]
 	if d["spouse"] != null:
 		lines.append("%s (%d años) — cónyuge" % [d["spouse"]["name"], int(d["spouse"]["age"])])
 	var heir_age := -1
@@ -909,9 +909,12 @@ func _family_panel() -> void:
 				role = " · capitán de tus tropas (%d batallas)" % int(c.get("xp", 0))
 			"gobernador":
 				role = " · gobierna %s" % GS.REGION.town(int(c["town"])).get("name", "?")
-		lines.append("%s (%d años) — %s%s%s" % [c["name"], int(c["age"]), "hijo" if c["male"] else "hija", tag, role])
+		var edu: String = c.get("edu", "")
+		lines.append("%s (%d años) — %s%s%s · %s%s" % [c["name"], int(c["age"]), "hijo" if c["male"] else "hija", tag, role, String(GS.TRAITS[GS.trait_of(c)]).split(":")[0], (" · educado en " + edu) if edu != "" else ""])
 		if int(c["age"]) >= 16:
 			opts.append(["Cargos de %s" % c["name"], func(): _child_roles(c)])
+		elif int(c["age"]) >= 6 and edu == "":
+			opts.append(["Educar a %s (%d oro)" % [c["name"], GS.EDU_COST], func(): _educate(c)])
 	if d["children"].is_empty():
 		lines.append("")
 		lines.append("Sin hijos. Si mueres sin herederos, tu linaje se extingue.")
@@ -919,6 +922,19 @@ func _family_panel() -> void:
 	lines.append("La familia come %d de comida al día." % GS.family_size())
 	opts.append_array([["Volver", _house_panel], ["Cerrar", _close_panel]])
 	_open_panel("Familia", "\n".join(lines), opts)
+
+
+func _educate(c: Dictionary) -> void:
+	var d = GS.data
+	var opts := []
+	for k in GS.EDU:
+		opts.append([GS.EDU[k], func():
+			d["gold"] = int(d["gold"]) - GS.EDU_COST
+			c["edu"] = k
+			GS.say("%s empieza su educación: %s." % [c["name"], k])
+			_family_panel(), int(d["gold"]) >= GS.EDU_COST])
+	opts.append(["Volver", _family_panel])
+	_open_panel("Educar a %s" % c["name"], "Elige cómo se educará %s (%s). Lo que aprenda le servirá de mayor como capitán, gobernador o para traer dinero a casa.\nCuesta %d de oro." % [c["name"], GS.TRAITS[GS.trait_of(c)], GS.EDU_COST], opts)
 
 
 ## Un hijo adulto puede ser capitán (lucha a tu lado en las batallas) o gobernar uno de tus pueblos.

@@ -172,7 +172,7 @@ static func day() -> void:
 		var cap: int = [100, 400, 1200][mini(2, tier_of(pop) + 1)]
 		t["pop"] = mini(cap, pop + maxi(1 if randf() < 0.5 else 0, int(pop * 0.004)))
 		if t["owner"] == "jugador":
-			income += pop / 40.0 * (1.5 if governor_of(int(t["id"])) != "" else 1.0)
+			income += pop / 40.0 * governor_mult(int(t["id"]))
 		else:
 			t["gold"] = int(t["gold"]) + pop / 20
 			var target := int(pop * 0.08) + 4
@@ -260,6 +260,14 @@ static func governor_of(id: int) -> String:
 		if c.get("role", "") == "gobernador" and int(c.get("town", -1)) == id:
 			return c["name"]
 	return ""
+
+
+## Multiplicador de rentas por el gobernador: 1.5, más si sabe letras o es astuto.
+static func governor_mult(id: int) -> float:
+	var g := _child(governor_of(id))
+	if g.is_empty():
+		return 1.0
+	return 1.5 + (0.25 if g.get("edu", "") == "letras" else 0.0) + (0.25 if GS.trait_of(g) == "astuto" else 0.0)
 
 
 static func _child(n: String) -> Dictionary:
@@ -391,7 +399,15 @@ static func _move_armies() -> void:
 			_disband(a)
 			continue
 		var to := Vector2(t["x"], t["z"]) - Vector2(a["x"], a["z"])
-		if to.length() <= DAY_DIST * 0.8:
+		if a.get("waiting", false):
+			# Espera a que decidas si lo defiendes en persona; si no, ataca a los 3 días.
+			a["wait"] = int(a.get("wait", 0)) + 1
+			if int(a["wait"]) >= 3:
+				a.erase("waiting")
+				_assault(a, t)
+		elif to.length() <= DAY_DIST * 0.8 and t["owner"] == "jugador" and not a.has("asked"):
+			_ask_defense(a, t)
+		elif to.length() <= DAY_DIST * 0.8:
 			_assault(a, t)
 		else:
 			var step := to.normalized() * DAY_DIST * 0.8
@@ -404,6 +420,30 @@ static func _disband(a: Dictionary) -> void:
 	if not home.is_empty() and home["owner"] == "señor":
 		home["troops"] = int(home["troops"]) + int(a["troops"])
 	region()["armies"].erase(a)
+
+
+## Un señor llega a uno de tus pueblos: puedes acudir a defenderlo en persona.
+static func _ask_defense(a: Dictionary, t: Dictionary) -> void:
+	a["asked"] = true
+	a["waiting"] = true
+	var lname := NOBLES.full(region()["lords"][int(a["lord"])])
+	var aid := int(a["id"])
+	var tid := int(t["id"])
+	var wall: int = int(GS.data["tier"]) if t.get("home", false) else int(t["wall"])
+	GS.popups.append({"title": "¡%s, atacado!" % t["name"], "text": "El ejército de %s (%d soldados) está a las puertas de %s.\n\nPuedes acudir a defenderlo tú mismo desde sus murallas, con tu ejército, la gente del pueblo y sus balistas, o dejar que se defiendan solos." % [lname, int(a["troops"]), t["name"]], "options": [
+		["Acudir a defender %s" % t["name"], func():
+			var arm := army_by_id(aid)
+			if arm.is_empty():
+				return
+			GS.data["battle"] = {"kind": "defensa", "army": aid, "town": tid, "enemy": lname, "troops": int(arm["troops"]), "wall": wall}
+			GS.save_game()
+			Engine.get_main_loop().root.get_node("Main").start_battle()],
+		["Dejar que se defiendan solos", func():
+			var arm := army_by_id(aid)
+			if not arm.is_empty():
+				arm.erase("waiting")
+				_assault(arm, town(tid))],
+	]})
 
 
 ## Un ejército llega a su objetivo: se resuelve el asalto.
