@@ -27,6 +27,8 @@ static func ensure() -> void:
 	for k in UNITS:
 		if not d["army"].has(k):
 			d["army"][k] = 0
+	if not d.has("veterans"):
+		d["veterans"] = {}
 	if not d.has("engines"):
 		d["engines"] = {}
 	for k in ENGINES:
@@ -122,6 +124,13 @@ static func day() -> void:
 		lost += n
 	if lost > 0:
 		GS.say("Sin paga, %d soldados desertan y vuelven a sus casas." % lost)
+
+
+## Nunca hay más veteranos que soldados de ese tipo (deserciones, licencias, bajas).
+static func clamp_veterans() -> void:
+	var v: Dictionary = GS.data["veterans"]
+	for k in v.keys():
+		v[k] = mini(int(v[k]), int(GS.data["army"].get(k, 0)))
 
 
 static func casualties(dead: Dictionary) -> void:

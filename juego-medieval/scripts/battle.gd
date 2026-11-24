@@ -35,6 +35,12 @@ var enemy_dead := 0
 var res_box: VBoxContainer
 var back_btn: Button
 var lbl: Label
+var group := 0
+const GROUPS := ["Todos", "Infantería", "Arqueros", "Caballería"]
+var champion = null  # capitán enemigo (su campeón)
+var duel_offer := 0.0
+var duel := false
+var foe_lord := -1
 var weather := "despejado"
 var weather_fx: Node3D
 var hill := Vector3.ZERO  # centro de la colina (y = altura); radio en hill_r
@@ -240,6 +246,7 @@ func _ready() -> void:
 		row = i / 10
 		_spawn("milicia" if kind == "milicia_local" else kind, 0, Vector3(-11 + col * 2.4 + randf_range(-0.3, 0.3), 0, 15 + row * 2.2 + back))
 		units[-1]["real"] = kind in ARMY.UNITS
+		_make_veteran(units[-1])
 
 	# Ejército enemigo, en proporción al tuyo.
 	enemy_total = 6 + mini(8, (int(d["year"]) - 1100) / 2) + randi_range(0, 2) + int(ARMY.total() * 0.7)
@@ -275,6 +282,13 @@ func _ready() -> void:
 	cap["dmg"] = 14.0
 	cap["a"].scale = Vector3.ONE * 1.12
 	enemy_total += 1
+	champion = cap
+	if siege.get("kind", "") in ["", "campo", "asedio", "defensa"]:
+		duel_offer = 12.0
+	if siege.get("kind", "") in ["campo", "defensa"]:
+		foe_lord = int(GS.REGION.army_by_id(int(siege["army"])).get("lord", -1))
+	elif siege.get("kind", "") == "asedio":
+		foe_lord = int(GS.REGION.town(int(siege["town"])).get("lord", -1))
 
 	_setup_engines()
 
@@ -326,7 +340,7 @@ func _build_hud() -> void:
 	hp_bar.add_theme_stylebox_override("fill", fill)
 	layer.add_child(hp_bar)
 	var help := Label.new()
-	help.text = "WASD: mover · Shift: correr · Clic izq.: atacar · Clic der.: bloquear · 1: ¡Cargad! · 2: Mantened · 3: Seguidme · F: formación · Esc: ratón"
+	help.text = "WASD: mover · Shift: correr · Clic izq.: atacar · Clic der.: bloquear · 1: ¡Cargad! · 2: Mantened · 3: Seguidme · F: formación · Tab: grupo · R: duelo · Esc: ratón"
 	help.add_theme_color_override("font_outline_color", Color.BLACK)
 	help.add_theme_constant_override("outline_size", 4)
 	help.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM)
@@ -367,13 +381,46 @@ func _count(team: int, include_player := true) -> int:
 	return units.filter(func(u): return u["alive"] and u["team"] == team and (include_player or not u.has("player"))).size()
 
 
+## Los primeros soldados de cada tipo, hasta el número de veteranos, salen como veteranos.
+var vets_used := {}
+func _make_veteran(u: Dictionary) -> void:
+	if not u.get("real", false):
+		return
+	var k: String = u["type"]
+	if int(vets_used.get(k, 0)) >= int(GS.data["veterans"].get(k, 0)):
+		return
+	vets_used[k] = int(vets_used.get(k, 0)) + 1
+	u["vet"] = true
+	u["hp"] *= 1.3
+	u["max"] = u["hp"]
+	u["dmg"] *= 1.2
+	var l := M.label3d("★", 72)
+	l.position = Vector3(0, 2.2, 0)
+	l.modulate = Color(1.0, 0.85, 0.3)
+	u["a"].add_child(l)
+
+
+func _in_group(u: Dictionary, g: int) -> bool:
+	match g:
+		1:
+			return not u["ranged"] and not u["type"] in ARMY.MOUNTED
+		2:
+			return u["ranged"]
+		3:
+			return u["type"] == "jinete"
+	return true
+
+
 func _set_order(o: int) -> void:
 	order = o
-	lbl_order.text = "Orden: %s · Formación: %s (F)" % [ORDERS[o], FORMS[formation]]
+	for u in units:
+		if u["team"] == 0 and not u.has("player") and _in_group(u, group):
+			u["order"] = o
+	lbl_order.text = "Grupo: %s (Tab) · Orden: %s · Formación: %s (F)" % [GROUPS[group], ORDERS[o], FORMS[formation]]
 	if o != 1:
 		return
 	# Mantened: las tropas forman delante de ti según la formación elegida.
-	var mine := units.filter(func(u): return u["alive"] and u["team"] == 0 and not u.has("player") and not u.has("flee"))
+	var mine := units.filter(func(u): return u["alive"] and u["team"] == 0 and not u.has("player") and not u.has("flee") and _in_group(u, group))
 	var front := mine.filter(func(u): return not u["ranged"])
 	var back := mine.filter(func(u): return u["ranged"])
 	var base: Vector3 = pl["a"].position + Vector3(0, 0, -3)
@@ -410,6 +457,15 @@ func _unhandled_input(ev: InputEvent) -> void:
 			KEY_F:
 				formation = (formation + 1) % FORMS.size()
 				_set_order(1)
+			KEY_TAB:
+				group = (group + 1) % GROUPS.size()
+				lbl_order.text = "Grupo: %s (Tab) · elige orden con 1, 2 o 3" % GROUPS[group]
+			KEY_R:
+				if duel_offer > 0 and champion != null and champion["alive"]:
+					duel_offer = 0.0
+					duel = true
+					champion["target"] = pl
+					lbl_order.text = "¡Duelo de campeones! Los ejércitos miran en silencio."
 	elif ev is InputEventMouseButton and ev.pressed and not cam.captured:
 		cam.captured = true
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
@@ -429,11 +485,24 @@ func _process(delta: float) -> void:
 	_check_rout(delta)
 	_update_engines(delta)
 	_player_step(delta)
+	if duel_offer > 0:
+		duel_offer -= delta
+		lbl_order.text = "El campeón enemigo te reta a un duelo: pulsa R para aceptar (%d s)" % int(ceil(duel_offer))
+		if duel_offer <= 0:
+			_set_order(order)
 	for u in units:
 		if over:
 			return
 		_resolve_hit(u)
 		if not u["alive"] or u.has("player"):
+			continue
+		if duel or duel_offer > 0:
+			# Durante el reto y el duelo, los ejércitos esperan.
+			if duel and is_same(u, champion):
+				u["target"] = pl
+				_ai_step(u, delta)
+			elif not (u["a"].current in ["Sword_Attack", "Hit_Chest", "Death01"] and u["a"].anim.is_playing()):
+				u["a"].play("Idle")
 			continue
 		_ai_step(u, delta)
 
@@ -448,6 +517,7 @@ func _reinforce(delta: float) -> void:
 		var kind: String = ally_reserve.pop_front()
 		_spawn("milicia" if kind == "milicia_local" else kind, 0, Vector3(randf_range(-10, 10), 0, HALF - 3))
 		units[-1]["real"] = kind in ARMY.UNITS
+		_make_veteran(units[-1])
 		units[-1]["anchor"] = pl["a"].position + Vector3(randf_range(-6, 6), 0, 4)
 	if not enemy_reserve.is_empty() and _count(1) < MAX_ACTIVE:
 		_spawn(enemy_reserve.pop_front(), 1, Vector3(randf_range(-10, 10), 0, -HALF + 3))
@@ -486,7 +556,7 @@ func _player_step(delta: float) -> void:
 
 ## Hacia dónde debe ir un soldado propio según la orden actual (sin enemigo cerca).
 func _rest_point(u: Dictionary) -> Vector3:
-	if order == 2:
+	if u.get("order", order) == 2:
 		var i := units.find(u)
 		var ang := float(i) * 2.399
 		return pl["a"].position + Vector3(cos(ang), 0, sin(ang)) * (2.5 + (i % 5) * 1.2)
@@ -511,8 +581,9 @@ func _ai_step(u: Dictionary, delta: float) -> void:
 	var tgt = u["target"]
 	var attacking: bool = a.current in ["Sword_Attack", "Spell_Simple_Shoot"] and a.anim.is_playing()
 	# Tus tropas solo se lanzan con «¡Cargad!» o si el enemigo está cerca.
-	if u["team"] == 0 and order != 0 and tgt != null:
-		var center: Vector3 = _rest_point(u) if order == 1 else pl["a"].position
+	var uo: int = u.get("order", order)
+	if u["team"] == 0 and uo != 0 and tgt != null:
+		var center: Vector3 = _rest_point(u) if uo == 1 else pl["a"].position
 		var range_ok: float = (u["reach"] if u["ranged"] else 7.0) + 1.0
 		if tgt["a"].position.distance_to(center) > range_ok and tgt["a"].position.distance_to(a.position) > range_ok:
 			tgt = null
@@ -881,7 +952,7 @@ func _damage(t: Dictionary, amount: float, src: Dictionary) -> void:
 	if from.length() > 0.01 and tf.dot(from.normalized()) < -0.3:
 		amount *= 1.5
 	# Muro de escudos: quien aguanta en su puesto recibe menos daño.
-	if t["team"] == 0 and order == 1 and formation == 1 and t["type"] in ["infante", "lancero", "milicia"] and t["a"].position.distance_to(t["anchor"]) < 1.5:
+	if t["team"] == 0 and t.get("order", order) == 1 and formation == 1 and t["type"] in ["infante", "lancero", "milicia"] and t["a"].position.distance_to(t["anchor"]) < 1.5:
 		amount *= 0.65
 	t["hp"] -= amount
 	var near: float = t["a"].position.distance_to(pl["a"].position)
@@ -901,6 +972,14 @@ func _damage(t: Dictionary, amount: float, src: Dictionary) -> void:
 		enemy_dead += 1
 	if t.has("child"):
 		_child_fell(t["child"])
+	if is_same(t, champion):
+		duel_offer = 0.0
+		if duel:
+			duel = false
+			morale[1] = maxf(0.0, morale[1] - 35.0)
+			morale[0] = minf(100.0, morale[0] + 15.0)
+			GS.data["prestige"] += 10
+			lbl_order.text = "¡Has vencido al campeón enemigo! Su ejército vacila. (+10 prestigio)"
 	# Cada baja hunde la moral de su bando y anima al contrario.
 	var side: int = t["team"]
 	var alive_side := _count(side) + (ally_reserve.size() if side == 0 else enemy_reserve.size()) / 2
@@ -941,6 +1020,54 @@ func _check_rout(delta: float) -> void:
 			lbl_order.text = "¡El enemigo huye en desbandada!"
 
 
+## Los soldados que sobreviven a una victoria pueden hacerse veteranos; los veteranos caídos se pierden.
+func _update_veterans(victory: bool) -> void:
+	var vets: Dictionary = GS.data["veterans"]
+	var promoted := 0
+	for u in units:
+		if u["team"] != 0 or not u.get("real", false):
+			continue
+		var k: String = u["type"]
+		if not u["alive"] and not u.has("flee") and u.get("vet", false):
+			vets[k] = maxi(0, int(vets.get(k, 0)) - 1)
+		elif victory and (u["alive"] or u.has("flee")) and not u.get("vet", false) and randf() < 0.3:
+			vets[k] = int(vets.get(k, 0)) + 1
+			promoted += 1
+	if promoted > 0:
+		GS.say("%d de tus soldados se curten en la batalla y pasan a ser veteranos." % promoted)
+
+
+## Tras vencer a un señor puedes capturar a uno de sus caballeros y pedir rescate.
+func _ransom_buttons() -> void:
+	var N = GS.REGION.NOBLES
+	var lname: String = N.full(N.lord(foe_lord))
+	var gold := randi_range(60, 150)
+	var lb := Label.new()
+	lb.text = "Has capturado a un caballero de la casa de %s." % lname
+	lb.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	lb.custom_minimum_size.x = 480
+	var b1 := Button.new()
+	b1.text = "Pedir rescate (+%d oro, empeora la relación)" % gold
+	var b2 := Button.new()
+	b2.text = "Liberarlo sin rescate (+15 relación, +5 prestigio)"
+	var nodes := [lb, b1, b2]
+	b1.pressed.connect(func():
+		GS.data["gold"] = int(GS.data["gold"]) + gold
+		N.add_rel(-1, foe_lord, -10)
+		GS.say("La casa de %s paga %d de oro por su caballero." % [lname, gold])
+		for n in nodes:
+			n.queue_free())
+	b2.pressed.connect(func():
+		N.add_rel(-1, foe_lord, 15)
+		GS.data["prestige"] += 5
+		GS.say("Liberas al caballero de %s. Su señor no lo olvidará." % lname)
+		for n in nodes:
+			n.queue_free())
+	for n in nodes:
+		res_box.add_child(n)
+		res_box.move_child(n, res_box.get_child_count() - 2)
+
+
 func _child_fell(n: String) -> void:
 	var d = GS.data
 	for c in d["children"]:
@@ -962,7 +1089,11 @@ func _end(victory: bool) -> void:
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	var d = GS.data
 	var chief := int(d["title"]) == 1
+	_update_veterans(victory)
 	ARMY.casualties(dead_by_type)
+	ARMY.clamp_veterans()
+	if victory and foe_lord >= 0 and randf() < 0.35:
+		_ransom_buttons()
 	var losses := 0
 	for k in dead_by_type:
 		losses += int(dead_by_type[k])

@@ -44,7 +44,8 @@ Juego de estrategia medieval para PC (Windows) en 3D, hecho con Godot 4.3. Model
 
 ## Controles
 - WASD: moverse · Shift: correr · Clic derecho + ratón: girar cámara · Rueda: zoom · E: interactuar (mantén E para recoger recursos) · H: montar/desmontar · T: velocidad del tiempo · Esc: menú · F5: guardar
-- En batalla: el ratón mueve la cámara; clic izquierdo ataca, clic derecho (mantener) bloquea; Esc suelta el ratón; 1/2/3 órdenes; F cambia la formación (línea, muro de escudos, cuña)
+- En batalla: el ratón mueve la cámara; clic izquierdo ataca, clic derecho (mantener) bloquea; Esc suelta el ratón; 1/2/3 órdenes al grupo elegido con Tab (todos, infantería, arqueros, caballería); F cambia la formación (línea, muro de escudos, cuña); R acepta el duelo del campeón enemigo al empezar (si lo vences, su moral se hunde)
+- Veteranos (★): tras cada victoria algunos supervivientes pasan a veteranos (+30% vida, +20% daño). Al vencer a un señor puedes capturar a un caballero y pedir rescate o liberarlo
 - Combate: cada bando tiene moral; con las bajas baja y los heridos huyen, y si se hunde huye el ejército entero. Los golpes por la espalda hacen un 50% más, el muro de escudos aguanta mejor y la caballería que carga a galope golpea más fuerte
 
 ## Compilar
