@@ -481,7 +481,7 @@ func corral_panel() -> void:
 	var an = d["animals"]
 	var lines := []
 	for k in GS.ANIMALS:
-		lines.append("%s: %d / %d" % [GS.ANIMALS[k]["name"], int(an[k]), int(GS.ANIMALS[k]["max"])])
+		lines.append("%s: %d / %d" % [GS.ANIMALS[k]["name"], int(an[k]), GS.animal_max(k)])
 	var waiting := []
 	for k in d["barn"]:
 		if int(floor(float(d["barn"][k]))) > 0:
@@ -504,7 +504,7 @@ func corral_panel() -> void:
 			var err: String = GS.buy_animal(k)
 			if err != "":
 				v._float(err, Color(1, 0.5, 0.4))
-			corral_panel(), d["gold"] >= a["price"] and int(an[k]) < int(a["max"])])
+			corral_panel(), d["gold"] >= a["price"] and int(an[k]) < GS.animal_max(k)])
 	opts.append(["Cerrar", v._close_panel])
 	v._open_panel("Corral", "\n".join(lines), opts)
 
@@ -637,6 +637,14 @@ func inventory_panel() -> void:
 		if f["owned"]:
 			owned += 1
 	lines.append("Parcelas: %d de %d" % [owned, d["fields"].size()])
-	if "caña" in d["tools"]:
-		lines.append("Herramientas: caña de pescar")
+	var tl := []
+	for t in d["tools"]:
+		tl.append(GS.TOOLS[t])
+	lines.append("Herramientas: " + (", ".join(tl) if not tl.is_empty() else "ninguna"))
+	var bl := []
+	for id in d["buildings"].values():
+		bl.append(GS.BUILDINGS[id]["name"])
+	if d["mine"]:
+		bl.append("Mina")
+	lines.append("Edificios: " + (", ".join(bl) if not bl.is_empty() else "ninguno"))
 	v._open_panel("Inventario", "\n".join(lines), [["Cerrar", v._close_panel]])

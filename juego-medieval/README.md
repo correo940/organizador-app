@@ -6,6 +6,8 @@ Juego de estrategia medieval para PC (Windows) en 3D, hecho con Godot 4.3. Model
 
 **Economía del pueblo:** parcelas de cultivo (trigo, zanahorias, remolachas, coles, calabazas), corral con gallinas, ovejas, cerdos y vacas, manzanos, bayas, setas, pesca en el estanque, caza de ciervos, molino (trigo → harina) y horno (harina → pan). Tecla I: inventario.
 
+**Edificios y talleres:** 8 solares donde construir herrería (herramientas, espadas y armaduras con hierro), telar (lana → tela), curtiduría (cuero → piel), quesería (leche → queso), cervecería (trigo → cerveza), establo, granero, colmenar y capilla. Mina de hierro al oeste del pueblo.
+
 **Próximas fases:** gobernar el pueblo y dirigir ejércitos (fase 2), y un mapa del mundo para viajar y combatir (fase 3).
 
 ## Controles

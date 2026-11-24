@@ -26,9 +26,11 @@ const ITEMS := {
 	"manzana": ["Manzanas", 2, 1], "bayas": ["Bayas", 1, 1], "setas": ["Setas", 3, 1],
 	"huevos": ["Huevos", 2, 1], "leche": ["Leche", 3, 1], "carne": ["Carne", 7, 3], "pescado": ["Pescado", 4, 2],
 	"lana": ["Lana", 6, 0], "cuero": ["Cuero", 9, 0],
+	"tela": ["Tela", 18, 0], "piel": ["Piel curtida", 22, 0], "queso": ["Queso", 12, 3],
+	"cerveza": ["Cerveza", 9, 1], "miel": ["Miel", 8, 2], "hierro": ["Hierro", 10, 0],
 }
 ## Orden en que la familia se come las cosas (primero lo perecedero y barato).
-const EAT_ORDER := ["bayas", "setas", "leche", "huevos", "manzana", "col", "zanahoria", "remolacha", "pescado", "calabaza", "carne", "pan"]
+const EAT_ORDER := ["bayas", "setas", "leche", "huevos", "manzana", "col", "zanahoria", "remolacha", "pescado", "calabaza", "carne", "miel", "queso", "pan"]
 const CROPS := {
 	"trigo": {"name": "Trigo", "model": "Wheat", "days": 8, "yield": [10, 14], "seed": 3},
 	"zanahoria": {"name": "Zanahorias", "model": "Carrot", "days": 5, "yield": [6, 9], "seed": 2},
@@ -44,6 +46,31 @@ const ANIMALS := {
 	"vaca": {"name": "Vacas", "price": 40, "max": 4, "feed": 1.0, "product": "leche", "per_day": 2.0},
 }
 const FIELD_PRICE := 25
+## Edificios que se pueden levantar en los solares del pueblo.
+const BUILDINGS := {
+	"herreria": {"name": "Herrería", "cost": {"madera": 30, "piedra": 30, "oro": 20}, "desc": "Forja herramientas, espadas y armaduras con hierro."},
+	"telar": {"name": "Telar", "cost": {"madera": 25, "piedra": 5, "oro": 10}, "desc": "Teje la lana para hacer tela."},
+	"curtiduria": {"name": "Curtiduría", "cost": {"madera": 20, "piedra": 10}, "desc": "Curte el cuero para hacer piel."},
+	"queseria": {"name": "Quesería", "cost": {"madera": 20, "piedra": 15, "oro": 10}, "desc": "Convierte la leche en queso."},
+	"cerveceria": {"name": "Cervecería", "cost": {"madera": 35, "piedra": 20, "oro": 25}, "desc": "Elabora cerveza con trigo."},
+	"establo": {"name": "Establo", "cost": {"madera": 40, "piedra": 10}, "desc": "Dobla el espacio del corral y los animales comen menos en invierno."},
+	"granero": {"name": "Granero", "cost": {"madera": 40, "piedra": 20}, "desc": "Las cosechas rinden un 25% más."},
+	"colmenar": {"name": "Colmenar", "cost": {"madera": 15, "oro": 10}, "desc": "Las abejas producen miel (en invierno no)."},
+	"capilla": {"name": "Capilla", "cost": {"madera": 30, "piedra": 60, "oro": 40}, "desc": "+40 de prestigio y +3 cada estación."},
+}
+const MINE_COST := {"madera": 30, "oro": 20}
+const RECIPES := {
+	"telar": [{"in": {"lana": 2}, "out": {"tela": 1}}],
+	"curtiduria": [{"in": {"cuero": 2}, "out": {"piel": 1}}],
+	"queseria": [{"in": {"leche": 3}, "out": {"queso": 1}}],
+	"cerveceria": [{"in": {"trigo": 3}, "out": {"cerveza": 2}}],
+	"herreria": [
+		{"in": {"hierro": 3, "madera": 2}, "tool": "hacha"},
+		{"in": {"hierro": 3, "madera": 2}, "tool": "pico"},
+		{"in": {"hierro": 3, "madera": 2}, "tool": "hoz"},
+	],
+}
+const TOOLS := {"caña": "Caña de pescar", "hacha": "Hacha (doble de madera)", "pico": "Pico (doble de piedra y más hierro)", "hoz": "Hoz (+25% en las cosechas)"}
 
 var data := {}
 var speed := 1.0
@@ -150,6 +177,8 @@ func next_season() -> void:
 		new_year()
 	if int(data["season"]) == 3:
 		frost()
+	if has_building("capilla"):
+		data["prestige"] += 3
 	if data.get("game_over", false):
 		return
 	say("Comienza %s del año %d." % [["la primavera", "el verano", "el otoño", "el invierno"][int(data["season"])], int(data["year"])])
@@ -299,6 +328,12 @@ func ensure_economy() -> void:
 		data["tools"] = []
 	if not data.has("feed_debt"):
 		data["feed_debt"] = 0.0
+	if not data.has("buildings"):
+		data["buildings"] = {}
+	if not data.has("mine"):
+		data["mine"] = false
+	if not data.has("honey"):
+		data["honey"] = 0.0
 
 
 func inv(item: String) -> int:
@@ -369,7 +404,8 @@ func harvest(i: int) -> String:
 	if not field_ready(f):
 		return ""
 	var c = CROPS[f["crop"]]
-	var n := randi_range(int(c["yield"][0]), int(c["yield"][1]))
+	var mult := 1.0 + (0.25 if has_building("granero") else 0.0) + (0.25 if "hoz" in data["tools"] else 0.0)
+	var n := int(round(randi_range(int(c["yield"][0]), int(c["yield"][1])) * mult))
 	add(f["crop"], n)
 	f["crop"] = ""
 	f["age"] = 0
@@ -420,6 +456,8 @@ func farm_day() -> void:
 					an[k] -= 1
 					say("Un animal de tu corral ha muerto de hambre. (%s)" % ANIMALS[k]["name"].to_lower())
 					break
+	if has_building("colmenar") and not winter:
+		data["honey"] = float(data["honey"]) + 1.0
 	if not fed:
 		return
 	var barn = data["barn"]
@@ -429,7 +467,7 @@ func farm_day() -> void:
 			var amount: float = float(barn.get(a["product"], 0.0)) + a["per_day"] * int(an[k])
 			barn[a["product"]] = amount
 	for k in ["gallina", "oveja", "cerdo"]:
-		if int(an[k]) >= 2 and int(an[k]) < int(ANIMALS[k]["max"]) and not winter and randf() < 0.12:
+		if int(an[k]) >= 2 and int(an[k]) < animal_max(k) and not winter and randf() < 0.12:
 			an[k] += 1
 			say("¡Ha nacido un animal en tu corral! (%s)" % ANIMALS[k]["name"].to_lower())
 
@@ -438,7 +476,7 @@ func _feed_need() -> float:
 	var t := 0.0
 	for k in ANIMALS:
 		t += ANIMALS[k]["feed"] * int(data["animals"][k])
-	return t
+	return t * (0.7 if has_building("establo") else 1.0)
 
 
 ## Recoge del corral los productos acumulados.
@@ -457,7 +495,7 @@ func buy_animal(k: String) -> String:
 	var a = ANIMALS[k]
 	if int(data["house_level"]) < 1:
 		return "Necesitas una casa para tener animales."
-	if int(data["animals"][k]) >= int(a["max"]):
+	if int(data["animals"][k]) >= animal_max(k):
 		return "No caben más en el corral."
 	if data["gold"] < a["price"]:
 		return "No tienes suficiente oro."
@@ -473,3 +511,105 @@ func slaughter_pig() -> String:
 	add("carne", 6)
 	add("cuero", 1)
 	return "+6 carne, +1 cuero"
+
+
+# ---------------- Edificios y talleres ----------------
+
+func has_building(id: String) -> bool:
+	return id in data["buildings"].values()
+
+
+func animal_max(k: String) -> int:
+	return int(ANIMALS[k]["max"]) * (2 if has_building("establo") else 1)
+
+
+## Recursos unificados: madera, piedra y oro viven fuera del inventario.
+func res(k: String) -> int:
+	match k:
+		"madera":
+			return int(data["wood"])
+		"piedra":
+			return int(data["stone"])
+		"oro":
+			return int(data["gold"])
+	return inv(k)
+
+
+func res_add(k: String, n: int) -> void:
+	match k:
+		"madera":
+			data["wood"] = int(data["wood"]) + n
+		"piedra":
+			data["stone"] = int(data["stone"]) + n
+		"oro":
+			data["gold"] = int(data["gold"]) + n
+		_:
+			add(k, n)
+
+
+func can_pay(cost: Dictionary, times := 1) -> bool:
+	for k in cost:
+		if res(k) < int(cost[k]) * times:
+			return false
+	return true
+
+
+func pay(cost: Dictionary, times := 1) -> void:
+	for k in cost:
+		res_add(k, -int(cost[k]) * times)
+
+
+func cost_text(cost: Dictionary) -> String:
+	var parts := []
+	for k in cost:
+		var nm: String = k if not ITEMS.has(k) else String(ITEMS[k][0]).to_lower()
+		parts.append("%d %s" % [int(cost[k]), nm])
+	return ", ".join(parts)
+
+
+func construct(slot: int, id: String) -> String:
+	var b = BUILDINGS[id]
+	if has_building(id):
+		return "Ya tienes ese edificio."
+	if not can_pay(b["cost"]):
+		return "Te faltan materiales: " + cost_text(b["cost"])
+	pay(b["cost"])
+	data["buildings"][str(slot)] = id
+	var pres := 40 if id == "capilla" else 5
+	data["prestige"] += pres
+	say("Has construido: %s. (+%d prestigio)" % [b["name"], pres])
+	return ""
+
+
+func build_mine() -> String:
+	if not can_pay(MINE_COST):
+		return "Te faltan materiales: " + cost_text(MINE_COST)
+	pay(MINE_COST)
+	data["mine"] = true
+	data["prestige"] += 5
+	say("Has abierto una mina de hierro. (+5 prestigio)")
+	return ""
+
+
+## Fabrica una receta 'times' veces. Devuelve el texto del resultado.
+func craft(r: Dictionary, times := 1) -> String:
+	if r.has("tool") and r["tool"] in data["tools"]:
+		return "Ya tienes esa herramienta."
+	if not can_pay(r["in"], times):
+		return "Te faltan materiales."
+	pay(r["in"], times)
+	if r.has("tool"):
+		data["tools"].append(r["tool"])
+		return "Has forjado: " + TOOLS[r["tool"]]
+	var parts := []
+	for k in r["out"]:
+		res_add(k, int(r["out"][k]) * times)
+		parts.append("+%d %s" % [int(r["out"][k]) * times, String(ITEMS[k][0]).to_lower()])
+	return ", ".join(parts)
+
+
+func forge_cost(kind: String) -> Dictionary:
+	var lvl := int(data[kind]) + 1
+	if kind == "weapon":
+		return {"hierro": 4 * lvl, "madera": 2}
+	return {"hierro": 3 * lvl, "piel": 2 * lvl}

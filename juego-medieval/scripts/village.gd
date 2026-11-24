@@ -6,6 +6,7 @@ const M := preload("res://scripts/models.gd")
 const ACTOR := preload("res://scripts/actor.gd")
 const CAM := preload("res://scripts/cam_rig.gd")
 const FARM := preload("res://scripts/farm.gd")
+const BLD := preload("res://scripts/buildings.gd")
 
 const SIZE := Vector2(120, 80)
 const PLAZA := Vector3(60, 0, 40)
@@ -28,6 +29,7 @@ var cooldown := 0.0
 var trees: Array = []
 var rocks: Array = []
 var farm
+var bld
 var obstacles: Array = []
 var villagers: Array = []
 var vtarget: Array = []
@@ -63,11 +65,16 @@ func _ready() -> void:
 		trees.append({"p": p, "k": i % 3, "i": r.randi_range(1, 5), "s": r.randf_range(2.5, 3.5), "r": r.randf() * TAU})
 	for i in 22:
 		rocks.append({"p": Vector3(r.randf_range(8, 32), 0, r.randf_range(55, 70)), "i": r.randi_range(1, 7), "s": r.randf_range(1.3, 2.4), "r": r.randf() * TAU})
+	trees = trees.filter(func(t): return BLD.SLOTS.all(func(sl): return t["p"].distance_to(sl) > 7.0) and t["p"].distance_to(BLD.MINE) > 6.0)
 	_build_static()
 	farm = FARM.new()
 	farm.v = self
 	add_child(farm)
 	obstacles.append_array(farm.obstacles)
+	bld = BLD.new()
+	bld.v = self
+	add_child(bld)
+	obstacles.append_array(bld.obstacles)
 	_build_hud()
 	_reset_villagers()
 	cam = CAM.new()
@@ -152,7 +159,7 @@ func _build_nature(s: int) -> void:
 			obstacles.append([Vector2(rk["p"].x, rk["p"].z), 0.9 * rk["s"] / 1.5])
 	for i in 40:
 		var p := Vector3(randf_range(2, 118), 0, randf_range(2, 78))
-		if p.distance_to(PLAZA) > 14 and p.distance_to(FARM.POND) > 12 and not Rect2(86, 9, 26, 33).has_point(Vector2(p.x, p.z)) and p.distance_to(FARM.CORRAL) > 7:
+		if p.distance_to(PLAZA) > 14 and p.distance_to(FARM.POND) > 12 and not Rect2(86, 9, 26, 33).has_point(Vector2(p.x, p.z)) and p.distance_to(FARM.CORRAL) > 7 and BLD.SLOTS.all(func(sl): return p.distance_to(sl) > 6.0):
 			M.put(nature_node, "nature/%s_%d.glb" % ["Bush_Snow" if s == 3 else "Bush", 1 + i % 2], p, randf() * TAU, randf_range(1.2, 2.0))
 	M.set_season_ground(env["grad"], s)
 	season = s
@@ -466,6 +473,8 @@ func _process(delta: float) -> void:
 			_gather(inter["type"])
 		elif Input.is_key_pressed(KEY_E) and inter.get("type", "") == "fish":
 			farm.fish()
+		elif Input.is_key_pressed(KEY_E) and inter.get("type", "") == "mine" and GS.data["mine"]:
+			bld.mine_tick()
 		_move_npcs(delta)
 	else:
 		player.play("Idle")
@@ -550,6 +559,9 @@ func _find_interaction() -> Dictionary:
 	for rk in rocks:
 		if pp.distance_to(rk["p"]) < 1.2 + rk["s"] * 0.6:
 			return {"type": "rock", "label": "Picar piedra (mantén E)", "p": rk["p"]}
+	var bi: Dictionary = bld.find_interaction(pp)
+	if not bi.is_empty():
+		return bi
 	var fi: Dictionary = farm.find_interaction(pp)
 	if not fi.is_empty():
 		return fi
@@ -611,6 +623,8 @@ func _interact() -> void:
 			_camp_panel()
 		"":
 			pass
+		"solar", "mine":
+			bld.interact(inter)
 		_:
 			farm.interact(inter)
 
@@ -625,13 +639,15 @@ func _gather(type: String) -> void:
 	var d = GS.data
 	match type:
 		"tree":
-			d["wood"] += 1
+			var w := 2 if "hacha" in d["tools"] else 1
+			d["wood"] += w
 			cooldown = 0.45
-			_float("+1 madera", Color(0.95, 0.75, 0.45))
+			_float("+%d madera" % w, Color(0.95, 0.75, 0.45))
 		"rock":
-			d["stone"] += 1
+			var st := 2 if "pico" in d["tools"] else 1
+			d["stone"] += st
 			cooldown = 0.6
-			_float("+1 piedra", Color(0.85, 0.85, 0.9))
+			_float("+%d piedra" % st, Color(0.85, 0.85, 0.9))
 
 
 func _house_panel() -> void:
