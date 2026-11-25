@@ -180,7 +180,7 @@ static func day() -> void:
 	order.shuffle()
 	for v in order:
 		var j = JOBS[v["job"]]
-		var mult := 1.0 + (0.5 if int(v["tools"]) > 0 else 0.0)
+		var mult := (1.0 + (0.5 if int(v["tools"]) > 0 else 0.0)) * GS.TL.job_mult(v["job"])
 		if j.get("no_winter", false) and winter:
 			mult = 0.0
 		if winter and v["job"] == "pastor":

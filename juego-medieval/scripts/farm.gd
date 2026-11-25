@@ -575,8 +575,8 @@ func market_panel() -> void:
 		grid.add_child(l)
 	for k in GS.ITEMS:
 		var it: Array = GS.ITEMS[k]
-		var sell: int = int(round(it[1] * GS.CHAR.sell_mult()))
-		var buy := int(ceil(it[1] * 1.6))
+		var sell: int = int(round(it[1] * GS.CHAR.sell_mult() * GS.TL.sell_mult()))
+		var buy := int(ceil(it[1] * 1.6 * GS.TL.buy_mult()))
 		var name_l := Label.new()
 		name_l.text = "%s%s" % [it[0], " (%d rac.)" % it[2] if it[2] > 0 else ""]
 		grid.add_child(name_l)
@@ -643,7 +643,7 @@ func market_panel() -> void:
 			d["armor"] += 1
 			market_panel(), d["gold"] >= 25 * (a + 1)))
 	extra.add_child(row)
-	v._open_custom("Mercado — Oro: %d" % int(d["gold"]), extra)
+	v._open_custom(("¡Día de mercado! Mejores precios · " if GS.TL.market_day() else "") + "Mercado — Oro: %d" % int(d["gold"]), extra)
 
 
 func _btn(text: String, cb: Callable, enabled := true) -> Button:

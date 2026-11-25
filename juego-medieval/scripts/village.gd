@@ -4,6 +4,7 @@ extends Node3D
 const Art = preload("res://scripts/art.gd")
 const M := preload("res://scripts/models.gd")
 const ACTOR := preload("res://scripts/actor.gd")
+const ENG := preload("res://scripts/engines.gd")
 const CAM := preload("res://scripts/cam_rig.gd")
 const FARM := preload("res://scripts/farm.gd")
 const BLD := preload("res://scripts/buildings.gd")
@@ -654,7 +655,52 @@ func _process(delta: float) -> void:
 		vlabels[i].visible = villagers[i].position.distance_to(player.position) < 9
 	M.set_daytime(env, d["time"])
 	_ambience(d, night)
+	_update_civic()
 	_update_hud()
+
+
+## Día de mercado (puestos y mercaderes en la plaza), andamios de las obras y la fuente terminada.
+var civic_node: Node3D
+var civic_sig := ""
+func _update_civic() -> void:
+	var sig := str(GS.TL.market_day()) + str(GS.TL.current_work()) + str(GS.TL.works_done())
+	if sig == civic_sig:
+		return
+	civic_sig = sig
+	if civic_node:
+		civic_node.queue_free()
+	civic_node = Node3D.new()
+	add_child(civic_node)
+	if GS.TL.market_day():
+		for k in 4:
+			var ang := PI / 4 + k * PI / 2
+			var p := PLAZA + Vector3(cos(ang), 0, sin(ang)) * 10.0
+			M.put(civic_node, ["village/MarketStand_1.glb", "village/MarketStand_2.glb"][k % 2], p, -ang + PI / 2, 1.2)
+			M.put(civic_node, "village/Crate.glb", p + Vector3(cos(ang), 0, sin(ang)) * 1.6, ang, 1.0)
+			var mer := ACTOR.new()
+			civic_node.add_child(mer)
+			mer.build(["ubc/Superhero_Male_FullBody", "out/Male_Peasant", MALE_HAIR[k % 3]], {"hair_color": M.SKIN_HAIR[k % 4]})
+			mer.position = p + Vector3(cos(ang), 0, sin(ang)) * -1.6
+			mer.rotation.y = -ang - PI / 2
+			mer.play("Idle_Talking")
+		var lb := M.label3d("¡Día de mercado!", 64)
+		lb.position = PLAZA + Vector3(0, 6, 0)
+		lb.modulate = Color(1, 0.85, 0.4)
+		civic_node.add_child(lb)
+	var spot := PLAZA + Vector3(13, 0, 13)
+	if GS.TL.current_work() != null:
+		for k in 4:
+			ENG._box(civic_node, Vector3(0.2, 4.0, 0.2), spot + Vector3((k % 2) * 3.0 - 1.5, 2.0, (k / 2) * 3.0 - 1.5), Color(0.45, 0.3, 0.17))
+		ENG._box(civic_node, Vector3(3.4, 0.15, 3.4), spot + Vector3(0, 2.5, 0), Color(0.35, 0.24, 0.13))
+		M.put(civic_node, "village/Package_1.glb", spot + Vector3(2.5, 0, 2.5), 0.3, 1.4)
+		var lw := M.label3d("Obras: %s" % GS.TL.WORKS[GS.TL.current_work()["id"]]["name"].to_lower(), 40)
+		lw.position = spot + Vector3(0, 5, 0)
+		civic_node.add_child(lw)
+	elif "fuente" in GS.TL.works_done():
+		M.put(civic_node, "village/Well.glb", spot, 0.0, 2.4)
+		var lf := M.label3d("Fuente pública", 36)
+		lf.position = spot + Vector3(0, 4, 0)
+		civic_node.add_child(lf)
 
 
 ## Sonido ambiente según la hora, la estación y el sitio; campana de misa los domingos.
@@ -1143,6 +1189,11 @@ func _hall_panel() -> void:
 	opts.append_array(GS.SOCIAL.hall_options(self))
 	if int(d["title"]) >= 1:
 		opts.append(["Consejo de la corte", func(): GS.POL.council_panel(self)])
+		opts.append(["Obras públicas", func(): GS.TL.works_panel(self)])
+		opts.append(["Gremios", func():
+			var go: Array = GS.TL.guild_options(self)
+			go.append(["Cerrar", _close_panel])
+			_open_panel("Gremios del pueblo", GS.TL.guilds_text() + "\n\nCon privilegios, los oficios de un gremio producen un 25% más. Si les niegas sus peticiones dos veces, hacen huelga.", go)])
 		opts.append(["Reinos vecinos", func(): GS.WORLD.kingdoms_panel(self)])
 		if not GS.HOSTS.prisoners().is_empty():
 			opts.append(["Mazmorras (%d presos)" % GS.HOSTS.prisoners().size(), func(): GS.HOSTS.dungeon_panel(self)])

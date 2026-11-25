@@ -16,6 +16,8 @@ const LOOK := {
 	"establo": [["village/Stable.glb", 1.8], ["village/Hay.glb", 1.4, Vector3(-3.5, 0, 2.5)]],
 	"granero": [["rts/Storage_FirstAge_Level2.glb", -8.0]],
 	"capilla": [["rts/Temple_FirstAge_Level2.glb", -10.0]],
+	"molino": [["village/Mill.glb", 1.6]],
+	"cantera": [["nature/Rock_3.glb", 4.0], ["nature/Rock_5.glb", 3.0, Vector3(3.5, 0, 1.5)], ["village/Crate.glb", 1.4, Vector3(-3, 0, 2.6)]],
 	"escuela": [["village/House_2.glb", 1.5], ["village/Bench_1.glb", 1.4, Vector3(3, 0, 2.8)], ["village/Bench_1.glb", 1.4, Vector3(-3, 0, 2.8)]],
 	"hospital": [["village/House_4.glb", 1.6], ["village/Cauldron.glb", 1.4, Vector3(3.2, 0, 2.6)], ["village/Bench_1.glb", 1.4, Vector3(-3, 0, 2.8)]],
 	"universidad": [["rts/Temple_FirstAge_Level3.glb", -10.0]],

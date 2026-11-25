@@ -16,6 +16,7 @@ const SIEGE := preload("res://scripts/siege.gd")
 const WORLD := preload("res://scripts/world.gd")
 const HOSTS := preload("res://scripts/hosts.gd")
 const FOLK := preload("res://scripts/folk.gd")
+const TL := preload("res://scripts/townlife.gd")
 
 const SAVE_PATH := "user://partida.json"
 const SECONDS_PER_DAY := 40.0
@@ -74,6 +75,8 @@ const BUILDINGS := {
 	"granero": {"name": "Granero", "cost": {"madera": 40, "piedra": 20}, "desc": "Las cosechas rinden un 25% más."},
 	"colmenar": {"name": "Colmenar", "cost": {"madera": 15, "oro": 10}, "desc": "Las abejas producen miel (en invierno no)."},
 	"capilla": {"name": "Capilla", "cost": {"madera": 30, "piedra": 60, "oro": 40}, "desc": "+40 de prestigio y +3 cada estación."},
+	"molino": {"name": "Molino de viento", "cost": {"madera": 60, "piedra": 20, "oro": 30}, "desc": "Muele mucho más grano: los panaderos producen bastante más (y más cuanto más crezca el pueblo)."},
+	"cantera": {"name": "Cantera", "cost": {"madera": 30, "oro": 30}, "desc": "Canteros y mineros producen bastante más (y más cuanto más crezca el pueblo)."},
 	"escuela": {"name": "Escuela", "cost": {"madera": 40, "piedra": 20, "oro": 30}, "desc": "Los niños del pueblo van a la escuela por la mañana; al hacerse mayores empiezan con ahorros y más contentos."},
 	"hospital": {"name": "Hospital", "cost": {"madera": 40, "piedra": 40, "oro": 60}, "desc": "Tu familia recupera +2 de salud al día y las fiebres y la peste matan a la mitad."},
 	"universidad": {"name": "Universidad", "cost": {"madera": 50, "piedra": 80, "oro": 120}, "tier": 2, "desc": "Educar a tus hijos sale gratis y tus habilidades suben un 50% más rápido. (Solo en una ciudad)"},
@@ -238,6 +241,7 @@ func next_day() -> void:
 	HOSTS.day()
 	HOSTS.rescue_day()
 	FOLK.day()
+	TL.day()
 	SOCIAL.day()
 	QUESTS.check()
 	if data["spouse"] != null and data["children"].size() < 6 and p["age"] >= 16 and p["age"] < 48 and data["spouse"]["age"] < 46 and randf() < 0.06:
@@ -288,6 +292,7 @@ func next_season() -> void:
 	WORLD.season()
 	WORLD.season_bards()
 	WORLD.tourney_season()
+	TL.guild_season()
 	if data.get("game_over", false):
 		return
 	say("Comienza %s del año %d." % [["la primavera", "el verano", "el otoño", "el invierno"][int(data["season"])], int(data["year"])])
