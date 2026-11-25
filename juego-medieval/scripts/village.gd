@@ -12,6 +12,7 @@ const SIM := preload("res://scripts/village_sim.gd")
 const TRADE := preload("res://scripts/trade_ui.gd")
 const TOWN := preload("res://scripts/town.gd")
 const WILD := preload("res://scripts/wildlife.gd")
+const HUD := preload("res://scripts/hud.gd")
 
 const PLAZA := Vector3(60, 0, 40)
 const PLOT := Vector3(13, 0, 40)
@@ -60,6 +61,13 @@ var camp_banner: Node3D
 var camp_fire: Node3D
 var inter := {}
 var lbl_res: Label
+var lbl_name: Label
+var lbl_place: Label
+var bar_health
+var bar_food
+var hud_portrait
+var minimap
+var hud_slots := {}
 var lbl_info: Label
 var lbl_log: Label
 var lbl_prompt: Label
@@ -618,38 +626,91 @@ func _work_spot(v: Dictionary, i: int) -> Vector3:
 func _build_hud() -> void:
 	var layer := CanvasLayer.new()
 	add_child(layer)
-
-	var top := PanelContainer.new()
-	top.add_theme_stylebox_override("panel", Art.bar_style())
-	top.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
-	layer.add_child(top)
+	# Arriba a la izquierda: retrato, nombre, barras de salud y despensa, y datos de la casa.
+	var tl := HBoxContainer.new()
+	tl.position = Vector2(12, 10)
+	tl.add_theme_constant_override("separation", 10)
+	layer.add_child(tl)
+	hud_portrait = HUD.Portrait.new()
+	hud_portrait.custom_minimum_size = Vector2(92, 92)
+	tl.add_child(hud_portrait)
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 4)
+	tl.add_child(col)
+	lbl_name = Label.new()
+	lbl_name.add_theme_font_size_override("font_size", 18)
+	lbl_name.add_theme_color_override("font_outline_color", Color.BLACK)
+	lbl_name.add_theme_constant_override("outline_size", 5)
+	col.add_child(lbl_name)
+	bar_health = HUD.Bar.new()
+	bar_health.custom_minimum_size = Vector2(250, 22)
+	col.add_child(bar_health)
+	bar_food = HUD.Bar.new()
+	bar_food.col = Color(0.8, 0.62, 0.12)
+	bar_food.custom_minimum_size = Vector2(250, 22)
+	col.add_child(bar_food)
 	lbl_res = Label.new()
-	lbl_res.add_theme_font_size_override("font_size", 18)
-	top.add_child(lbl_res)
-
+	lbl_res.add_theme_font_size_override("font_size", 13)
+	lbl_res.add_theme_color_override("font_outline_color", Color.BLACK)
+	lbl_res.add_theme_constant_override("outline_size", 4)
+	col.add_child(lbl_res)
+	# Arriba a la derecha: lugar y fecha, minimapa con reloj y misiones.
+	var tr := VBoxContainer.new()
+	tr.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
+	tr.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	tr.offset_right = -10
+	tr.offset_top = 8
+	tr.add_theme_constant_override("separation", 6)
+	layer.add_child(tr)
+	var place := PanelContainer.new()
+	place.add_theme_stylebox_override("panel", HUD.frame_style(10))
+	tr.add_child(place)
+	lbl_place = Label.new()
+	lbl_place.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lbl_place.add_theme_font_size_override("font_size", 15)
+	lbl_place.add_theme_color_override("font_color", HUD.GOLD)
+	place.add_child(lbl_place)
+	minimap = HUD.Minimap.new()
+	minimap.v = self
+	minimap.custom_minimum_size = Vector2(230, 230)
+	tr.add_child(minimap)
 	var info := PanelContainer.new()
-	info.add_theme_stylebox_override("panel", Art.bar_style())
-	info.grow_horizontal = Control.GROW_DIRECTION_BEGIN
-	info.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
-	info.offset_top = 50
-	info.offset_right = -8
-	layer.add_child(info)
+	info.add_theme_stylebox_override("panel", HUD.frame_style(6))
+	tr.add_child(info)
 	lbl_info = Label.new()
-	lbl_info.add_theme_font_size_override("font_size", 15)
+	lbl_info.add_theme_font_size_override("font_size", 14)
 	lbl_info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	lbl_info.custom_minimum_size.x = 360
+	lbl_info.custom_minimum_size.x = 300
 	info.add_child(lbl_info)
+	# Abajo en el centro: ranuras con recursos y teclas.
+	var bar := HBoxContainer.new()
+	bar.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM)
+	bar.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	bar.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	bar.offset_bottom = -10
+	bar.add_theme_constant_override("separation", 6)
+	layer.add_child(bar)
+	for sdef in [["oro", "Oro"], ["madera", "Madera"], ["piedra", "Piedra"], ["comida", "Comida"], ["prestigio", "Prestigio"]]:
+		var sl := HUD.slot("", sdef[1])
+		bar.add_child(sl)
+		hud_slots[sdef[0]] = sl.find_child("L", true, false)
+	for kdef in [["E", "Usar"], ["I", "Inventario"], ["M", "Mapa"], ["H", "Caballo"], ["T", "Tiempo"]]:
+		var sl := HUD.slot(kdef[0], kdef[1])
+		(sl.find_child("L", true, false) as Label).add_theme_font_size_override("font_size", 20)
+		bar.add_child(sl)
+		if kdef[0] == "T":
+			hud_slots["t"] = sl.find_child("K", true, false)
 
 	var logp := PanelContainer.new()
 	logp.add_theme_stylebox_override("panel", Art.bar_style())
 	logp.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	logp.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
-	logp.offset_bottom = -8
+	logp.offset_bottom = -80
 	logp.offset_left = 8
 	layer.add_child(logp)
 	lbl_log = Label.new()
 	lbl_log.add_theme_font_size_override("font_size", 14)
-	lbl_log.custom_minimum_size.x = 560
+	lbl_log.custom_minimum_size.x = 440
 	lbl_log.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	logp.add_child(lbl_log)
 
@@ -662,19 +723,9 @@ func _build_hud() -> void:
 	lbl_prompt.add_theme_font_size_override("font_size", 22)
 	lbl_prompt.add_theme_color_override("font_outline_color", Color.BLACK)
 	lbl_prompt.add_theme_constant_override("outline_size", 6)
+	lbl_prompt.add_theme_stylebox_override("normal", HUD.frame_style(8))
 	layer.add_child(lbl_prompt)
 
-	var help := Label.new()
-	help.text = "WASD: mover · Shift: correr · Clic derecho: girar cámara · Rueda: zoom · E: usar · I: inventario · M: mapa de la región · H: caballo · T: velocidad · Esc: menú"
-	help.add_theme_font_size_override("font_size", 13)
-	help.add_theme_color_override("font_outline_color", Color.BLACK)
-	help.add_theme_constant_override("outline_size", 4)
-	help.grow_horizontal = Control.GROW_DIRECTION_BEGIN
-	help.grow_vertical = Control.GROW_DIRECTION_BEGIN
-	help.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
-	help.offset_right = -10
-	help.offset_bottom = -8
-	layer.add_child(help)
 
 	var center := CenterContainer.new()
 	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -691,25 +742,31 @@ func _build_hud() -> void:
 
 func _update_hud() -> void:
 	var d = GS.data
-	lbl_res.text = "   Oro: %d      Madera: %d      Piedra: %d      Comida: %d raciones      Prestigio: %d      Tiempo: x%d" % [int(d["gold"]), int(d["wood"]), int(d["stone"]), GS.food_total(), int(d["prestige"]), int(GS.speed)]
 	var p = d["player"]
-	var lines := []
-	lines.append("%s %s" % [p["name"], d["dynasty"]])
 	var rank: String = ["Campesino", "Jefe del pueblo"][int(d["title"])] if p["male"] else ["Campesina", "Jefa del pueblo"][int(d["title"])]
 	if d.get("king", false):
 		rank = "Rey de la región" if p["male"] else "Reina de la región"
-	lines.append("%s · %d años · Salud %d" % [rank, int(p["age"]), int(p["health"])])
-	lines.append("Casa: %s" % GS.HOUSE_NAMES[int(d["house_level"])])
-	if d["spouse"] != null:
-		lines.append("Cónyuge: %s" % d["spouse"]["name"])
-	else:
-		lines.append("Soltero" if p["male"] else "Soltera")
-	lines.append("Hijos: %d · Generación %d" % [d["children"].size(), int(d["generation"])])
-	lines.append("%s: %d habitantes · Prosperidad %d" % [SIM.town_title(), SIM.total_pop(), int(d["prosperity"])])
-	lines.append("%s, día %d · Año %d · %02d:00" % [GS.SEASONS[int(d["season"])], int(d["day"]), int(d["year"]), int(d["time"] * 24.0)])
+	lbl_name.text = "%s %s · %s, %d años" % [p["name"], d["dynasty"], rank, int(p["age"])]
+	hud_portrait.initial = String(d["dynasty"]).replace("de ", "").replace("del ", "").substr(0, 1).to_upper()
+	hud_portrait.queue_redraw()
+	bar_health.label = "Salud %d" % int(p["health"])
+	bar_health.value = float(p["health"]) / 100.0
+	bar_health.queue_redraw()
+	var mouths: int = 1 + d["children"].size() + (1 if d["spouse"] != null else 0)
+	bar_food.label = "Despensa: %d raciones" % GS.food_total()
+	bar_food.value = float(GS.food_total()) / float(mouths * 15)
+	bar_food.queue_redraw()
+	lbl_res.text = "Casa: %s · %s · Hijos: %d · Generación %d" % [GS.HOUSE_NAMES[int(d["house_level"])], ("Casado con " if p["male"] else "Casada con ") + String(d["spouse"]["name"]) if d["spouse"] != null else ("Soltero" if p["male"] else "Soltera"), d["children"].size(), int(d["generation"])]
+	lbl_place.text = "%s · %d habitantes\n%s, día %d · Año %d · %02d:00" % [SIM.town_title(), SIM.total_pop(), GS.SEASONS[int(d["season"])], int(d["day"]), int(d["year"]), int(d["time"] * 24.0)]
+	hud_slots["oro"].text = str(int(d["gold"]))
+	hud_slots["madera"].text = str(int(d["wood"]))
+	hud_slots["piedra"].text = str(int(d["stone"]))
+	hud_slots["comida"].text = str(GS.food_total())
+	hud_slots["prestigio"].text = str(int(d["prestige"]))
+	hud_slots["t"].text = "Tiempo x%d" % int(GS.speed)
+	var lines := ["MISIONES"]
 	if d["summons"] != null:
 		var left: int = int(d["summons"]["deadline"]) - int(d["total_days"])
-		lines.append("")
 		lines.append("¡LLAMADA DEL REY!")
 		lines.append("Contra %s" % d["summons"]["enemy"])
 		lines.append("Quedan %d días · Campamento al este" % maxi(left, 0))
@@ -719,11 +776,13 @@ func _update_hud() -> void:
 	GS.QUESTS.check()
 	var q: Dictionary = GS.QUESTS.current()
 	if not q.is_empty():
-		lines.append("")
-		lines.append("OBJETIVO: %s" % q["goal"])
+		lines.append("• %s" % q["goal"])
 		lines.append(q["tip"])
+	if lines.size() == 1:
+		lines.append("Sin tareas pendientes. Prosperidad %d" % int(d["prosperity"]))
 	lbl_info.text = "\n".join(lines)
 	lbl_prompt.text = "" if panel.visible or inter.is_empty() else "[E] " + inter["label"]
+	lbl_prompt.visible = lbl_prompt.text != ""
 
 
 func _refresh_log() -> void:
