@@ -10,6 +10,23 @@ const POND_R := 7.0
 const MILL := Vector3(98, 0, 46)
 const OVEN := Vector3(83, 0, 34)
 const COMMONS := Rect2(86.5, 48.5, 8, 5)
+## Terrenos anexos alrededor de tu parcela (norte, sur y dos al oeste).
+const ANNEX := [Vector3(13, 0, 28.5), Vector3(13, 0, 51.5), Vector3(1, 0, 35.5), Vector3(1, 0, 44.5)]
+const ANNEX_HALF := 4.2
+
+
+## Rectángulos de todas las parcelas: 6 junto al camino de los campos, 6 más al sureste y los huertos de los anexos.
+static func field_rects() -> Array:
+	var out := []
+	for i in 3:
+		for j in 2:
+			out.append(Rect2(90 + j * 9.5, 12.5 + i * 8.5, 8.5, 7))
+	for i in 3:
+		for j in 2:
+			out.append(Rect2(106 + j * 8.5, 53 + i * 8.5, 7.5, 7))
+	for a in ANNEX:
+		out.append(Rect2(a.x - 3.2, a.z - 3.2, 6.4, 6.4))
+	return out
 const CROP_SCALE := {"Wheat": 1.4, "Carrot": 0.5, "Beet": 0.5, "Lettuce": 0.5, "Pumpkin": 0.55}
 const ANIMAL_MODEL := {
 	"gallina": ["animals/Chicken.fbx", 0.45, "CharacterArmature|"],
@@ -38,9 +55,7 @@ var commons_node: Node3D
 func _ready() -> void:
 	var r := RandomNumberGenerator.new()
 	r.seed = 777
-	for i in 3:
-		for j in 2:
-			fields.append(Rect2(90 + j * 9.5, 12.5 + i * 8.5, 8.5, 7))
+	fields = field_rects()
 	for i in fields.size():
 		field_nodes.append(null)
 		field_sigs.append("")
@@ -187,9 +202,10 @@ func _process(delta: float) -> void:
 	if ps != pick_sig:
 		pick_sig = ps
 		_rebuild_pickables()
-	var cs := str(d["animals"])
+	var cs := str(d["animals"]) + str(d["annex"])
 	if cs != corral_sig:
 		corral_sig = cs
+		_rebuild_annexes()
 		_rebuild_corral()
 	for fn in fish_nodes:
 		fn["a"] += fn["s"] * delta
@@ -204,7 +220,8 @@ func _process(delta: float) -> void:
 		if to.length() < 0.2:
 			_play(n, c["idle"])
 			if randf() < 0.004:
-				c["t"] = CORRAL + Vector3(randf_range(-CORRAL_HALF.x + 0.8, CORRAL_HALF.x - 0.8), 0, randf_range(-CORRAL_HALF.y + 0.8, CORRAL_HALF.y - 0.8))
+				var h: Vector2 = c["h"]
+				c["t"] = c["c"] + Vector3(randf_range(-h.x + 0.8, h.x - 0.8), 0, randf_range(-h.y + 0.8, h.y - 0.8))
 		else:
 			n.position += to.normalized() * minf(to.length(), 0.6 * delta)
 			n.rotation.y = atan2(to.x, to.z)
@@ -220,6 +237,8 @@ func _rebuild_field(i: int) -> void:
 	field_nodes[i] = node
 	var r: Rect2 = fields[i]
 	var f = GS.data["fields"][i]
+	if not f["owned"] and i >= GS.FIELDS_OUT:
+		return
 	if not f["owned"]:
 		var l := M.label3d("Parcela en venta (%d oro)" % GS.FIELD_PRICE, 36)
 		l.position = Vector3(r.get_center().x, 1.5, r.get_center().y)
@@ -308,15 +327,105 @@ func _rebuild_corral() -> void:
 	corral_animals.clear()
 	for k in ["vaca", "oveja", "cerdo", "gallina"]:
 		var info: Array = ANIMAL_MODEL[k]
-		for i in mini(int(GS.data["animals"][k]), 6):
+		# Si tienes un anexo para este animal, vive allí; si no, en el corral del pueblo.
+		var cc := CORRAL
+		var hh := CORRAL_HALF
+		for ai in ANNEX.size():
+			var at: String = GS.data["annex"][ai]
+			if GS.ANNEX_TYPES.has(at) and GS.ANNEX_TYPES[at].get("animal", "") == k:
+				cc = ANNEX[ai] + (Vector3(0, 0, 1.2) if at == "establo" else Vector3.ZERO)
+				hh = Vector2(ANNEX_HALF - 0.6, ANNEX_HALF - (2.2 if at == "establo" else 0.6))
+		for i in mini(int(GS.data["animals"][k]), 8):
 			var n := _animated(info[0], info[1], info[2] + "Idle")
-			n.position = CORRAL + Vector3(randf_range(-3.5, 3.5), 0, randf_range(-2.2, 2.2))
+			n.position = cc + Vector3(randf_range(-hh.x + 0.8, hh.x - 0.8), 0, randf_range(-hh.y + 0.8, hh.y - 0.8))
 			n.rotation.y = randf() * TAU
 			var walk: String = info[2] + "Walk"
 			var ap: AnimationPlayer = n.find_child("AnimationPlayer", true, false)
 			if ap and not ap.has_animation(walk):
 				walk = info[2] + "Idle"
-			corral_animals.append({"n": n, "t": n.position, "idle": info[2] + "Idle", "walk": walk})
+			corral_animals.append({"n": n, "t": n.position, "idle": info[2] + "Idle", "walk": walk, "c": cc, "h": hh})
+
+
+# ---------------- Terrenos anexos ----------------
+
+var annex_node: Node3D
+func _rebuild_annexes() -> void:
+	if annex_node:
+		annex_node.queue_free()
+	annex_node = Node3D.new()
+	add_child(annex_node)
+	var E := preload("res://scripts/engines.gd")
+	var BLD := preload("res://scripts/buildings.gd")
+	for i in ANNEX.size():
+		var p: Vector3 = ANNEX[i]
+		var t: String = GS.data["annex"][i]
+		var h := ANNEX_HALF
+		if t == "":
+			for o in [Vector3(-h, 0, -h), Vector3(h, 0, -h), Vector3(-h, 0, h), Vector3(h, 0, h)]:
+				E._box(annex_node, Vector3(0.14, 0.9, 0.14), p + o + Vector3(0, 0.45, 0), Color(0.45, 0.32, 0.2))
+			BLD.signboard(annex_node, p + Vector3(h - 0.6, 0, h - 0.4) if i < 2 else p + Vector3(h - 0.4, 0, 0), "Se vende %d oro" % GS.ANNEX_PRICE)
+			continue
+		# Terreno propio: valla alrededor y tierra (salvo huerto, que ya pinta sus surcos).
+		for side in 4:
+			var n := int(ceil(h * 2.0 / 1.75))
+			for k in n:
+				var along := -h + (k + 0.5) * (h * 2.0 / n)
+				var pos: Vector3 = p + ([Vector3(along, 0, -h), Vector3(along, 0, h), Vector3(-h, 0, along), Vector3(h, 0, along)][side])
+				if t != "solar" and side == [1, 0, 3, 3][i] and absf(along) < 1.0:
+					continue  # la puerta, hacia tu casa
+				M.put(annex_node, "village/Fence.glb", pos, 0.0 if side < 2 else PI / 2, 2.2)
+		var ground := MeshInstance3D.new()
+		var bm := BoxMesh.new()
+		bm.size = Vector3(h * 2.0, 0.04, h * 2.0)
+		ground.mesh = bm
+		ground.material_override = M.dirt(Color(0.4, 0.33, 0.22) if t != "pocilga" else Color(0.3, 0.22, 0.15))
+		ground.position = p + Vector3(0, 0.02, 0)
+		annex_node.add_child(ground)
+		match t:
+			"solar":
+				BLD.signboard(annex_node, p + Vector3(0, 0, 0), "Tu terreno")
+			"establo":
+				M.put(annex_node, "village/Stable.glb", p + Vector3(0, 0, -h + 1.8), 0.0, 1.6)
+				M.put(annex_node, "village/Hay.glb", p + Vector3(h - 1.2, 0, h - 1.2), 0.3, 1.2)
+			"gallinero":
+				E._box(annex_node, Vector3(2.4, 1.4, 1.8), p + Vector3(-h + 1.8, 0.7, -h + 1.5), Color(0.5, 0.36, 0.2))
+				var roof := MeshInstance3D.new()
+				var pm := PrismMesh.new()
+				pm.size = Vector3(2.8, 0.9, 2.2)
+				roof.mesh = pm
+				roof.material_override = M.flat(Color(0.6, 0.48, 0.26))
+				roof.position = p + Vector3(-h + 1.8, 1.85, -h + 1.5)
+				annex_node.add_child(roof)
+			"corral", "pocilga":
+				M.put(annex_node, "village/Hay.glb" if t == "corral" else "village/Barrel.glb", p + Vector3(-h + 1.2, 0, -h + 1.2), 0.3, 1.2)
+		var names := {"solar": "", "huerto": "Tu huerto"}
+		var title: String = names.get(t, GS.ANNEX_TYPES[t]["name"] if GS.ANNEX_TYPES.has(t) else "")
+		if title != "":
+			var l := M.label3d(title, 36)
+			l.position = p + Vector3(0, 2.6, 0)
+			l.visibility_range_end = 25.0
+			annex_node.add_child(l)
+
+
+func annex_panel(i: int) -> void:
+	var d = GS.data
+	if d["annex"][i] == "":
+		v._open_panel("Terreno junto a tu casa", "Puedes comprar este terreno pegado a tu casa por %d de oro y levantar en él un huerto, un corral, un establo, un gallinero o una pocilga.\nTu oro: %d" % [GS.ANNEX_PRICE, int(d["gold"])], [
+			["Comprar (%d oro)" % GS.ANNEX_PRICE, func():
+				var e := GS.buy_annex(i)
+				v._open_panel("Terreno", e if e != "" else "El terreno ya es tuyo. Acércate otra vez para decidir qué construir.", [["Cerrar", v._close_panel]]), int(d["gold"]) >= GS.ANNEX_PRICE],
+			["Cerrar", v._close_panel]])
+		return
+	var opts := []
+	for k in GS.ANNEX_TYPES:
+		var a: Dictionary = GS.ANNEX_TYPES[k]
+		var c: Dictionary = a["cost"]
+		var can: bool = int(d["wood"]) >= c["wood"] and int(d["stone"]) >= c["stone"] and int(d["gold"]) >= c["gold"]
+		opts.append(["%s: %s (%s)" % [a["name"], a["desc"], GS.cost_text(c)], func():
+			var e := GS.build_annex(i, k)
+			v._open_panel(a["name"], e if e != "" else "¡Listo! Ya tienes %s junto a tu casa." % String(a["name"]).to_lower(), [["Cerrar", v._close_panel]]), can])
+	opts.append(["Cerrar", v._close_panel])
+	v._open_panel("Tu terreno", "¿Qué quieres levantar aquí?", opts)
 
 
 # ---------------- Caza ----------------
@@ -324,7 +433,7 @@ func _rebuild_corral() -> void:
 func _spawn_deer(dd: Dictionary, r = null) -> void:
 	var stag := randf() < 0.35
 	var n := _animated("animals/%s.glb" % ("Stag" if stag else "Deer"), 1.9 if stag else 1.7, "AnimalArmature|Idle")
-	n.position = Vector3(randf_range(5, 30), 0, randf_range(5, 44))
+	n.position = Vector3(randf_range(3, 24), 0, randf_range(3, 20))
 	if dd.is_empty():
 		deer.append({"n": n, "stag": stag, "state": "idle", "t": n.position, "timer": 0.0, "dead": false})
 	else:
@@ -366,7 +475,7 @@ func _update_deer(delta: float) -> void:
 		if to.length() < 0.3:
 			_play(n, "AnimalArmature|Eating")
 			if randf() < 0.003:
-				d["t"] = Vector3(clampf(n.position.x + randf_range(-8, 8), 3, 31), 0, clampf(n.position.z + randf_range(-8, 8), 3, 46))
+				d["t"] = Vector3(clampf(n.position.x + randf_range(-8, 8), 3, 24), 0, clampf(n.position.z + randf_range(-8, 8), 3, 22))
 		else:
 			n.position += to.normalized() * minf(to.length(), 1.2 * delta)
 			n.rotation.y = atan2(to.x, to.z)
@@ -399,9 +508,14 @@ func find_interaction(pp: Vector3) -> Dictionary:
 	for m in mushrooms:
 		if pp.distance_to(m["p"]) < 1.5 and s in [0, 2] and GS.can_pick(m["id"]):
 			return {"type": "pick", "id": m["id"], "item": "setas", "n": [2, 3], "label": "Coger setas", "p": m["p"]}
+	for i in ANNEX.size():
+		if Vector2(pp.x - ANNEX[i].x, pp.z - ANNEX[i].z).length() < ANNEX_HALF + 1.0 and String(d["annex"][i]) in ["", "solar"]:
+			return {"type": "annex", "i": i, "label": "Terreno junto a tu casa (%d oro)" % GS.ANNEX_PRICE if d["annex"][i] == "" else "Construir en tu terreno"}
 	for i in fields.size():
 		if fields[i].has_point(Vector2(pp.x, pp.z)):
 			var f = d["fields"][i]
+			if not f["owned"] and i >= GS.FIELDS_OUT:
+				continue
 			var label: String
 			if not f["owned"]:
 				label = "Comprar parcela (%d oro)" % GS.FIELD_PRICE
@@ -417,6 +531,8 @@ func find_interaction(pp: Vector3) -> Dictionary:
 
 func interact(it: Dictionary) -> void:
 	match it["type"]:
+		"annex":
+			annex_panel(it["i"])
 		"deer":
 			_hunt(it["i"])
 		"corral":

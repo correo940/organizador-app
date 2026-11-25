@@ -506,6 +506,67 @@ static func paving() -> StandardMaterial3D:
 	return _paving
 
 
+## Cabaña de madera humilde: tablones, tejado de paja, puerta baja y un ventanuco.
+static var _plank: StandardMaterial3D
+static var _thatch: StandardMaterial3D
+static func hut(parent: Node, pos: Vector3, rot: float, s := 1.0) -> Node3D:
+	if _plank == null:
+		# Tablones verticales con juntas oscuras y veta; paja en hileras con mechones.
+		var r := RandomNumberGenerator.new()
+		r.seed = 5
+		var img := Image.create(128, 128, false, Image.FORMAT_RGB8)
+		for x in 128:
+			var board := x / 16
+			var base := Color(0.42, 0.29, 0.16).lerp(Color(0.55, 0.39, 0.22), fmod(board * 0.37, 1.0))
+			for y in 128:
+				var c := base.darkened(0.12 * sin(y * 0.21 + board * 2.0) + r.randf() * 0.08)
+				if x % 16 == 0 or (y + board * 37) % 128 < 2:
+					c = Color(0.16, 0.1, 0.05)
+				img.set_pixel(x, y, c)
+		_plank = StandardMaterial3D.new()
+		_plank.albedo_texture = ImageTexture.create_from_image(img)
+		_plank.uv1_scale = Vector3(2, 1, 1)
+		_plank.roughness = 0.95
+		var im2 := Image.create(128, 128, false, Image.FORMAT_RGB8)
+		for y in 128:
+			for x in 128:
+				var c := Color(0.62, 0.5, 0.27).darkened(0.25 * float((y + int(r.randf() * 3)) % 16) / 16.0 + r.randf() * 0.12)
+				im2.set_pixel(x, y, c)
+		_thatch = StandardMaterial3D.new()
+		_thatch.albedo_texture = ImageTexture.create_from_image(im2)
+		_thatch.uv1_scale = Vector3(3, 3, 1)
+		_thatch.roughness = 1.0
+	var n := Node3D.new()
+	n.position = pos
+	n.rotation.y = rot
+	n.scale = Vector3.ONE * s
+	parent.add_child(n)
+	var walls := MeshInstance3D.new()
+	var wb := BoxMesh.new()
+	wb.size = Vector3(4.6, 2.3, 4.2)
+	walls.mesh = wb
+	walls.material_override = _plank
+	walls.position = Vector3(0, 1.15, 0)
+	n.add_child(walls)
+	var roof := MeshInstance3D.new()
+	var pm := PrismMesh.new()
+	pm.size = Vector3(5.4, 1.9, 4.9)
+	roof.mesh = pm
+	roof.material_override = _thatch
+	roof.position = Vector3(0, 2.3 + 0.95, 0)
+	n.add_child(roof)
+	var dark := flat(Color(0.18, 0.12, 0.07))
+	for b in [[Vector3(1.0, 1.7, 0.08), Vector3(0.7, 0.85, 2.12)], [Vector3(0.6, 0.5, 0.08), Vector3(-1.2, 1.5, 2.12)], [Vector3(0.18, 2.4, 0.18), Vector3(-2.3, 1.2, 2.1)], [Vector3(0.18, 2.4, 0.18), Vector3(2.3, 1.2, 2.1)], [Vector3(0.18, 2.4, 0.18), Vector3(-2.3, 1.2, -2.1)], [Vector3(0.18, 2.4, 0.18), Vector3(2.3, 1.2, -2.1)]]:
+		var m := MeshInstance3D.new()
+		var bx := BoxMesh.new()
+		bx.size = b[0]
+		m.mesh = bx
+		m.material_override = dark
+		m.position = b[1]
+		n.add_child(m)
+	return n
+
+
 static func road(parent: Node, a: Vector3, b: Vector3, w: float, col: Color) -> MeshInstance3D:
 	roads.append([Vector2(a.x, a.z), Vector2(b.x, b.z), w * 0.5 + 0.4])
 	var m := MeshInstance3D.new()

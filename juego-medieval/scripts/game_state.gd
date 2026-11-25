@@ -39,8 +39,8 @@ const MALE_NAMES := ["Rodrigo", "Sancho", "Alonso", "Fernando", "Gonzalo", "Dieg
 const FEMALE_NAMES := ["Urraca", "Jimena", "Elvira", "Sancha", "Teresa", "Leonor", "Berenguela", "Mencía", "Aldonza", "Constanza", "Toda", "Mayor", "Inés", "Blanca", "Oria", "Elo", "Goto", "Munia", "Onneca", "Velasquita", "Gontrodo", "Estefanía", "Eva", "Marina", "Juliana", "María", "Catalina", "Isabel", "Beatriz", "Juana", "Lucía", "Águeda", "Benita", "Elena", "Florencia", "Guiomar", "Leocadia", "Olalla", "Sol", "Violante", "Columba", "Romana", "Marta", "Ana"]
 const SURNAMES := ["Ruiz", "Pérez", "Sánchez", "Fernández", "Díaz", "Muñoz", "Álvarez", "Gómez", "Martínez", "López", "Ordóñez", "Velázquez", "Íñiguez", "Garcés", "Bermúdez", "Núñez", "Téllez", "Ramírez", "Osorio", "Fáñez", "Gutiérrez", "Rodríguez", "Vermúdez", "Sáez", "Laínez", "Domínguez", "Esteban", "Gil", "Vela", "Peláez"]
 const ENEMIES := ["los bandidos del bosque", "el señor de Valdeoscuro", "los invasores del norte", "un barón rebelde", "los saqueadores del río"]
-## Casas de los vecinos (en 1/20 de metro): en fila a ambos lados de la calle mayor y junto al concejo.
-const HOMES := [Vector2(880, 620), Vector2(880, 980), Vector2(680, 620), Vector2(680, 980), Vector2(480, 620), Vector2(480, 980), Vector2(1000, 420), Vector2(1400, 420)]
+## Casas de los vecinos (en 1/20 de metro): pegadas en hilera a ambos lados de la calle mayor.
+const HOMES := [Vector2(920, 630), Vector2(920, 970), Vector2(800, 630), Vector2(800, 970), Vector2(680, 630), Vector2(680, 970), Vector2(560, 630), Vector2(560, 970)]
 const OLD_HOMES := [Vector2(760, 620), Vector2(760, 1000), Vector2(980, 1180), Vector2(1380, 1180), Vector2(1640, 1040), Vector2(1660, 560), Vector2(900, 330), Vector2(1520, 300)]
 
 ## Objetos de inventario: id -> [nombre, precio, raciones de comida (0 = no se come)]
@@ -70,6 +70,18 @@ const ANIMALS := {
 	"vaca": {"name": "Vacas", "price": 40, "max": 4, "feed": 1.0, "product": "leche", "per_day": 2.0},
 }
 const FIELD_PRICE := 25
+## Calidad de las casas de los vecinos: empiezan humildes y cada familia la mejora con el tiempo.
+const HOME_LEVELS := ["cabaña de madera", "casa de entramado", "casa de piedra"]
+## Terrenos anexos a tu casa: se compran y en cada uno levantas una cosa.
+const ANNEX_PRICE := 40
+const ANNEX_TYPES := {
+	"huerto": {"name": "Huerto", "desc": "un huerto propio junto a casa (una parcela de cultivo más)", "cost": {"wood": 8, "stone": 0, "gold": 10}},
+	"corral": {"name": "Corral de ovejas", "desc": "+4 ovejas", "cost": {"wood": 20, "stone": 0, "gold": 10}, "animal": "oveja", "extra": 4},
+	"establo": {"name": "Establo de vacas", "desc": "+2 vacas", "cost": {"wood": 30, "stone": 10, "gold": 20}, "animal": "vaca", "extra": 2},
+	"gallinero": {"name": "Gallinero", "desc": "+6 gallinas", "cost": {"wood": 10, "stone": 0, "gold": 5}, "animal": "gallina", "extra": 6},
+	"pocilga": {"name": "Pocilga", "desc": "+4 cerdos", "cost": {"wood": 15, "stone": 0, "gold": 10}, "animal": "cerdo", "extra": 4},
+}
+const FIELDS_OUT := 12  # parcelas de las afueras; después van los huertos de los anexos
 ## Edificios que se pueden levantar en los solares del pueblo.
 const BUILDINGS := {
 	"herreria": {"name": "Herrería", "cost": {"madera": 30, "piedra": 30, "oro": 20}, "desc": "Forja herramientas, espadas y armaduras con hierro."},
@@ -304,6 +316,7 @@ func next_season() -> void:
 	TL.guild_season()
 	REALM.season()
 	REALM.climate_season()
+	evolve_homes()
 	if data.get("game_over", false):
 		return
 	say("Comienza %s del año %d." % [["la primavera", "el verano", "el otoño", "el invierno"][int(data["season"])], int(data["year"])])
@@ -395,8 +408,6 @@ func try_build_house() -> String:
 	var lvl := int(data["house_level"])
 	if lvl >= 5:
 		return "Tu casa ya es la mejor del pueblo."
-	if lvl >= 3 and int(data.get("player_land", -1)) < 0:
-		return "Para una casa más grande necesitas un terreno en el barrio nuevo."
 	var c = HOUSE_COSTS[lvl]
 	if data["wood"] < c["wood"] or data["stone"] < c["stone"] or data["gold"] < c["gold"]:
 		return "Te faltan materiales."
@@ -595,6 +606,10 @@ func ensure_economy() -> void:
 		data["fields"] = []
 		for i in 6:
 			data["fields"].append({"owned": i < 2, "crop": "", "age": 0})
+	while data["fields"].size() < FIELDS_OUT + 4:
+		data["fields"].append({"owned": false, "crop": "", "age": 0})
+	if not data.has("annex"):
+		data["annex"] = ["", "", "", ""]
 	if not data.has("animals"):
 		data["animals"] = {"gallina": 0, "oveja": 0, "cerdo": 0, "vaca": 0}
 	if not data.has("barn"):
@@ -801,7 +816,48 @@ func has_building(id: String) -> bool:
 
 
 func animal_max(k: String) -> int:
-	return int(ANIMALS[k]["max"]) * (2 if has_building("establo") else 1)
+	var extra := 0
+	for a in data.get("annex", []):
+		if ANNEX_TYPES.has(a) and ANNEX_TYPES[a].get("animal", "") == k:
+			extra += int(ANNEX_TYPES[a]["extra"])
+	return int(ANIMALS[k]["max"]) * (2 if has_building("establo") else 1) + extra
+
+
+## Compra un terreno anexo a tu casa.
+func buy_annex(i: int) -> String:
+	if int(data["gold"]) < ANNEX_PRICE:
+		return "Necesitas %d de oro." % ANNEX_PRICE
+	data["gold"] = int(data["gold"]) - ANNEX_PRICE
+	data["annex"][i] = "solar"
+	say("Compras el terreno de al lado de tu casa.")
+	return ""
+
+
+func build_annex(i: int, kind: String) -> String:
+	var c: Dictionary = ANNEX_TYPES[kind]["cost"]
+	if int(data["wood"]) < c["wood"] or int(data["stone"]) < c["stone"] or int(data["gold"]) < c["gold"]:
+		return "Te faltan materiales."
+	data["wood"] = int(data["wood"]) - c["wood"]
+	data["stone"] = int(data["stone"]) - c["stone"]
+	data["gold"] = int(data["gold"]) - c["gold"]
+	data["annex"][i] = kind
+	if kind == "huerto":
+		data["fields"][FIELDS_OUT + i]["owned"] = true
+	SFX.play("talar")
+	say("Has levantado: %s." % ANNEX_TYPES[kind]["name"])
+	return ""
+
+
+## Cada estación, alguna familia del pueblo mejora su casa (si le va bien).
+func evolve_homes() -> void:
+	for v in data["villagers"]:
+		var lv := int(v.get("hlvl", 0))
+		if lv >= 2:
+			continue
+		var ok := int(v.get("mood", 50)) >= (50 if lv == 0 else 60) and (lv == 0 or int(data["tier"]) >= 1 or int(data["commons"]) >= 60)
+		if ok and randf() < (0.12 if lv == 0 else 0.06):
+			v["hlvl"] = lv + 1
+			say("%s ha levantado una %s." % [full_name(v), HOME_LEVELS[lv + 1]])
 
 
 ## Recursos unificados: madera, piedra y oro viven fuera del inventario.

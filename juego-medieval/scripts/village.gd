@@ -149,12 +149,10 @@ func _build_static() -> void:
 	add_child(lands_node)
 	obstacles.append([Vector2(PLAZA.x, PLAZA.z), 1.6])
 
-	var kinds := ["village/House_1.glb", "village/House_2.glb", "village/House_3.glb", "village/House_4.glb", "village/Blacksmith.glb", "village/House_2.glb", "village/Stable.glb", "village/House_3.glb"]
 	for i in GS.HOMES.size():
 		var h: Vector3 = Vector3(GS.HOMES[i].x, 0, GS.HOMES[i].y) * 0.05
 		var rot := BLD.face_street(h)
-		M.put(self, kinds[i], h, rot, 2.3)
-		obstacles.append([Vector2(h.x, h.z), 3.8])
+		obstacles.append([Vector2(h.x, h.z), 3.0])
 		_yard(h, rot, i)
 	M.put(self, "village/Bell_Tower.glb", HALL, _face_plaza(HALL), 2.6)
 	BLD.signboard(self, HALL + Vector3(3.2, 0, 4.2), "Concejo")
@@ -201,22 +199,54 @@ func _lamp(p: Vector3) -> void:
 	obstacles.append([Vector2(p.x, p.z), 0.4])
 
 
+## Casas de los vecinos según lo que ha prosperado cada familia: cabaña, entramado o piedra.
+var homes_node: Node3D
+var homes_sig := ""
+func _homes_levels() -> Array:
+	var out := []
+	for hm in GS.HOMES:
+		var lv := 0
+		for v in GS.data["villagers"]:
+			if Vector2(v["hx"], v["hy"]) == hm:
+				lv = int(v.get("hlvl", 0))
+		out.append(lv)
+	return out
+
+
+func _rebuild_homes(levels: Array) -> void:
+	if homes_node:
+		homes_node.queue_free()
+	homes_node = Node3D.new()
+	add_child(homes_node)
+	for i in GS.HOMES.size():
+		var h: Vector3 = Vector3(GS.HOMES[i].x, 0, GS.HOMES[i].y) * 0.05
+		var rot := BLD.face_street(h)
+		match int(levels[i]):
+			0:
+				M.hut(homes_node, h, rot, 1.05 + (i % 3) * 0.04)
+			1:
+				M.put(homes_node, ["village/House_1.glb", "village/House_3.glb"][i % 2], h, rot, [2.35, 2.6][i % 2])
+			_:
+				M.put(homes_node, "village/House_2.glb", h, rot, 2.3)
+	if season == 3:
+		M.set_snow(homes_node, true)
+
+
 ## Huerto vallado detrás de cada casa (con alguna hortaliza) y leña junto a la pared.
 func _yard(h: Vector3, rot: float, i: int) -> void:
 	var fwd := Vector3(sin(rot), 0, cos(rot))
 	var side := Vector3(fwd.z, 0, -fwd.x)
 	var back := h - fwd * 6.5
-	for k in 5:
-		M.put(self, "village/Fence.glb", back - fwd * 2.5 + side * (-3.4 + k * 1.7), rot, 2.2)
+	for k in 4:
+		M.put(self, "village/Fence.glb", back - fwd * 2.5 + side * (-2.25 + k * 1.5), rot, 1.9)
 	for sd in [-1, 1]:
 		for k in 2:
-			M.put(self, "village/Fence.glb", back + side * 4.2 * sd + fwd * (1.0 - k * 1.7), rot + PI / 2, 2.2)
+			M.put(self, "village/Fence.glb", back + side * 2.95 * sd + fwd * (0.9 - k * 1.6), rot + PI / 2, 2.0)
 	var crop: String = ["crops/Carrot_3.glb", "crops/Lettuce_3.glb", "crops/Beet_3.glb", "crops/Pumpkin_3.glb"][i % 4]
 	for k in 6:
-		M.put(self, crop, back + side * (-2.4 + (k % 3) * 2.4) + fwd * (-1.4 + (k / 3) * 1.8), randf() * TAU, 0.55)
-	M.put(self, "village/Barrel.glb", h + fwd * 2.2 + side * 2.6, randf(), 1.4)
+		M.put(self, crop, back + side * (-1.7 + (k % 3) * 1.7) + fwd * (-1.4 + (k / 3) * 1.8), randf() * TAU, 0.5)
 	if i % 2 == 0:
-		M.put(self, "village/Crate.glb", h + fwd * 2.0 - side * 2.6, randf(), 1.3)
+		M.put(self, "village/Barrel.glb", h + fwd * 2.6 + side * 2.4, randf(), 1.3)
 
 
 ## ¿Queda libre este suelo (ni calle, ni casa, ni solar, ni la parcela, ni el corral)?
@@ -228,6 +258,12 @@ func _free_ground(p: Vector3, margin: float) -> bool:
 			return false
 	for sl in BLD.SLOTS:
 		if p.distance_to(sl) < 6.0 + margin:
+			return false
+	for a in FARM.ANNEX:
+		if p.distance_to(a) < FARM.ANNEX_HALF + 1.0 + margin:
+			return false
+	for r in FARM.field_rects():
+		if r.grow(margin + 0.5).has_point(Vector2(p.x, p.z)):
 			return false
 	return p.distance_to(PLOT) > 9.0 + margin and p.distance_to(HALL) > 6.0 + margin and p.distance_to(FARM.CORRAL) > 6.0 + margin and p.distance_to(FARM.OVEN) > 2.5 + margin and p.distance_to(FARM.MILL) > 4.5 + margin
 
@@ -355,7 +391,7 @@ func _rebuild_house() -> void:
 				M.put(house_node, "village/Fence.glb", hp + o, 0.0 if o.z != 0 else PI / 2, 1.2)
 			M.put(house_node, "village/Hay.glb", hp + Vector3(-1, 0, -1), 0.3, 1.3)
 		1:
-			M.put(house_node, "village/House_1.glb", hp, rot, 1.3)
+			M.hut(house_node, hp, rot, 1.15)
 		2:
 			M.put(house_node, "village/House_4.glb", hp, rot, 1.8)
 		3:
@@ -766,6 +802,10 @@ func _process(delta: float) -> void:
 		_rebuild_house()
 	if _villager_sig() != vsig:
 		_reset_villagers()
+	var hl := _homes_levels()
+	if str(hl) != homes_sig:
+		homes_sig = str(hl)
+		_rebuild_homes(hl)
 	var ls := str(d["lands"]) + str(d["total_days"]) + str(d["player_land"])
 	if ls != lands_sig:
 		lands_sig = ls
