@@ -116,10 +116,10 @@ func _ready() -> void:
 			var p := Vector3(sin(a), 0, cos(a)) * RADIUS
 			if k == 0 or (wall == 1 and (k == 1 or k == count - 1)):
 				if wall == 2:
-					M.recolor(M.put(self, "castle/TallWallEntrance.glb", p, a, 3.0), Color(0.52, 0.5, 0.46))
+					M.stone(M.put(self, "castle/TallWallEntrance.glb", p, a, 3.0), Color(0.52, 0.5, 0.46))
 				continue
 			if wall == 2:
-				M.recolor(M.put(self, "castle/TallWall.glb", p, a, 3.0), Color(0.52, 0.5, 0.46))
+				M.stone(M.put(self, "castle/TallWall.glb", p, a, 3.0), Color(0.52, 0.5, 0.46))
 			else:
 				M.put(self, "village/Fence.glb", p, a, 3.0)
 	for k in 2:

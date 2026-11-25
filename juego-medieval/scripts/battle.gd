@@ -175,7 +175,7 @@ func _ready() -> void:
 		for k in range(-int(60 / piece), int(60 / piece) + 1):
 			var x := k * piece
 			if stone and not (rammed and k == 0):
-				M.recolor(M.put(self, "castle/TallWallEntrance.glb" if k == 0 else "castle/TallWall.glb", Vector3(x, 0, -HALF - 5), 0.0, 3.0), Color(0.52, 0.5, 0.46))
+				M.stone(M.put(self, "castle/TallWallEntrance.glb" if k == 0 else "castle/TallWall.glb", Vector3(x, 0, -HALF - 5), 0.0, 3.0), Color(0.52, 0.5, 0.46))
 			elif absi(k) > 1:
 				M.put(self, "village/Fence.glb", Vector3(x, 0, -HALF - 4), 0.0, 3.0)
 		for i in 8:
@@ -186,7 +186,7 @@ func _ready() -> void:
 		var piece := 4.5 if w == 2 else 2.3
 		for k in range(-int(60 / piece), int(60 / piece) + 1):
 			if w == 2:
-				M.recolor(M.put(self, "castle/TallWallEntrance.glb" if k == 0 else "castle/TallWall.glb", Vector3(k * piece, 0, HALF + 5), PI, 3.0), Color(0.52, 0.5, 0.46))
+				M.stone(M.put(self, "castle/TallWallEntrance.glb" if k == 0 else "castle/TallWall.glb", Vector3(k * piece, 0, HALF + 5), PI, 3.0), Color(0.52, 0.5, 0.46))
 			elif w == 1 and absi(k) > 1:
 				M.put(self, "village/Fence.glb", Vector3(k * piece, 0, HALF + 4), PI, 3.0)
 		for i in 6:

@@ -118,7 +118,7 @@ func _rebuild(i: int, id: String) -> void:
 			var pos: Vector3 = part[2] if part.size() > 2 else Vector3.ZERO
 			var pn = _put_sized(root, part[0], pos, 0.0, part[1])
 			if id == "castillo" and pn != null:
-				M.recolor(pn, Color(0.52, 0.5, 0.46))
+				M.stone(pn, Color(0.52, 0.5, 0.46))
 	var l := M.label3d(label, 42)
 	l.position = Vector3(0, 2.2 if id == "" or id == "colmenar" else 7.5, 0)
 	l.modulate = Color(1, 0.9, 0.6)

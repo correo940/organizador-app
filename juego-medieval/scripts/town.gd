@@ -139,7 +139,7 @@ func _stone_walls(b: Rect2) -> void:
 	var stone := Color(0.55, 0.53, 0.49)
 	var gates := [Vector2(162.5, 41), Vector2(60, 97.5), Vector2(60, -37.5)]
 	for corner in [b.position, Vector2(b.end.x, b.position.y), b.end, Vector2(b.position.x, b.end.y)]:
-		M.recolor(M.put(self, "castle/LargeTower.glb", Vector3(corner.x, 0, corner.y), 0.0, 2.0), stone)
+		M.stone(M.put(self, "castle/LargeTower.glb", Vector3(corner.x, 0, corner.y), 0.0, 2.0), stone)
 	for side in 4:
 		var a: Vector2 = [b.position, Vector2(b.end.x, b.position.y), b.end, Vector2(b.position.x, b.end.y)][side]
 		var c: Vector2 = [Vector2(b.end.x, b.position.y), b.end, Vector2(b.position.x, b.end.y), b.position][side]
@@ -148,7 +148,7 @@ func _stone_walls(b: Rect2) -> void:
 			var p := a.lerp(c, (k + 0.5) / n)
 			var gate: bool = gates.any(func(g): return g.distance_to(p) < wlen * 0.6)
 			var piece := "castle/TallWallEntrance.glb" if gate else "castle/TallWall.glb"
-			M.recolor(M.put(self, piece, Vector3(p.x, 0, p.y), 0.0 if side % 2 == 0 else PI / 2, 2.0), stone)
+			M.stone(M.put(self, piece, Vector3(p.x, 0, p.y), 0.0 if side % 2 == 0 else PI / 2, 2.0), stone)
 
 
 func _process(delta: float) -> void:

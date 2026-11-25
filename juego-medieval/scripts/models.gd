@@ -58,6 +58,25 @@ static func recolor(n: Node, col: Color) -> void:
 		recolor_mesh(n, col)
 
 
+## Murallas y torres con piedra fotográfica (Poly Haven, CC0) teñida con 'col'.
+static var _stone := {}
+static func stone(n: Node, col: Color) -> void:
+	if not _stone.has(col):
+		var m := StandardMaterial3D.new()
+		m.albedo_texture = load("res://assets/tex/muro_color.jpg")
+		m.albedo_color = Color(col.r / 0.535, col.g / 0.5, col.b / 0.417)
+		m.normal_enabled = true
+		m.normal_texture = load("res://assets/tex/muro_normal.png")
+		m.roughness_texture = load("res://assets/tex/muro_rough.jpg")
+		m.uv1_triplanar = true
+		m.uv1_world_triplanar = true
+		m.uv1_scale = Vector3(0.18, 0.18, 0.18)
+		_stone[col] = m
+	for mi in n.find_children("*", "MeshInstance3D", true, false):
+		for i in mi.mesh.get_surface_count():
+			mi.set_surface_override_material(i, _stone[col])
+
+
 static func recolor_mesh(mi: MeshInstance3D, col: Color) -> void:
 	for i in mi.mesh.get_surface_count():
 		var m = mi.get_active_material(i)
@@ -501,7 +520,7 @@ static func tent(parent: Node, pos: Vector3, rot: float, col: Color) -> void:
 static func castle(parent: Node, c: Vector3, s: float) -> void:
 	var stone := Color(0.52, 0.5, 0.46)
 	for p in [["castle/LargeTower.glb", Vector3.ZERO], ["castle/TallWallEntrance.glb", Vector3(-2.25, 0, 0.5)], ["castle/TallWall.glb", Vector3(2.25, 0, 0.5)], ["castle/LargeSquareTower.glb", Vector3(-4.5, 0, 0.5)], ["castle/PointyTower.glb", Vector3(4.5, 0, 0.5)]]:
-		recolor(put(parent, p[0], c + p[1] * s, 0, s), stone)
+		stone(put(parent, p[0], c + p[1] * s, 0, s), stone)
 
 
 ## Etiqueta flotante que mira a cámara.
