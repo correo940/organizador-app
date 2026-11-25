@@ -1189,7 +1189,7 @@ func _chronicle_panel() -> void:
 	var lines := ["ÁRBOL DEL LINAJE %s" % String(d["dynasty"]).to_upper(), ""]
 	var gen := 1
 	for a in d.get("ancestors", []):
-		lines.append("%d. %s (%s a los %d años, año %d)" % [gen, a["name"], a["reason"], int(a["age"]), int(a["year"])])
+		lines.append("%d. %s %s (%s a los %d años, año %d)" % [gen, a["name"], a.get("epithet", ""), a["reason"], int(a["age"]), int(a["year"])])
 		gen += 1
 	lines.append("%d. %s — cabeza de familia, %d años%s" % [gen, d["player"]["name"], int(d["player"]["age"]), (", con " + d["spouse"]["name"]) if d["spouse"] != null else ""])
 	for c in d["children"]:

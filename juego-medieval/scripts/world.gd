@@ -254,6 +254,7 @@ static func tourney_season() -> void:
 		return
 	var me: String = d["player"]["name"]
 	if r[0][0] == me:
+		d["champion"] = true
 		d["prestige"] += 50
 		d["gold"] = int(d["gold"]) + 200
 		GS.popups.append({"title": "¡Campeón del año!", "text": "Con %d puntos eres el gran campeón de los torneos de este año. Te entregan la corona de laurel y una bolsa de 200 de oro. (+50 prestigio)" % r[0][1], "button": "Continuar"})

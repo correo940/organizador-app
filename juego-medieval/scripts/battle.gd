@@ -1305,6 +1305,9 @@ func _child_fell(n: String) -> void:
 
 
 func _end(victory: bool) -> void:
+	if victory and siege.get("kind", "") != "torneo":
+		GS.data["wins"] = int(GS.data.get("wins", 0)) + 1
+		GS.LEG.life_event("wins")
 	for u in units:
 		if u.has("child") and u["alive"]:
 			for c in GS.data["children"]:

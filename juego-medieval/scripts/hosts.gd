@@ -76,6 +76,7 @@ static func day() -> void:
 			t["garrison"] = survivors
 			c["role"] = "gobernador"
 			c["town"] = int(t["id"])
+			GS.LEG.life_event("conquests")
 			c["xp"] = int(c.get("xp", 0)) + 2
 			d["prestige"] += 25
 			GS.chronicle("%s conquista %s al frente de su propio ejército." % [c["name"], t["name"]])

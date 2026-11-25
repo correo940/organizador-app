@@ -38,6 +38,9 @@ static func crown() -> void:
 	var d = GS.data
 	d["gold"] = int(d["gold"]) - CROWN_GOLD
 	d["king"] = true
+	if not d.has("life"):
+		d["life"] = {"since": int(d["year"])}
+	d["life"]["crowned"] = true
 	d["prestige"] += 100
 	var loyal := []
 	var rebels := []

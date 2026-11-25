@@ -322,6 +322,7 @@ static func after_victory(id: int, choice: String) -> String:
 			d["gold"] = int(d["gold"]) + loot
 			return "Saqueas %s: +%d de oro." % [t["name"], loot]
 		"conquistar":
+			GS.LEG.life_event("conquests")
 			t["owner"] = "jugador"
 			t["vassal"] = false
 			t["garrison"] = 0

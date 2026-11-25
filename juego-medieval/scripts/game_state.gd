@@ -19,6 +19,7 @@ const FOLK := preload("res://scripts/folk.gd")
 const TL := preload("res://scripts/townlife.gd")
 const FEST := preload("res://scripts/festivals.gd")
 const INC := preload("res://scripts/incidents.gd")
+const LEG := preload("res://scripts/legacy.gd")
 
 const SAVE_PATH := "user://partida.json"
 const SECONDS_PER_DAY := 40.0
@@ -174,7 +175,7 @@ func new_game(pname: String, dynasty: String, male: bool) -> void:
 		"dynasty": dynasty, "generation": 1,
 		"player": {"name": pname, "male": male, "age": 18, "health": 100.0, "trait": TRAITS.keys().pick_random()},
 		"spouse": null, "children": [], "villagers": [],
-		"summons": null, "talked": [], "log": [], "quest": 0,
+		"summons": null, "talked": [], "log": [], "quest": 0, "life": {"since": 1100},
 	}
 	for h in HOMES:
 		data["villagers"].append(new_villager(h))
@@ -246,6 +247,7 @@ func next_day() -> void:
 	TL.day()
 	FEST.day()
 	INC.day()
+	LEG.check()
 	SOCIAL.day()
 	QUESTS.check()
 	if data["spouse"] != null and data["children"].size() < 6 and p["age"] >= 16 and p["age"] < 48 and data["spouse"]["age"] < 46 and randf() < 0.06:
@@ -347,10 +349,13 @@ func battle_bonus(p: Dictionary) -> Array:
 func player_death(reason: String) -> void:
 	var p = data["player"]
 	var text := "%s %s %s a los %d años." % [p["name"], data["dynasty"], reason, int(p["age"])]
+	var ep: String = LEG.epithet(p, reason)
+	text += " Será recordado como %s %s." % [p["name"], ep]
 	chronicle(text)
 	if not data.has("ancestors"):
 		data["ancestors"] = []
-	data["ancestors"].append({"name": p["name"], "male": p["male"], "age": int(p["age"]), "year": int(data["year"]), "reason": reason})
+	data["ancestors"].append({"name": p["name"], "male": p["male"], "age": int(p["age"]), "year": int(data["year"]), "reason": reason, "epithet": ep})
+	data["life"] = {"since": int(data["year"])}
 	data["summons"] = null
 	if data["children"].is_empty():
 		data["game_over"] = true

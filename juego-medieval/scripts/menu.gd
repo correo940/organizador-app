@@ -8,6 +8,7 @@ var dyn_edit: LineEdit
 var gender: OptionButton
 var slot_opt: OptionButton
 var diff_opt: OptionButton
+var scen_opt: OptionButton
 var box: VBoxContainer
 
 
@@ -58,6 +59,17 @@ func _ready() -> void:
 		diff_opt.add_item(t)
 	diff_opt.selected = 1
 	box.add_child(diff_opt)
+	scen_opt = OptionButton.new()
+	for s in GS.LEG.SCENARIOS:
+		scen_opt.add_item("Escenario: %s" % s["name"])
+	box.add_child(scen_opt)
+	var sdesc := Label.new()
+	sdesc.text = GS.LEG.SCENARIOS[0]["desc"]
+	sdesc.add_theme_font_size_override("font_size", 13)
+	sdesc.add_theme_color_override("font_color", Color(0.8, 0.75, 0.65))
+	sdesc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	box.add_child(sdesc)
+	scen_opt.item_selected.connect(func(i): sdesc.text = GS.LEG.SCENARIOS[i]["desc"])
 	slot_opt = OptionButton.new()
 	for s in [1, 2, 3]:
 		slot_opt.add_item("Guardar en la ranura %d (%s)" % [s, GS.slot_info(s)])
@@ -67,15 +79,11 @@ func _ready() -> void:
 	if GS.has_save():
 		_button(box, "Continuar la última partida", _on_continue)
 		_button(box, "Cargar partida…", _load_panel)
+	_button(box, "Logros", func(): GS.LEG.panel(self))
 	_button(box, "Opciones", func(): preload("res://scripts/options.gd").open(self))
 	_button(box, "Salir", func(): get_tree().quit())
 	SFX.music("aldea")
 
-	var help := Label.new()
-	help.text = "WASD / flechas: moverse   E: interactuar   T: velocidad del tiempo\nEsc: menú   F5: guardar\nTala, pica piedra y cultiva. Construye tu casa, cásate y ten hijos.\nAcude cuando el rey te llame a la guerra y gana prestigio\nhasta convertirte en jefe del pueblo."
-	help.add_theme_font_size_override("font_size", 13)
-	help.add_theme_color_override("font_color", Color(0.8, 0.75, 0.65))
-	box.add_child(help)
 
 
 func _button(parent: Node, text: String, cb: Callable) -> void:
@@ -93,6 +101,7 @@ func _on_new() -> void:
 	GS.new_game(n if n != "" else "Rodrigo", d if d != "" else "de Vallehondo", gender.selected == 0)
 	GS.data["difficulty"] = diff_opt.selected
 	GS.data["gold"] = [60, 15, 5][diff_opt.selected]
+	GS.LEG.apply_scenario(GS.LEG.SCENARIOS[scen_opt.selected]["id"])
 	GS.save_game()
 	main.start_village()
 
