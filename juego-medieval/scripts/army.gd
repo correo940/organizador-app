@@ -16,6 +16,7 @@ const MOUNTED := ["jinete", "arquero_jinete"]
 const ENGINES := {
 	"ariete": {"name": "Ariete", "cost": {"madera": 50, "hierro": 4, "oro": 20}, "tier": 1, "desc": "Asedio: derriba la puerta (las murallas defienden un nivel menos)."},
 	"balista": {"name": "Balista", "cost": {"madera": 40, "hierro": 6, "oro": 30}, "tier": 1, "desc": "Dispara virotes de largo alcance que atraviesan armaduras."},
+	"torre": {"name": "Torre de asedio", "cost": {"madera": 80, "hierro": 4, "oro": 40}, "tier": 1, "desc": "Asedio: tus hombres suben a la muralla (defiende un nivel menos)."},
 	"catapulta": {"name": "Catapulta", "cost": {"madera": 70, "piedra": 30, "oro": 50}, "tier": 2, "desc": "Lanza piedras que aplastan grupos; con 2 o más abre brecha en las murallas."},
 }
 

@@ -312,6 +312,8 @@ func _town_panel(id: int) -> void:
 	text += "\n%s está %s." % [N.full(lord), COURT.status_text(li)]
 	if not N.tournament_at(id).is_empty():
 		text += "\n¡Hay un torneo en este pueblo! Entra en la corte para participar."
+	if not GS.SIEGE.camp().is_empty() and int(GS.SIEGE.camp()["town"]) == id:
+		text += GS.SIEGE.text(t)
 	var opts := []
 	if not war:
 		opts.append(["Mercado de %s" % t["name"], func(): COURT.market(self, id)])
@@ -319,7 +321,8 @@ func _town_panel(id: int) -> void:
 		opts.append(["Pasear por %s" % t["name"], func(): _visit(id)])
 	else:
 		opts.append(["Negociar con %s" % N.full(lord), func(): COURT.court(self, li, id)])
-	if not t["vassal"]:
+	opts.append_array(GS.SIEGE.town_options(self, t))
+	if not t["vassal"] and (GS.SIEGE.camp().is_empty() or int(GS.SIEGE.camp()["town"]) != id):
 		opts.append(["Atacar (%d tropas tuyas contra %d)%s" % [ARMY.total(), defenders, "" if war else " — declara la guerra"], func():
 			if not N.at_war(-1, li):
 				N.declare_war(-1, li)
@@ -439,6 +442,13 @@ func _army_panel(id: int) -> void:
 	var opts := []
 	if N.at_war(-1, li):
 		opts.append(["Atacar al ejército", func(): _fight_army(id)])
+		opts.append(["Tenderle una emboscada (si no te descubren, los pillas por sorpresa)", func():
+			if randf() < 0.65:
+				GS.data["battle"] = {"kind": "campo", "army": id, "enemy": N.full(N.lord(li)), "troops": int(a["troops"]), "wall": 0, "ambush": true}
+				GS.save_game()
+				main.start_battle()
+			else:
+				_say("Sus exploradores os descubren: no hay sorpresa posible.")])
 	opts.append(["Cerrar", _close_panel])
 	_open_panel("Ejército en marcha", text, opts)
 

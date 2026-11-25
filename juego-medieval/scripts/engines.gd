@@ -99,3 +99,34 @@ static func ram(parent: Node) -> Node3D:
 	n.add_child(log)
 	_box(n, Vector3(0.5, 0.5, 0.3), Vector3(0, 1.3, 2.35), IRON)
 	return n
+
+
+## Torre de asedio: torre de madera sobre ruedas con rampa.
+static func tower(parent: Node) -> Node3D:
+	var n := Node3D.new()
+	parent.add_child(n)
+	for s in [-1, 1]:
+		for z in [-1, 1]:
+			_box(n, Vector3(0.3, 7.5, 0.3), Vector3(1.2 * s, 3.9, 1.2 * z), WOOD)
+			_wheel(n, Vector3(1.45 * s, 0.45, 1.0 * z), 0.45)
+	for y in [0.8, 2.8, 4.8, 7.6]:
+		_box(n, Vector3(2.7, 0.2, 2.7), Vector3(0, y, 0), DARK)
+	for s in [-1, 1]:
+		_box(n, Vector3(0.1, 6.6, 2.5), Vector3(1.3 * s, 4.3, 0), Color(0.5, 0.4, 0.28))
+	_box(n, Vector3(0.1, 6.6, 2.5), Vector3(0, 4.3, 1.3), Color(0.5, 0.4, 0.28), Vector3(0, 90, 0))
+	_box(n, Vector3(2.3, 0.15, 2.6), Vector3(0, 7.6, -2.3), WOOD, Vector3(-20, 0, 0))
+	return n
+
+
+## Escala apoyada en la muralla.
+static func ladder(parent: Node, h: float) -> Node3D:
+	var n := Node3D.new()
+	parent.add_child(n)
+	for s in [-1, 1]:
+		_box(n, Vector3(0.1, h, 0.1), Vector3(0.3 * s, h / 2, 0), WOOD)
+	var y := 0.4
+	while y < h:
+		_box(n, Vector3(0.6, 0.07, 0.07), Vector3(0, y, 0), WOOD)
+		y += 0.45
+	n.rotation_degrees.x = -15
+	return n

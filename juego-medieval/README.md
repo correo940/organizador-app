@@ -38,6 +38,16 @@ Juego de estrategia medieval para PC (Windows) en 3D, hecho con Godot 4.3. Model
 
 **Vida social:** los vecinos van a misa los domingos por la mañana (si hay capilla) y se juntan en la plaza al atardecer. A veces te piden favores (traerles algo antes de 6 días, a cambio de oro y afecto). En la capilla el párroco cobra el diezmo, bendice tu próxima batalla (tus hombres pierden la moral más despacio) y te confiesa (+salud). Como jefe de una villa puedes organizar una feria o un torneo cada año. Hay rumores, ladrones a los que juzgar y robos.
 
+**Economía de tus tierras:** envía caravanas comerciales (con o sin escolta) a vender en otros mercados; especializa tus pueblos (minero, maderero, granjero, pesquero) y fija sus impuestos: altos dan más oro pero traen revueltas. Hay hambrunas y peste en toda la región.
+
+**Política:** con una ciudad, 4 pueblos tuyos o vasallos y 500 de prestigio te coronas rey: los señores que te aprecian se hacen vasallos y el resto se rebela. Nombra canciller, mariscal y tesorero entre tu familia. En la corte de cada señor puedes intrigar: sobornos, espías, revueltas y asesinatos; y también conspiran contra ti.
+
+**Tu personaje:** habilidades de combate, liderazgo, comercio y diplomacia que suben con el uso (el heredero conserva la mitad); armas distintas en el armero (espada, hacha, lanza, maza); heridas de guerra, canas con la edad y el físico que cura.
+
+**Asedios, emboscadas y ríos:** cerca un pueblo enemigo y espera a que se rinda por hambre, o asáltalo con escalas (a los 3 días) y torre de asedio. Tiende emboscadas a los ejércitos en marcha. Algunas batallas tienen un río con puentes, y pueden ser de noche, con antorchas.
+
+**Opciones y ambiente:** volumen de música y efectos, sensibilidad del ratón, pantalla completa y sombras. Día y noche también en el mapa (con luces en los pueblos) y sonidos de pájaros, gentío, viento y campanas.
+
 **Eventos del pueblo:** de vez en cuando ocurre algo y tú decides: incendios, sequías, ratas en el granero, fiebres, fiestas, peregrinos, mercaderes ambulantes, buenas cosechas y, si eres jefe, pleitos entre vecinos. Cada decisión cuesta oro, salud o comida, o cambia el ánimo del pueblo y tu prestigio.
 
 **Caballo:** cómpralo en el mercado (150 oro). H para montar o desmontar en la aldea; viajas más rápido por el mapa y en batalla luchas a caballo (más rápido, más vida y golpes más fuertes).

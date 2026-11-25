@@ -123,6 +123,8 @@ func _ready() -> void:
 	M.set_season_ground(env["grad"], int(d["season"]))
 	# Hora de la batalla: casi siempre de día; a veces al atardecer o de noche.
 	var troll := randf()
+	if siege.get("ambush", false) and troll < 0.5:
+		troll = 0.99
 	battle_time = 0.42 if troll < 0.7 or siege.get("kind", "") == "torneo" else (0.78 if troll < 0.85 else 0.93)
 	M.set_daytime(env, battle_time)
 	M.moonlight(env, 0.3)
@@ -147,6 +149,18 @@ func _ready() -> void:
 		if int(eng.get("catapulta", 0)) >= 2 and eff_wall > 0:
 			eff_wall -= 1
 			siege_notes.append("Tus catapultas han abierto brecha en la muralla.")
+		if int(eng.get("torre", 0)) > 0 and eff_wall > 0:
+			eff_wall -= 1
+			siege_notes.append("Tu torre de asedio llega a la muralla.")
+			var tw := ENG.tower(self)
+			tw.position = Vector3(-14, 0, -HALF - 1.0)
+			tw.rotation.y = PI
+		if siege.get("ladders", false) and eff_wall > 0:
+			eff_wall -= 1
+			siege_notes.append("Tus hombres apoyan las escalas en la muralla.")
+			for x in [-24.0, 9.0, 20.0]:
+				var ld := ENG.ladder(self, 7.5 if int(siege["wall"]) == 2 else 2.5)
+				ld.position = Vector3(x, 0, -HALF - 3.0)
 	# Asedio: la batalla se libra delante de las murallas del pueblo.
 	if siege.get("kind", "") == "asedio" and int(siege["wall"]) >= 1:
 		if rammed:
@@ -302,6 +316,8 @@ func _ready() -> void:
 		foe_lord = int(GS.REGION.town(int(siege["town"])).get("lord", -1))
 
 	_setup_engines()
+	if siege.get("ambush", false):
+		_ambush_layout()
 	_torches()
 	if d.get("blessed", false) and siege.get("kind", "") != "torneo":
 		blessed = true
@@ -502,9 +518,11 @@ func _process(delta: float) -> void:
 	_player_step(delta)
 	if duel_offer > 0:
 		duel_offer -= delta
-		lbl_order.text = "El campeón enemigo te reta a un duelo: pulsa R para aceptar (%d s)" % int(ceil(duel_offer))
+		lbl_order.text = "El campeón enemigo te reta a un duelo: pulsa R para aceptar (%d s)" % int(ceil(duel_offer)) + ("\n" + " ".join(siege_notes) if not siege_notes.is_empty() else "")
 		if duel_offer <= 0:
 			_set_order(order)
+			if not siege_notes.is_empty():
+				lbl_order.text += "\n" + " ".join(siege_notes)
 	for u in units:
 		if over:
 			return
@@ -548,7 +566,7 @@ func _player_step(delta: float) -> void:
 	var attacking: bool = a.current == "Sword_Attack" and a.anim.is_playing()
 	if dir != Vector3.ZERO:
 		var sprint := Input.is_key_pressed(KEY_SHIFT) and not blocking
-		var spd: float = pl["speed"] * (1.5 if sprint else 1.0) * (0.45 if blocking or attacking else 1.0)
+		var spd: float = pl["speed"] * (1.5 if sprint else 1.0) * (0.45 if blocking or attacking else 1.0) * (0.4 if _in_water(a.position) else 1.0)
 		a.position += dir * spd * delta
 		a.position.x = clampf(a.position.x, -HALF, HALF)
 		a.position.z = clampf(a.position.z, -HALF, HALF)
@@ -650,7 +668,12 @@ func _walk(u: Dictionary, target: Vector3, stop: float, delta: float) -> void:
 			dd.y = 0
 			if dd.length() < 1.1 and dd.length() > 0.01:
 				sep += dd.normalized()
-	var spd: float = u["speed"] * (0.85 if weather == "nieve" else 1.0) * (0.6 if u["type"] in ARMY.MOUNTED and _in_woods(a.position) else 1.0)
+	if river_z != INF:
+		var via := _route(a.position, target)
+		if via != target:
+			to = via - a.position
+			to.y = 0
+	var spd: float = u["speed"] * (0.85 if weather == "nieve" else 1.0) * (0.6 if u["type"] in ARMY.MOUNTED and _in_woods(a.position) else 1.0) * (0.4 if _in_water(a.position) else 1.0)
 	a.position += (to.normalized() + sep * 0.7).normalized() * spd * delta
 	a.position.x = clampf(a.position.x, -HALF, HALF)
 	a.position.z = clampf(a.position.z, -HALF, HALF)
@@ -712,8 +735,72 @@ func _update_arrows(delta: float) -> void:
 
 # ---------------- Terreno y clima ----------------
 
+## Emboscada: el enemigo va en columna por el centro y tus hombres salen de los flancos.
+func _ambush_layout() -> void:
+	morale[1] = 65.0
+	siege_notes.append("¡Emboscada! Caéis sobre el enemigo por sorpresa.")
+	for u in units:
+		if u["team"] == 1:
+			u["a"].position = Vector3(randf_range(-4, 4), 0, randf_range(-14, 8))
+			u["a"].rotation.y = randf() * TAU
+			u["cd"] = 2.5
+		elif not u.has("player"):
+			var side := -1.0 if units.find(u) % 2 == 0 else 1.0
+			u["a"].position = Vector3(side * randf_range(15, 20), 0, randf_range(-10, 8))
+			u["anchor"] = u["a"].position
+			u["a"].rotation.y = -side * PI / 2
+	pl["a"].position = Vector3(16, 0, 0)
+
+
+var river_z := INF
+var bridges: Array = []
+
+
+## Río que cruza el campo entre los dos ejércitos, con uno o dos puentes.
+func _setup_river() -> void:
+	river_z = randf_range(-4.0, 4.0)
+	var w := MeshInstance3D.new()
+	var bm := BoxMesh.new()
+	bm.size = Vector3(HALF * 2 + 40, 0.05, 5.5)
+	w.mesh = bm
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(0.14, 0.3, 0.42)
+	mat.roughness = 0.35
+	w.material_override = mat
+	w.position = Vector3(0, 0.03, river_z)
+	add_child(w)
+	bridges = [randf_range(-14, -4), randf_range(6, 16)] if randf() < 0.6 else [randf_range(-6, 6)]
+	for bx in bridges:
+		ENG._box(self, Vector3(4.0, 0.25, 7.5), Vector3(bx, 0.15, river_z), Color(0.45, 0.32, 0.18))
+		for s in [-1, 1]:
+			ENG._box(self, Vector3(0.15, 0.6, 7.5), Vector3(bx + 1.9 * s, 0.5, river_z), Color(0.35, 0.24, 0.13))
+	siege_notes.append("Un río cruza el campo: el agua frena mucho; los puentes son clave.")
+
+
+func _in_water(p: Vector3) -> bool:
+	if river_z == INF or absf(p.z - river_z) > 2.75:
+		return false
+	return not bridges.any(func(bx): return absf(p.x - bx) < 2.0)
+
+
+## Si hay que cruzar el río, los soldados buscan el puente más cercano.
+func _route(from: Vector3, target: Vector3) -> Vector3:
+	if river_z == INF or (from.z - river_z) * (target.z - river_z) > 0 or _in_water(from):
+		return target
+	var best: float = bridges[0]
+	for bx in bridges:
+		if absf(bx - from.x) < absf(best - from.x):
+			best = bx
+	if absf(from.x - best) < 1.5:
+		return Vector3(best, 0, target.z)
+	return Vector3(best, 0, river_z + (4.0 if from.z > river_z else -4.0))
+
+
 func _setup_terrain(suffix: String) -> void:
-	if siege.get("kind", "") in ["torneo", "asedio", "defensa"] or randf() < 0.25:
+	if siege.get("kind", "") in ["torneo", "asedio", "defensa"] or siege.get("ambush", false) or randf() < 0.25:
+		return
+	if randf() < 0.35:
+		_setup_river()
 		return
 	# Una colina a un lado del campo y uno o dos bosquecillos.
 	hill_r = randf_range(9.0, 12.0)
