@@ -56,6 +56,8 @@ Juego de estrategia medieval para PC (Windows) en 3D, hecho con Godot 4.3. Model
 
 **Más guerra:** vista táctica en batalla (V) para colocar a tus grupos con el ratón; tus hijos capitanes pueden mandar su propio ejército contra un pueblo enemigo y gobernarlo si lo toman; y a veces capturas al señor enemigo y decides su suerte en tus mazmorras.
 
+**Vida del pueblo:** cada vecino tiene carácter (alegre, gruñón, chismoso…) y un regalo favorito; hacen amistades, discuten, se enamoran o se marchan peleados. Los niños juegan en la plaza y van a la escuela; los ancianos dan consejos, cuentan historias y dejan herencia. Gremios que piden privilegios (o hacen huelga), día de mercado semanal con puestos y mejores precios, obras públicas (empedrado, fuente, puente, murallas), molino de viento y cantera. Fiestas del calendario (Mayo, San Juan, Cosecha, Navidad) con adornos, baile y juegos populares; bodas y funerales a los que asistir. Peticiones al concejo, alguacil contra ladrones nocturnos, incendios que se apagan con cubos de agua, cerdos escapados y zorros. El pueblo cambia con la estación (flores, calabazas, nieve) y puedes entrar en tu casa: comer en familia, dormir, abrir el arcón.
+
 **Eventos del pueblo:** de vez en cuando ocurre algo y tú decides: incendios, sequías, ratas en el granero, fiebres, fiestas, peregrinos, mercaderes ambulantes, buenas cosechas y, si eres jefe, pleitos entre vecinos. Cada decisión cuesta oro, salud o comida, o cambia el ánimo del pueblo y tu prestigio.
 
 **Caballo:** cómpralo en el mercado (150 oro). H para montar o desmontar en la aldea; viajas más rápido por el mapa y en batalla luchas a caballo (más rápido, más vida y golpes más fuertes).

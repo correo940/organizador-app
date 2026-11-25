@@ -194,6 +194,7 @@ func _build_nature(s: int) -> void:
 		var p := Vector3(randf_range(2, 118), 0, randf_range(2, 78))
 		if p.distance_to(PLAZA) > 14 and p.distance_to(FARM.POND) > 12 and not Rect2(86, 9, 26, 33).has_point(Vector2(p.x, p.z)) and p.distance_to(FARM.CORRAL) > 7 and BLD.SLOTS.all(func(sl): return p.distance_to(sl) > 6.0) and p.z < 78:
 			M.put(nature_node, "nature/%s_%d.glb" % ["Bush_Snow" if s == 3 else "Bush", 1 + i % 2], p, randf() * TAU, randf_range(1.2, 2.0))
+	_season_decor(s)
 	M.set_season_ground(env["grad"], s)
 	season = s
 
@@ -204,6 +205,77 @@ func house_pos() -> Vector3:
 	if i >= 0:
 		return Vector3(SIM.LANDS[i].x, 0, SIM.LANDS[i].y)
 	return PLOT
+
+
+## Detalles de cada estación: flores en primavera, heno en verano, calabazas y hojas en otoño,
+## y nieve amontonada y copos cayendo en invierno.
+var snowfall: CPUParticles3D
+func _season_decor(s: int) -> void:
+	var r := RandomNumberGenerator.new()
+	r.seed = 4242 + s
+	var ok := func(p: Vector3) -> bool:
+		return p.distance_to(PLAZA) > 9 and p.distance_to(FARM.POND) > 11 and not Rect2(86, 9, 26, 33).has_point(Vector2(p.x, p.z)) and BLD.SLOTS.all(func(sl): return p.distance_to(sl) > 6.0) and p.z < 78
+	match s:
+		0:
+			var cols := [Color(0.95, 0.85, 0.2), Color(0.9, 0.3, 0.5), Color(0.95, 0.95, 0.95), Color(0.6, 0.4, 0.9)]
+			for i in 160:
+				var p := Vector3(r.randf_range(3, 117), 0, r.randf_range(3, 77))
+				if not ok.call(p):
+					continue
+				var c: Color = cols[i % 4]
+				for j in 3:
+					var f := ENG._box(nature_node, Vector3(0.18, 0.12, 0.18), p + Vector3(r.randf_range(-0.6, 0.6), 0.35, r.randf_range(-0.6, 0.6)), c)
+					f.rotation.y = r.randf() * TAU
+		1:
+			for i in 10:
+				var p := Vector3(r.randf_range(88, 110), 0, r.randf_range(44, 50))
+				M.put(nature_node, "village/Hay.glb", p, r.randf() * TAU, 1.3)
+		2:
+			for i in 50:
+				var p := Vector3(r.randf_range(3, 117), 0, r.randf_range(3, 77))
+				if not ok.call(p):
+					continue
+				if i % 3 == 0:
+					M.put(nature_node, "crops/Pumpkin_4.glb", p, r.randf() * TAU, 1.0)
+				else:
+					ENG._box(nature_node, Vector3(1.6, 0.06, 1.2), p + Vector3(0, 0.03, 0), [Color(0.75, 0.4, 0.12), Color(0.6, 0.25, 0.1), Color(0.8, 0.6, 0.2)][i % 3], Vector3(0, r.randf() * 180, 0))
+		3:
+			for i in 70:
+				var p := Vector3(r.randf_range(3, 117), 0, r.randf_range(3, 77))
+				if not ok.call(p):
+					continue
+				var m := MeshInstance3D.new()
+				var sm := SphereMesh.new()
+				sm.radius = r.randf_range(0.5, 1.2)
+				sm.height = sm.radius * 0.7
+				m.mesh = sm
+				m.material_override = M.flat(Color(0.95, 0.96, 1.0))
+				m.position = p
+				nature_node.add_child(m)
+	if snowfall:
+		snowfall.queue_free()
+		snowfall = null
+	if s == 3:
+		snowfall = CPUParticles3D.new()
+		snowfall.amount = 700
+		snowfall.lifetime = 5.0
+		snowfall.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
+		snowfall.emission_box_extents = Vector3(25, 0.5, 25)
+		snowfall.direction = Vector3(0, -1, 0)
+		snowfall.spread = 25.0
+		snowfall.initial_velocity_min = 1.2
+		snowfall.initial_velocity_max = 2.2
+		snowfall.gravity = Vector3(0, -0.5, 0)
+		var qm := QuadMesh.new()
+		qm.size = Vector2(0.1, 0.1)
+		var mat := StandardMaterial3D.new()
+		mat.albedo_color = Color(1, 1, 1, 0.9)
+		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		mat.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+		qm.material = mat
+		snowfall.mesh = qm
+		add_child(snowfall)
 
 
 func _rebuild_house() -> void:
@@ -658,6 +730,8 @@ func _process(delta: float) -> void:
 	for i in villagers.size():
 		vlabels[i].visible = villagers[i].position.distance_to(player.position) < 9
 	M.set_daytime(env, d["time"])
+	if snowfall:
+		snowfall.position = player.position + Vector3(0, 14, 0)
 	_ambience(d, night)
 	_update_civic()
 	_update_hud()
@@ -1044,6 +1118,9 @@ func _house_panel() -> void:
 				_float(err, Color(1, 0.5, 0.4))
 			_house_panel(), lvl < 3 or int(d["player_land"]) >= 0])
 	if lvl >= 1:
+		opts.append(["Entrar en tu casa", func():
+			GS.save_game()
+			main.start_house()])
 		opts.append(["Dormir hasta el amanecer", func():
 			GS.sleep()
 			_close_panel()])

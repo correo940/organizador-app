@@ -27,6 +27,10 @@ func start_region() -> void:
 	_switch(preload("res://scripts/region.gd").new())
 
 
+func start_house() -> void:
+	_switch(preload("res://scripts/house_interior.gd").new())
+
+
 func start_visit() -> void:
 	_switch(preload("res://scripts/town_visit.gd").new())
 
