@@ -21,10 +21,24 @@ static func frame_style(radius := 8) -> StyleBoxFlat:
 class Portrait extends Control:
 	var initial := "R"
 	var col := Color(0.55, 0.1, 0.1)
+	var face: Texture2D = null
+	var frame: Texture2D = load("res://assets/ui/marco_retrato.png")
 
 	func _draw() -> void:
 		var c := size / 2
-		var r := minf(size.x, size.y) / 2 - 2
+		var full := minf(size.x, size.y) / 2
+		if frame != null:
+			# Retrato pintado (o el escudo si no hay) dentro del marco tallado.
+			var hole := full * 0.57
+			if face != null:
+				draw_texture_rect(face, Rect2(c - Vector2(hole, hole), Vector2(hole, hole) * 2), false)
+			else:
+				_shield(c, hole * 0.95)
+			draw_texture_rect(frame, Rect2(c - Vector2(full, full), Vector2(full, full) * 2), false)
+			return
+		_shield(c, full - 2)
+
+	func _shield(c: Vector2, r: float) -> void:
 		draw_circle(c, r + 2, Color(0.08, 0.06, 0.04))
 		draw_circle(c, r, Color(0.35, 0.26, 0.15))
 		draw_arc(c, r, 0, TAU, 48, GOLD, 3.0, true)
@@ -60,6 +74,7 @@ class Bar extends Control:
 class Minimap extends Control:
 	var v  # la aldea
 	var scale_px := 1.6
+	var frame: Texture2D = load("res://assets/ui/marco_mapa.png")
 	var t_acc := 0.0
 
 	func _process(delta: float) -> void:
@@ -76,8 +91,9 @@ class Minimap extends Control:
 			return
 		var BLD := preload("res://scripts/buildings.gd")
 		var FARM := preload("res://scripts/farm.gd")
-		var c := Vector2(size.x / 2, size.y / 2 + 14)
-		var r := minf(size.x, size.y - 28) / 2 - 4
+		var c := Vector2(size.x / 2, size.y / 2)
+		var full := minf(size.x, size.y) / 2
+		var r := full * 0.575 if frame != null else full - 4
 		var o := Vector2(v.player.position.x, v.player.position.z)
 		draw_circle(c, r + 6, Color(0.08, 0.06, 0.04))
 		draw_circle(c, r, Color(0.36, 0.42, 0.22))
@@ -122,12 +138,10 @@ class Minimap extends Control:
 		var fwd := Vector2(sin(rot), cos(rot))
 		var side := Vector2(fwd.y, -fwd.x)
 		draw_colored_polygon(PackedVector2Array([c + fwd * 9, c - fwd * 5 + side * 6, c - fwd * 2, c - fwd * 5 - side * 6]), Color(0.95, 0.2, 0.15))
-		draw_arc(c, r, 0, TAU, 64, GOLD, 3.0, true)
-		var f := ThemeDB.fallback_font
-		for d in [["N", Vector2(0, -1)], ["S", Vector2(0, 1)], ["E", Vector2(1, 0)], ["O", Vector2(-1, 0)]]:
-			var lp: Vector2 = c + d[1] * (r + 1) - Vector2(5, -5)
-			draw_string_outline(f, lp, d[0], HORIZONTAL_ALIGNMENT_LEFT, -1, 14, 4, Color.BLACK)
-			draw_string(f, lp, d[0], HORIZONTAL_ALIGNMENT_LEFT, -1, 14, GOLD)
+		if frame != null:
+			draw_texture_rect(frame, Rect2(c - Vector2(full, full), Vector2(full, full) * 2), false)
+		else:
+			draw_arc(c, r, 0, TAU, 64, GOLD, 3.0, true)
 		# Reloj: medio disco de día y noche con el sol o la luna en su sitio.
 		var cc := Vector2(26, 26)
 		var t: float = GS.data["time"]
@@ -140,7 +154,7 @@ class Minimap extends Control:
 
 
 ## Ranura de la barra inferior: icono (texto), cantidad y tecla.
-static func slot(label: String, key: String) -> PanelContainer:
+static func slot(label: String, key: String, icon: String = "") -> PanelContainer:
 	var p := PanelContainer.new()
 	var sb := frame_style(6)
 	sb.set_content_margin_all(4)
@@ -155,6 +169,15 @@ static func slot(label: String, key: String) -> PanelContainer:
 	l.text = label
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	l.add_theme_font_size_override("font_size", 14)
+	if icon != "":
+		var tr := TextureRect.new()
+		tr.texture = load(icon)
+		tr.custom_minimum_size = Vector2(34, 34)
+		tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		vb.add_child(tr)
+		vb.move_child(tr, 0)
+		p.custom_minimum_size.y = 76
 	vb.add_child(l)
 	var k := Label.new()
 	k.name = "K"

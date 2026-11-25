@@ -13,6 +13,7 @@ const TRADE := preload("res://scripts/trade_ui.gd")
 const TOWN := preload("res://scripts/town.gd")
 const WILD := preload("res://scripts/wildlife.gd")
 const HUD := preload("res://scripts/hud.gd")
+const HUD_FACE := preload("res://assets/ui/retrato_hombre.png")
 
 const PLAZA := Vector3(60, 0, 40)
 const PLOT := Vector3(13, 0, 40)
@@ -653,7 +654,7 @@ func _build_hud() -> void:
 	tl.add_theme_constant_override("separation", 10)
 	layer.add_child(tl)
 	hud_portrait = HUD.Portrait.new()
-	hud_portrait.custom_minimum_size = Vector2(92, 92)
+	hud_portrait.custom_minimum_size = Vector2(118, 118)
 	tl.add_child(hud_portrait)
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", 4)
@@ -693,7 +694,7 @@ func _build_hud() -> void:
 	place.add_child(lbl_place)
 	minimap = HUD.Minimap.new()
 	minimap.v = self
-	minimap.custom_minimum_size = Vector2(230, 230)
+	minimap.custom_minimum_size = Vector2(260, 260)
 	tr.add_child(minimap)
 	var info := PanelContainer.new()
 	info.add_theme_stylebox_override("panel", HUD.frame_style(6))
@@ -712,7 +713,7 @@ func _build_hud() -> void:
 	bar.add_theme_constant_override("separation", 6)
 	layer.add_child(bar)
 	for sdef in [["oro", "Oro"], ["madera", "Madera"], ["piedra", "Piedra"], ["comida", "Comida"], ["prestigio", "Prestigio"]]:
-		var sl := HUD.slot("", sdef[1])
+		var sl := HUD.slot("", sdef[1], "res://assets/ui/icono_oro.png" if sdef[0] == "oro" else "")
 		bar.add_child(sl)
 		hud_slots[sdef[0]] = sl.find_child("L", true, false)
 	for kdef in [["E", "Usar"], ["I", "Inventario"], ["M", "Mapa"], ["H", "Caballo"], ["T", "Tiempo"]]:
@@ -769,6 +770,7 @@ func _update_hud() -> void:
 		rank = "Rey de la región" if p["male"] else "Reina de la región"
 	lbl_name.text = "%s %s · %s, %d años" % [p["name"], d["dynasty"], rank, int(p["age"])]
 	hud_portrait.initial = String(d["dynasty"]).replace("de ", "").replace("del ", "").substr(0, 1).to_upper()
+	hud_portrait.face = HUD_FACE if p["male"] else null
 	hud_portrait.queue_redraw()
 	bar_health.label = "Salud %d" % int(p["health"])
 	bar_health.value = float(p["health"]) / 100.0
