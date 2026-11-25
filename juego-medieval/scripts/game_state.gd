@@ -11,6 +11,7 @@ const QUESTS := preload("res://scripts/quests.gd")
 const SOCIAL := preload("res://scripts/social.gd")
 const ECON := preload("res://scripts/economy.gd")
 const POL := preload("res://scripts/politics.gd")
+const CHAR := preload("res://scripts/character.gd")
 
 const SAVE_PATH := "user://partida.json"
 const SECONDS_PER_DAY := 40.0
@@ -327,7 +328,11 @@ func player_death(reason: String) -> void:
 			heir_i = i
 	var heir = data["children"][heir_i]
 	var siblings: int = data["children"].size() - 1
-	data["player"] = {"name": heir["name"], "male": heir["male"], "age": heir["age"], "health": 100.0, "trait": trait_of(heir), "edu": heir.get("edu", "")}
+	var old_skills: Dictionary = p.get("skills", {})
+	var skills := {}
+	for k in old_skills:
+		skills[k] = int(old_skills[k]) / 2
+	data["player"] = {"name": heir["name"], "male": heir["male"], "age": heir["age"], "health": 100.0, "trait": trait_of(heir), "edu": heir.get("edu", ""), "skills": skills}
 	data["children"] = []
 	data["spouse"] = null
 	data["generation"] += 1

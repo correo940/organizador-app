@@ -38,6 +38,9 @@ static func rel(a: int, b: int) -> int:
 static func add_rel(a: int, b: int, n: int) -> void:
 	if a == -1 or b == -1:
 		var l := lord(b if a == -1 else a)
+		if n >= 5:
+			n = int(round(n * (1.0 + 0.1 * GS.CHAR.level("diplomacia"))))
+			GS.CHAR.practice("diplomacia")
 		l["rel"] = clampi(int(l["rel"]) + n, 0, 100)
 		return
 	reg()["lrel"][_key(a, b)] = clampi(rel(a, b) + n, -100, 100)

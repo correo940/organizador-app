@@ -186,11 +186,15 @@ func _ready() -> void:
 	var pparts: Array = ["ubc/Superhero_Male_FullBody", "out/Male_Ranger"] if pmale else ["ubc/Superhero_Female_FullBody", "out/Female_Ranger"]
 	if armor < 2:
 		pparts.append("hair/Hair_SimpleParted" if pmale else "hair/Hair_Buns")
-	pa.build(pparts, {"hair_color": M.SKIN_HAIR[0], "faction": "azul", "hide_hood": true, "sword": true, "shield": true, "helmet": "Helmet2" if armor >= 2 else ""})
+	var wpn: Dictionary = GS.CHAR.weapon()
+	var is_sword: bool = d.get("weapon_type", "espada") == "espada"
+	pa.build(pparts, {"hair_color": GS.CHAR.hair(int(d["player"]["age"]), M.SKIN_HAIR[0]), "faction": "azul", "hide_hood": true, "sword": is_sword, "shield": true, "helmet": "Helmet2" if armor >= 2 else ""})
+	if not is_sword:
+		pa.attach("hand_r", wpn["model"], Vector3(0, 0.05, 0), Vector3(0, 0, 90), float(wpn["size"]))
 	pa.position = Vector3(0, 0, 12)
 	pa.rotation.y = PI
 	pl = {"a": pa, "team": 0, "type": "jugador", "hp": maxf(float(d["player"]["health"]), 20.0), "max": 100.0,
-		"dmg": 20.0 + 10.0 * int(d["weapon"]), "speed": 4.6, "reach": 2.4, "ranged": false, "cd": 0.0, "alive": true,
+		"dmg": (20.0 + 10.0 * int(d["weapon"])) * GS.CHAR.damage_mult(), "speed": 4.6 * GS.CHAR.speed_mult(), "reach": float(GS.CHAR.weapon()["reach"]), "ranged": false, "cd": 0.0, "alive": true,
 		"hit_at": -1.0, "target": null, "anchor": pa.position, "player": true}
 	var pb: Array = GS.battle_bonus(d["player"])
 	pl["hp"] = maxf(20.0, pl["hp"] + pb[0])
@@ -202,7 +206,7 @@ func _ready() -> void:
 		pl["hp"] += 30.0
 		pl["max"] = 130.0
 		pl["dmg"] *= 1.25
-		pl["reach"] = 2.8
+		pl["reach"] = maxf(2.8, pl["reach"])
 	units.append(pl)
 
 	# Tus hijos capitanes luchan a tu lado.
@@ -558,7 +562,7 @@ func _player_step(delta: float) -> void:
 		face = atan2(dir.x, dir.z)
 	a.rotation.y = lerp_angle(a.rotation.y, face, minf(1.0, delta * 12.0))
 	if cam.captured and Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT) and pl["cd"] <= 0 and not blocking:
-		pl["cd"] = 0.75
+		pl["cd"] = float(GS.CHAR.weapon()["cd"])
 		a.rotation.y = cam.yaw + PI
 		a.play_once("Sword_Attack")
 		SFX.play("espada", -2.0, 0.1)
@@ -985,6 +989,9 @@ func _damage(t: Dictionary, amount: float, src: Dictionary) -> void:
 		amount *= 0.5
 	if src.has("a") and src["a"].position.y > t["a"].position.y + 0.8:
 		amount *= 1.25
+	# La maza atraviesa armaduras.
+	if src.has("player") and GS.data.get("weapon_type", "") == "maza" and t["type"] in ["infante", "jinete", "arquero_jinete"]:
+		amount *= 1.3
 	# Las lanzas paran a los caballos.
 	if src.get("type", "") == "lancero" and t["type"] in ARMY.MOUNTED:
 		amount *= 2.0
@@ -1011,6 +1018,7 @@ func _damage(t: Dictionary, amount: float, src: Dictionary) -> void:
 	t["a"].play_once("Death01")
 	if src.has("player"):
 		kills += 1
+		GS.CHAR.practice("combate")
 	if t["team"] == 1:
 		enemy_dead += 1
 	if t.has("child"):
@@ -1027,6 +1035,8 @@ func _damage(t: Dictionary, amount: float, src: Dictionary) -> void:
 	var side: int = t["team"]
 	var alive_side := _count(side) + (ally_reserve.size() if side == 0 else enemy_reserve.size()) / 2
 	var loss := 160.0 / (alive_side + 8.0) + (25.0 if t.get("captain", false) else 0.0)
+	if side == 0:
+		loss *= 1.0 - 0.04 * GS.CHAR.level("liderazgo")
 	if side == 0 and blessed:
 		loss *= 0.6
 	morale[side] = maxf(0.0, morale[side] - loss)
@@ -1135,7 +1145,13 @@ func _end(victory: bool) -> void:
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	var d = GS.data
 	var chief := int(d["title"]) == 1
+	duel_offer = 0.0
+	duel = false
+	lbl_order.text = ""
 	_update_veterans(victory)
+	GS.CHAR.after_battle(pl["hp"], pl["max"])
+	if victory and _count(0, false) + dead_by_type.size() > 0:
+		GS.CHAR.practice("liderazgo", 2)
 	ARMY.casualties(dead_by_type)
 	ARMY.clamp_veterans()
 	if victory and foe_lord >= 0 and randf() < 0.35:

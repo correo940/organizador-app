@@ -40,7 +40,7 @@ static func market(v, id: int) -> void:
 		grid.add_child(_lbl(h, true))
 	for k in R.TRADE_ITEMS:
 		var buy := R.market_price(t, k, true)
-		var sell := R.market_price(t, k, false)
+		var sell := int(round(R.market_price(t, k, false) * GS.CHAR.sell_mult()))
 		var tag := ""
 		if k in t["market"]["spec"]:
 			tag = "  (barato aquí)"
@@ -52,6 +52,7 @@ static func market(v, id: int) -> void:
 			grid.add_child(_btn("Vender %d (+%d)" % [n, sell * n], func():
 				GS.res_add(k, -n)
 				d["gold"] = int(d["gold"]) + sell * n
+				GS.CHAR.practice("comercio")
 				R.market_trade(t, k, n, false)
 				market(v, id), GS.res(k) >= n))
 		for n in [1, 10]:

@@ -575,7 +575,7 @@ func market_panel() -> void:
 		grid.add_child(l)
 	for k in GS.ITEMS:
 		var it: Array = GS.ITEMS[k]
-		var sell: int = it[1]
+		var sell: int = int(round(it[1] * GS.CHAR.sell_mult()))
 		var buy := int(ceil(it[1] * 1.6))
 		var name_l := Label.new()
 		name_l.text = "%s%s" % [it[0], " (%d rac.)" % it[2] if it[2] > 0 else ""]
@@ -631,6 +631,7 @@ func market_panel() -> void:
 			d["riding"] = true
 			v._float("¡Tienes caballo! Pulsa H para montar o desmontar.", Color(1, 0.9, 0.6))
 			market_panel(), d["gold"] >= 150))
+	row.add_child(_btn("Armero…", func(): GS.CHAR.armory(v, market_panel)))
 	if w < 3:
 		row.add_child(_btn("Espada nivel %d (-%d)" % [w + 1, 25 * (w + 1)], func():
 			d["gold"] -= 25 * (w + 1)

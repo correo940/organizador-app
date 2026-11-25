@@ -341,7 +341,7 @@ func _update_player_model() -> void:
 	var d = GS.data
 	var p = d["player"]
 	var armor := int(d["armor"])
-	var sig := "%s-%d-%d-%s-%s" % [p["male"], mini(armor, 2), mini(int(d["weapon"]), 1), p["name"], _riding()]
+	var sig := "%s-%d-%d-%s-%s-%d" % [p["male"], mini(armor, 2), mini(int(d["weapon"]), 1), p["name"], _riding(), int(p["age"]) / 5]
 	if sig == player_sig:
 		return
 	player_sig = sig
@@ -352,7 +352,7 @@ func _update_player_model() -> void:
 		rot = player.rotation.y
 		player.queue_free()
 	var male: bool = p["male"]
-	var opts := {"hide_hood": true, "hair_color": M.SKIN_HAIR[0], "sword": int(d["weapon"]) >= 1}
+	var opts := {"hide_hood": true, "hair_color": GS.CHAR.hair(int(p["age"]), M.SKIN_HAIR[0]), "sword": int(d["weapon"]) >= 1}
 	var parts: Array
 	if armor >= 1:
 		parts = ["ubc/Superhero_Male_FullBody", "out/Male_Ranger"] if male else ["ubc/Superhero_Female_FullBody", "out/Female_Ranger"]
@@ -680,7 +680,7 @@ func _move_player(delta: float) -> void:
 			player.play("Idle")
 		return
 	var sprint := Input.is_key_pressed(KEY_SHIFT)
-	var p: Vector3 = player.position + dir * (SPRINT_SPEED if sprint else RUN_SPEED) * (1.8 if _riding() else 1.0) * delta
+	var p: Vector3 = player.position + dir * (SPRINT_SPEED if sprint else RUN_SPEED) * (1.8 if _riding() else GS.CHAR.speed_mult()) * delta
 	p.x = clampf(p.x, bnd.position.x, bnd.end.x)
 	p.z = clampf(p.z, bnd.position.y, bnd.end.y)
 	var hp := house_pos()
@@ -922,6 +922,7 @@ func _house_panel() -> void:
 			GS.sleep()
 			_close_panel()])
 	opts.append(["Ver familia", _family_panel])
+	opts.append(["Llamar al físico (30 oro): +30 salud, puede curar heridas", func(): GS.CHAR.physician(self)])
 	opts.append(["Guardar partida", func():
 		GS.save_game()
 		_float("Partida guardada", Color.WHITE)
@@ -959,6 +960,8 @@ func _family_panel() -> void:
 		lines.append("Sin hijos. Si mueres sin herederos, tu linaje se extingue.")
 	lines.append("")
 	lines.append("La familia come %d de comida al día." % GS.family_size())
+	lines.append("")
+	lines.append(GS.CHAR.summary())
 	opts.append_array([["Volver", _house_panel], ["Cerrar", _close_panel]])
 	_open_panel("Familia", "\n".join(lines), opts)
 

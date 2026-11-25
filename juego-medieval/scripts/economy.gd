@@ -45,7 +45,8 @@ static func caravan_day(c: Dictionary, t: Dictionary, arrived: bool) -> bool:
 	var item_name: String = String(GS.ITEMS[c["item"]][0]).to_lower() if GS.ITEMS.has(c["item"]) else String(c["item"])
 	if arrived:
 		var price := R.market_price(t, c["item"], false)
-		var gold := price * int(c["n"])
+		var gold := int(round(price * int(c["n"]) * GS.CHAR.sell_mult()))
+		GS.CHAR.practice("comercio", 2)
 		R.market_trade(t, c["item"], int(c["n"]), false)
 		d["gold"] = int(d["gold"]) + gold
 		d["army"]["milicia"] = int(d["army"]["milicia"]) + int(c["escort"])
