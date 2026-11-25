@@ -179,3 +179,57 @@ static func dungeon_panel(v) -> void:
 static func _free(p: Dictionary, msg: String) -> void:
 	prisoners().erase(p)
 	GS.say(msg)
+
+
+# ---------------- Ejércitos de rescate ----------------
+
+## Quién puede encabezar el rescate: un hijo adulto del preso o un señor aliado suyo. "" si nadie.
+static func _rescue_leader(li: int) -> Array:
+	var l := N.lord(li)
+	var heirs: Array = l["kids"].filter(func(k): return int(k["age"]) >= 16)
+	if not heirs.is_empty():
+		heirs.sort_custom(func(a, b): return int(a["age"]) > int(b["age"]))
+		return [li, "%s, %s de %s" % [heirs[0]["name"], "hijo" if heirs[0]["male"] else "hija", N.full(l)]]
+	for i in R.region()["lords"].size():
+		if i != li and N.allied(i, li) and not is_prisoner(i) and not R.lord_towns(i).is_empty():
+			return [i, N.full(N.lord(i))]
+	return [li, ""]
+
+
+## Cada día, la familia o los aliados de un preso pueden mandar un ejército a liberarlo.
+static func rescue_day() -> void:
+	var d = GS.data
+	var reg := R.region()
+	for p in prisoners():
+		var li := int(p["lord"])
+		if int(d["total_days"]) - int(p["day"]) < 5 or randf() > 0.04:
+			continue
+		if reg["armies"].any(func(a): return a.get("rescue", -1) == li):
+			continue
+		var lead := _rescue_leader(li)
+		var src: int = lead[0]
+		var towns := R.lord_towns(src)
+		var troops := 0
+		for t in towns:
+			var n := int(int(t["troops"]) * 0.5)
+			t["troops"] = int(t["troops"]) - n
+			troops += n
+		troops = maxi(troops, 12)
+		if not N.at_war(src, -1):
+			N.declare_war(src, -1)
+		var home := R.town_home()
+		var start: Dictionary = towns[0] if not towns.is_empty() else {"x": home["x"] + 120.0, "z": home["z"]}
+		reg["armies"].append({"id": randi(), "lord": src, "x": float(start["x"]), "z": float(start["z"]) + 8.0, "troops": troops, "target": int(home["id"]), "home": int(start.get("id", home["id"])), "rescue": li, "leader": lead[1]})
+		var who: String = ("Lo encabeza " + String(lead[1]) + ".") if lead[1] != "" else "Nadie de su casa puede encabezarlo: marchan sin un señor al frente y con la moral baja."
+		GS.popups.append({"title": "¡Vienen a liberar a %s!" % N.full(N.lord(li)), "text": "Un ejército de %d soldados marcha hacia %s para sacar a %s de tus mazmorras. %s" % [troops, home["name"], N.full(N.lord(li)), who], "button": "Continuar"})
+
+
+## Si el asalto de rescate triunfa, el preso queda libre.
+static func rescue_success(a: Dictionary) -> void:
+	if not a.has("rescue"):
+		return
+	for p in prisoners().duplicate():
+		if int(p["lord"]) == int(a["rescue"]):
+			prisoners().erase(p)
+			GS.popups.append({"title": "Han liberado a %s" % N.full(N.lord(int(a["rescue"]))), "text": "El ejército de rescate ha entrado en tus mazmorras y se ha llevado a su señor.", "button": "Continuar"})
+			GS.chronicle("Un ejército de rescate libera a %s de las mazmorras de %s." % [N.full(N.lord(int(a["rescue"]))), GS.data["player"]["name"]])

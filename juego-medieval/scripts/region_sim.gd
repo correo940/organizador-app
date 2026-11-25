@@ -107,6 +107,13 @@ static func size() -> float:
 	return float(region().get("size", SIZE))
 
 
+static func town_home() -> Dictionary:
+	for t in region()["towns"]:
+		if t.get("home", false):
+			return t
+	return {}
+
+
 static func home() -> Vector2:
 	var t = region()["towns"][0]
 	return Vector2(t["x"], t["z"])
@@ -462,10 +469,11 @@ static func _assault(a: Dictionary, t: Dictionary) -> void:
 		defense = int(t["garrison"]) * 1.2 * (1.0 + 0.25 * int(t["wall"])) + int(t["pop"]) * 0.02 + int(t.get("towers", 0)) * 10
 	else:
 		defense = int(t["troops"]) * (1.0 + 0.25 * int(t["wall"]))
-	var att := int(a["troops"]) * randf_range(0.8, 1.2)
+	var att := int(a["troops"]) * randf_range(0.8, 1.2) * (0.8 if a.has("rescue") and String(a.get("leader", "")) == "" else 1.0)
 	var dfn := defense * randf_range(0.8, 1.2)
 	reg["armies"].erase(a)
 	if att > dfn:
+		GS.HOSTS.rescue_success(a)
 		var survivors := int(int(a["troops"]) * clampf(1.0 - dfn / maxf(att, 1.0) * 0.7, 0.2, 0.9))
 		if t.get("home", false):
 			var lost_gold := int(int(d["gold"]) * 0.3)

@@ -326,6 +326,22 @@ func _ready() -> void:
 	cap["a"].scale = Vector3.ONE * 1.12
 	enemy_total += 1
 	champion = cap
+	# Ejército de rescate: lo dirige el heredero o un aliado del preso; sin nadie al frente, su moral es baja.
+	var resc: Dictionary = GS.REGION.army_by_id(int(siege.get("army", -1))) if siege.get("kind", "") in ["campo", "defensa"] else {}
+	if resc.has("rescue"):
+		var leader := String(resc.get("leader", ""))
+		if leader == "":
+			morale[1] = 60.0
+			siege_notes.append("Vienen a liberar a su señor, pero nadie los dirige: su moral es baja.")
+		else:
+			cap["hp"] = 150.0
+			cap["max"] = 150.0
+			cap["dmg"] = 17.0
+			var ll := M.label3d(leader.split(",")[0], 56)
+			ll.position = Vector3(0, 2.3, 0)
+			ll.modulate = Color(1.0, 0.6, 0.5)
+			cap["a"].add_child(ll)
+			siege_notes.append("Los dirige %s, decidido a liberar a su señor." % leader)
 	if siege.get("kind", "") in ["", "campo", "asedio", "defensa"]:
 		duel_offer = 12.0
 	if siege.get("kind", "") in ["campo", "defensa"]:

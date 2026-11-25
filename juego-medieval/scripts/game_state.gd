@@ -234,6 +234,7 @@ func next_day() -> void:
 	SIEGE.day()
 	WORLD.day()
 	HOSTS.day()
+	HOSTS.rescue_day()
 	SOCIAL.day()
 	QUESTS.check()
 	if data["spouse"] != null and data["children"].size() < 6 and p["age"] >= 16 and p["age"] < 48 and data["spouse"]["age"] < 46 and randf() < 0.06:

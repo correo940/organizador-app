@@ -408,7 +408,10 @@ func _rebuild_moving() -> void:
 			act.rotation.y = atan2(float(tgt["x"]) - p.x, float(tgt["z"]) - p.z)
 		act.play("Walk")
 		M.recolor(M.put(moving_node, "castle/Banner.glb", p + Vector3(2, 0, -1.5), 0.0, 2.5), col)
-		var l := _map_label("Ejército de %s · %d soldados%s" % [N.full(reg["lords"][li]), int(a["troops"]), "  ⚔" if N.at_war(-1, li) else ""], 20)
+		var title := "Ejército de %s" % N.full(reg["lords"][li])
+		if a.has("rescue"):
+			title = "Rescate de %s (%s)" % [N.full(reg["lords"][int(a["rescue"])]), ("líder: " + String(a["leader"])) if String(a.get("leader", "")) != "" else "sin líder"]
+		var l := _map_label("%s · %d soldados%s" % [title, int(a["troops"]), "  ⚔" if N.at_war(-1, li) else ""], 20)
 		l.modulate = col.lightened(0.5)
 		l.position = p + Vector3(0, 8, 0)
 		moving_node.add_child(l)
