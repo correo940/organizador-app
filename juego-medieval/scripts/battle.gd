@@ -389,7 +389,7 @@ func _build_hud() -> void:
 	hp_bar.add_theme_stylebox_override("fill", fill)
 	layer.add_child(hp_bar)
 	var help := Label.new()
-	help.text = "WASD: mover · Shift: correr · Clic izq.: atacar · Clic der.: bloquear · 1: ¡Cargad! · 2: Mantened · 3: Seguidme · F: formación · Tab: grupo · R: duelo · Esc: ratón"
+	help.text = "WASD: mover · Shift: correr · Clic izq.: atacar · Clic der.: bloquear · 1: ¡Cargad! · 2: Mantened · 3: Seguidme · F: formación · Tab: grupo · V: vista táctica · R: duelo · Esc: ratón"
 	help.add_theme_color_override("font_outline_color", Color.BLACK)
 	help.add_theme_constant_override("outline_size", 4)
 	help.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM)
@@ -449,6 +449,35 @@ func _make_veteran(u: Dictionary) -> void:
 	u["a"].add_child(l)
 
 
+## Vista táctica: cámara desde lo alto para mandar a las tropas como en un juego de estrategia.
+var tactical := false
+var tac_cam: Camera3D
+var tac_pos := Vector3.ZERO
+func _toggle_tactical() -> void:
+	tactical = not tactical
+	if tactical:
+		if tac_cam == null:
+			tac_cam = Camera3D.new()
+			tac_cam.fov = 55
+			add_child(tac_cam)
+		tac_pos = pl["a"].position + Vector3(0, 0, -8)
+		_place_tac_cam()
+		tac_cam.make_current()
+		cam.captured = false
+		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+		lbl_order.text = "Vista táctica (V): WASD mueve la cámara · clic izq. coloca al grupo · clic der. carga · Tab grupo"
+	else:
+		cam.cam.make_current()
+		cam.captured = true
+		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+		_set_order(order)
+
+
+func _place_tac_cam() -> void:
+	tac_cam.position = tac_pos + Vector3(0, 34, 22)
+	tac_cam.look_at(tac_pos, Vector3.UP)
+
+
 func _in_group(u: Dictionary, g: int) -> bool:
 	match g:
 		1:
@@ -460,7 +489,7 @@ func _in_group(u: Dictionary, g: int) -> bool:
 	return true
 
 
-func _set_order(o: int) -> void:
+func _set_order(o: int, point := Vector3.INF) -> void:
 	order = o
 	for u in units:
 		if u["team"] == 0 and not u.has("player") and _in_group(u, group):
@@ -472,7 +501,7 @@ func _set_order(o: int) -> void:
 	var mine := units.filter(func(u): return u["alive"] and u["team"] == 0 and not u.has("player") and not u.has("flee") and _in_group(u, group))
 	var front := mine.filter(func(u): return not u["ranged"])
 	var back := mine.filter(func(u): return u["ranged"])
-	var base: Vector3 = pl["a"].position + Vector3(0, 0, -3)
+	var base: Vector3 = point if point != Vector3.INF else pl["a"].position + Vector3(0, 0, -3)
 	for i in front.size():
 		var p := Vector3.ZERO
 		match formation:
@@ -506,6 +535,8 @@ func _unhandled_input(ev: InputEvent) -> void:
 			KEY_F:
 				formation = (formation + 1) % FORMS.size()
 				_set_order(1)
+			KEY_V:
+				_toggle_tactical()
 			KEY_TAB:
 				group = (group + 1) % GROUPS.size()
 				lbl_order.text = "Grupo: %s (Tab) · elige orden con 1, 2 o 3" % GROUPS[group]
@@ -515,6 +546,13 @@ func _unhandled_input(ev: InputEvent) -> void:
 					duel = true
 					champion["target"] = pl
 					lbl_order.text = "¡Duelo de campeones! Los ejércitos miran en silencio."
+	elif ev is InputEventMouseButton and ev.pressed and tactical:
+		var hit = Plane(Vector3.UP, 0).intersects_ray(tac_cam.project_ray_origin(ev.position), tac_cam.project_ray_normal(ev.position))
+		if hit != null and ev.button_index == MOUSE_BUTTON_LEFT:
+			_set_order(1, Vector3(clampf(hit.x, -HALF, HALF), 0, clampf(hit.z, -HALF, HALF)))
+			lbl_order.text += "\nVista táctica (V): WASD mueve la cámara · clic izq. coloca al grupo · clic der. carga · Tab grupo"
+		elif ev.button_index == MOUSE_BUTTON_RIGHT:
+			_set_order(0)
 	elif ev is InputEventMouseButton and ev.pressed and not cam.captured:
 		cam.captured = true
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
@@ -576,6 +614,14 @@ func _reinforce(delta: float) -> void:
 
 func _player_step(delta: float) -> void:
 	var a = pl["a"]
+	if tactical:
+		var mv := Vector3(float(Input.is_key_pressed(KEY_D)) - float(Input.is_key_pressed(KEY_A)), 0, float(Input.is_key_pressed(KEY_S)) - float(Input.is_key_pressed(KEY_W)))
+		tac_pos = (tac_pos + mv * 22.0 * delta).clamp(Vector3(-HALF, 0, -HALF), Vector3(HALF, 0, HALF))
+		_place_tac_cam()
+		pl["cd"] -= delta
+		if not a.is_playing_once():
+			a.play("Sword_Idle")
+		return
 	a.position.y = _h(a.position)
 	pl["cd"] -= delta
 	var blocking: bool = cam.captured and Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT)
@@ -1262,7 +1308,10 @@ func _end(victory: bool) -> void:
 		GS.CHAR.practice("liderazgo", 2)
 	ARMY.casualties(dead_by_type)
 	ARMY.clamp_veterans()
-	if victory and foe_lord >= 0 and randf() < 0.35:
+	if victory and foe_lord >= 0 and siege.get("kind", "") in ["campo", "defensa", "asedio"] and randf() < 0.15 and not GS.HOSTS.is_prisoner(foe_lord):
+		GS.HOSTS.capture(foe_lord)
+		GS.popups.append({"title": "¡Prisionero!", "text": "En la batalla has capturado al mismísimo %s. Ahora está en tus mazmorras: decide su suerte desde la Casa del Concejo." % GS.REGION.NOBLES.full(GS.REGION.NOBLES.lord(foe_lord)), "button": "Continuar"})
+	elif victory and foe_lord >= 0 and randf() < 0.35:
 		_ransom_buttons()
 	var losses := 0
 	for k in dead_by_type:

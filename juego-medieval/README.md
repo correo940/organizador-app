@@ -48,6 +48,14 @@ Juego de estrategia medieval para PC (Windows) en 3D, hecho con Godot 4.3. Model
 
 **Opciones y ambiente:** volumen de música y efectos, sensibilidad del ratón, pantalla completa y sombras. Día y noche también en el mapa (con luces en los pueblos) y sonidos de pájaros, gentío, viento y campanas.
 
+**Partidas:** tres ranuras de guardado más un guardado automático cada estación; dificultad fácil, normal o difícil. Consejos la primera vez que ves algo nuevo (se pueden quitar en Opciones). En tu casa, la crónica y el árbol del linaje.
+
+**Más gestión:** gestor de todos tus pueblos (G en el mapa), mayordomo que cosecha, resiembra y vende por ti, y nuevos edificios: hospital, universidad, embarcadero y castillo.
+
+**Más mundo:** reinos vecinos con embajadas, invasiones y bodas reales; en las tabernas contratas mercenarios, caballeros andantes y bardos; temporada de torneos con campeón del año.
+
+**Más guerra:** vista táctica en batalla (V) para colocar a tus grupos con el ratón; tus hijos capitanes pueden mandar su propio ejército contra un pueblo enemigo y gobernarlo si lo toman; y a veces capturas al señor enemigo y decides su suerte en tus mazmorras.
+
 **Eventos del pueblo:** de vez en cuando ocurre algo y tú decides: incendios, sequías, ratas en el granero, fiebres, fiestas, peregrinos, mercaderes ambulantes, buenas cosechas y, si eres jefe, pleitos entre vecinos. Cada decisión cuesta oro, salud o comida, o cambia el ánimo del pueblo y tu prestigio.
 
 **Caballo:** cómpralo en el mercado (150 oro). H para montar o desmontar en la aldea; viajas más rápido por el mapa y en batalla luchas a caballo (más rápido, más vida y golpes más fuertes).

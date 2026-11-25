@@ -131,7 +131,7 @@ func _map_label(text: String, size: int) -> Label3D:
 
 func _process(delta: float) -> void:
 	var d = GS.data
-	var ms := str(R.region()["armies"]) + str(R.region()["caravans"])
+	var ms := str(R.region()["armies"]) + str(R.region()["caravans"]) + str(GS.HOSTS.hosts())
 	if ms != moving_sig:
 		moving_sig = ms
 		_rebuild_moving()
@@ -326,6 +326,7 @@ func _town_panel(id: int) -> void:
 	else:
 		opts.append(["Negociar con %s" % N.full(lord), func(): COURT.court(self, li, id)])
 	opts.append_array(GS.SIEGE.town_options(self, t))
+	opts.append_array(GS.HOSTS.town_options(self, t))
 	if not t["vassal"] and (GS.SIEGE.camp().is_empty() or int(GS.SIEGE.camp()["town"]) != id):
 		opts.append(["Atacar (%d tropas tuyas contra %d)%s" % [ARMY.total(), defenders, "" if war else " — declara la guerra"], func():
 			if not N.at_war(-1, li):
@@ -411,6 +412,19 @@ func _rebuild_moving() -> void:
 		l.modulate = col.lightened(0.5)
 		l.position = p + Vector3(0, 8, 0)
 		moving_node.add_child(l)
+	for h in GS.HOSTS.hosts():
+		var hp := Vector3(h["x"], 0, h["z"])
+		var ha := ACTOR.new()
+		moving_node.add_child(ha)
+		ha.build(["ubc/Superhero_Male_FullBody", "out/Male_Ranger"], {"faction": "azul", "hide_hood": true, "sword": true, "shield": true, "helmet": "Helmet2"})
+		ha.scale = Vector3.ONE * 3.2
+		ha.position = hp
+		ha.play("Walk")
+		M.recolor(M.put(moving_node, "castle/Banner.glb", hp + Vector3(2, 0, -1.5), 0.0, 2.5), Color(0.15, 0.3, 0.7))
+		var hl := _map_label("Ejército de %s · %d soldados" % [h["leader"], int(h["troops"])], 20)
+		hl.modulate = Color(0.7, 0.85, 1.0)
+		hl.position = hp + Vector3(0, 8, 0)
+		moving_node.add_child(hl)
 	for cv in reg["caravans"]:
 		var p := Vector3(cv["x"], 0, cv["z"])
 		var tgt := R.town(int(cv["to"]))

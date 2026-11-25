@@ -361,7 +361,7 @@ static func towns_of_side(side: int) -> Array:
 static func raise_armies() -> void:
 	var reg := region()
 	for i in reg["lords"].size():
-		if reg["armies"].any(func(a): return int(a["lord"]) == i):
+		if reg["armies"].any(func(a): return int(a["lord"]) == i) or GS.HOSTS.is_prisoner(i):
 			continue
 		var foes := enemies_of(i)
 		if foes.is_empty() or randf() > 0.6:
