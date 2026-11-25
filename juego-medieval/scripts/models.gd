@@ -196,6 +196,33 @@ static func set_season_ground(grad: Gradient, season: int) -> void:
 	grad.set_color(1, cols[1])
 
 
+## Capa de nieve: se pinta de blanco lo que mira hacia arriba (tejados, copas, rocas).
+static var _snow: ShaderMaterial
+static func snow_overlay() -> ShaderMaterial:
+	if _snow == null:
+		var sh := Shader.new()
+		sh.code = """shader_type spatial;
+render_mode blend_mix, depth_draw_never, cull_back;
+varying float up;
+void vertex() { up = (MODEL_MATRIX * vec4(NORMAL, 0.0)).y; }
+void fragment() {
+	ALBEDO = vec3(0.94, 0.95, 0.98);
+	ROUGHNESS = 0.9;
+	ALPHA = smoothstep(0.35, 0.7, up) * 0.92;
+}"""
+		_snow = ShaderMaterial.new()
+		_snow.shader = sh
+	return _snow
+
+
+## Pone o quita la nieve a todas las mallas bajo 'root' (menos personas y suelo).
+static func set_snow(root: Node, on: bool) -> void:
+	for mi in root.find_children("*", "MeshInstance3D", true, false):
+		if mi.get_parent() is Skeleton3D or mi.mesh is PlaneMesh:
+			continue
+		mi.material_overlay = snow_overlay() if on else null
+
+
 ## Luz de luna: de noche se sigue viendo el terreno (mapa y batallas).
 static func moonlight(env: Dictionary, k: float) -> void:
 	var sun: DirectionalLight3D = env["sun"]

@@ -102,6 +102,40 @@ func _update_fire(delta: float, d: Dictionary) -> void:
 				fm.position = p + Vector3(randf_range(-2.2, 2.2), up + cm.height / 2, randf_range(-2.2, 2.2))
 				fire_node.add_child(fm)
 				flames.append(fm)
+			# Partículas de fuego y humo.
+			for pk in 2:
+				var ps := CPUParticles3D.new()
+				var smoke := pk == 1
+				ps.amount = 60 if not smoke else 40
+				ps.lifetime = 1.0 if not smoke else 3.5
+				ps.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
+				ps.emission_box_extents = Vector3(2.0, 0.3, 2.0)
+				ps.direction = Vector3(0, 1, 0)
+				ps.spread = 12.0
+				ps.gravity = Vector3(0, 2.5 if not smoke else 0.8, 0)
+				ps.initial_velocity_min = 1.0
+				ps.initial_velocity_max = 2.5
+				ps.scale_amount_min = 0.6
+				ps.scale_amount_max = 1.4
+				var qm := QuadMesh.new()
+				qm.size = Vector2(0.7, 0.9) if not smoke else Vector2(1.4, 1.4)
+				var pm := StandardMaterial3D.new()
+				pm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+				pm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+				pm.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+				pm.vertex_color_use_as_albedo = true
+				qm.material = pm
+				ps.mesh = qm
+				var g := Gradient.new()
+				if smoke:
+					g.set_color(0, Color(0.35, 0.33, 0.32, 0.5))
+					g.set_color(1, Color(0.5, 0.5, 0.5, 0.0))
+				else:
+					g.set_color(0, Color(1.0, 0.85, 0.3, 0.95))
+					g.set_color(1, Color(0.9, 0.2, 0.05, 0.0))
+				ps.color_ramp = g
+				ps.position = p + Vector3(0, 0.3 if not smoke else 3.5, 0)
+				fire_node.add_child(ps)
 			var l := OmniLight3D.new()
 			l.light_color = Color(1.0, 0.5, 0.2)
 			l.light_energy = 2.0 + float(f["hp"]) / 25.0

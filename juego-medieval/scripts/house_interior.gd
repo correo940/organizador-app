@@ -20,12 +20,14 @@ func _ready() -> void:
 	var lvl := int(d["house_level"])
 	var rich := int(d["gold"]) >= 300
 	var env := M.make_env(self, Vector3(0, -0.02, 0), 60)
-	M.set_daytime(env, 0.15)
+	var day: bool = float(d["time"]) > 0.25 and float(d["time"]) < 0.8
+	M.set_daytime(env, float(d["time"]) if day else 0.15)
 	env["env"].fog_enabled = false
-	env["sun"].light_energy = 0.15
+	env["sun"].light_energy = 0.45 if day else 0.15
+	M.set_season_ground(env["grad"], int(d["season"]))
 	env["env"].ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	env["env"].ambient_light_color = Color(1.0, 0.85, 0.65)
-	env["env"].ambient_light_energy = 0.7
+	env["env"].ambient_light_energy = 0.5 if day else 0.6
 	var floor_col := Color(0.42, 0.3, 0.18) if lvl < 2 else Color(0.5, 0.48, 0.45)
 	var wall_col := Color(0.55, 0.42, 0.28) if lvl < 2 else (Color(0.72, 0.7, 0.66) if lvl < 4 else Color(0.8, 0.76, 0.68))
 	ENG._box(self, Vector3(W, 0.1, D), Vector3(0, -0.05, 0), floor_col)

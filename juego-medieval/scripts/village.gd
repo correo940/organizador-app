@@ -252,6 +252,7 @@ func _season_decor(s: int) -> void:
 				m.material_override = M.flat(Color(0.95, 0.96, 1.0))
 				m.position = p
 				nature_node.add_child(m)
+	M.set_snow(self, s == 3)
 	if snowfall:
 		snowfall.queue_free()
 		snowfall = null
