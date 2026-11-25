@@ -632,6 +632,12 @@ func market_panel() -> void:
 			v._float("¡Tienes caballo! Pulsa H para montar o desmontar.", Color(1, 0.9, 0.6))
 			market_panel(), d["gold"] >= 150))
 	row.add_child(_btn("Armero…", func(): GS.CHAR.armory(v, market_panel)))
+	if not d.get("falcon", false):
+		row.add_child(_btn("Halcón de caza (-100)", func():
+			d["gold"] -= 100
+			d["falcon"] = true
+			v._float("Tienes un halcón: suéltalo en el bosque y sal de cetrería con los nobles.", Color(1, 0.9, 0.6))
+			market_panel(), d["gold"] >= 100))
 	if w < 3:
 		row.add_child(_btn("Espada nivel %d (-%d)" % [w + 1, 25 * (w + 1)], func():
 			d["gold"] -= 25 * (w + 1)

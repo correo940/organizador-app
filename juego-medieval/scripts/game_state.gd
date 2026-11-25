@@ -20,6 +20,7 @@ const TL := preload("res://scripts/townlife.gd")
 const FEST := preload("res://scripts/festivals.gd")
 const INC := preload("res://scripts/incidents.gd")
 const LEG := preload("res://scripts/legacy.gd")
+const REALM := preload("res://scripts/realm.gd")
 
 const SAVE_PATH := "user://partida.json"
 const SECONDS_PER_DAY := 40.0
@@ -299,6 +300,8 @@ func next_season() -> void:
 	WORLD.season_bards()
 	WORLD.tourney_season()
 	TL.guild_season()
+	REALM.season()
+	REALM.climate_season()
 	if data.get("game_over", false):
 		return
 	say("Comienza %s del año %d." % [["la primavera", "el verano", "el otoño", "el invierno"][int(data["season"])], int(data["year"])])
@@ -603,6 +606,7 @@ func ensure_economy() -> void:
 	SIM.ensure()
 	ARMY.ensure()
 	REGION.ensure()
+	REALM.ensure()
 
 
 func inv(item: String) -> int:

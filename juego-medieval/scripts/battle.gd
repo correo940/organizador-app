@@ -155,6 +155,9 @@ func _ready() -> void:
 			var tw := ENG.tower(self)
 			tw.position = Vector3(-14, 0, -HALF - 1.0)
 			tw.rotation.y = PI
+		if siege.get("river", false) and eff_wall > 0:
+			eff_wall -= 1
+			siege_notes.append("Tus barcazas desembarcan por el río junto a la muralla.")
 		if siege.get("ladders", false) and eff_wall > 0:
 			eff_wall -= 1
 			siege_notes.append("Tus hombres apoyan las escalas en la muralla.")

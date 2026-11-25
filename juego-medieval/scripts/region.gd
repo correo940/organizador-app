@@ -38,7 +38,7 @@ func _ready() -> void:
 	var reg := R.region()
 	for i in int(260 * pow(R.size() / 300.0, 2) * (0.4 if SFX.settings.get("low", false) else 1.0)):
 		var p := Vector3(r.randf_range(0, R.size()), 0, r.randf_range(0, R.size()))
-		if reg["sites"].any(func(s): return Vector2(s[0], s[1]).distance_to(Vector2(p.x, p.z)) < 20) or Vector2(p.x, p.z).distance_to(R.home()) < 24:
+		if reg["sites"].any(func(s): return Vector2(s[0], s[1]).distance_to(Vector2(p.x, p.z)) < 20) or Vector2(p.x, p.z).distance_to(R.home()) < 24 or GS.REALM.near_river(Vector2(p.x, p.z), 7.0):
 			continue
 		M.put(self, "nature/%s%s_%d.glb" % [["CommonTree", "PineTree", "BirchTree"][i % 3], suffix, r.randi_range(1, 5)], p, r.randf() * TAU, r.randf_range(2.6, 3.6))
 	for i in 28:
@@ -47,6 +47,7 @@ func _ready() -> void:
 		M.recolor(M.put(self, "nature/Rock_%d.glb" % (1 + i % 7), p, r.randf() * TAU, r.randf_range(20, 32)), Color(0.42, 0.44, 0.4))
 	towns_node = Node3D.new()
 	add_child(towns_node)
+	_draw_river_and_shrine()
 	moving_node = Node3D.new()
 	add_child(moving_node)
 	party = ACTOR.new()
@@ -99,7 +100,7 @@ func _rebuild_towns() -> void:
 			var c: Array = reg["lords"][int(t["lord"])]["color"]
 			col = Color(c[0], c[1], c[2])
 		M.recolor(M.put(towns_node, "castle/Banner.glb", p + Vector3(3, 0, 3), 0.0, 3.0), col)
-		var txt := "%s · %s\n%s · %d hab." % [t["name"], R.tier_name(tier), R.owner_text(t), R.pop_of(t)]
+		var txt := "%s · %s\n%s · %d hab.%s" % [t["name"], R.tier_name(tier), R.owner_text(t), R.pop_of(t), " · ¡inundado!" if t.get("flooded", false) else ""]
 		if not t.get("home", false):
 			txt += " · %d soldados" % (int(t["garrison"]) if t["owner"] == "jugador" else int(t["troops"]))
 		var l := _map_label(txt, 22)
@@ -157,12 +158,12 @@ func _process(delta: float) -> void:
 		to.y = 0
 		if to.length() > 0.5:
 			var fast := 1.6 if d.get("horse", false) else 1.0
-			var step := minf(to.length(), SPEED * fast * delta)
+			var step := minf(to.length(), SPEED * fast * GS.REALM.travel_mult() * delta)
 			party.position += to.normalized() * step
 			party.rotation.y = lerp_angle(party.rotation.y, atan2(to.x, to.z), minf(1.0, delta * 8.0))
 			party.play("Walk")
 			var reg := R.region()
-			reg["walked"] = float(reg["walked"]) + step / fast
+			reg["walked"] = float(reg["walked"]) + step / (fast * GS.REALM.travel_mult())
 			if float(reg["walked"]) >= R.DAY_DIST:
 				reg["walked"] = float(reg["walked"]) - R.DAY_DIST
 				GS.next_day()
@@ -170,6 +171,7 @@ func _process(delta: float) -> void:
 			party.play("Idle")
 		R.region()["party"] = [party.position.x, party.position.z]
 		inter = _find_interaction()
+	_move_boats(delta)
 	var tday := _map_time()
 	M.set_daytime(env, tday)
 	M.moonlight(env, 0.4)
@@ -184,6 +186,9 @@ func _process(delta: float) -> void:
 
 func _find_interaction() -> Dictionary:
 	var pp := Vector2(party.position.x, party.position.z)
+	var sh: Array = R.region()["shrine"]
+	if pp.distance_to(Vector2(sh[0], sh[1])) < 14.0:
+		return {"type": "shrine", "label": "Peregrinar al santuario de San Millán"}
 	for a in R.region()["armies"]:
 		if pp.distance_to(Vector2(a["x"], a["z"])) < 14.0:
 			var li: int = a["lord"]
@@ -244,6 +249,8 @@ func _interact() -> void:
 			_town_panel(inter["id"])
 		"site":
 			_site_panel(inter["i"])
+		"shrine":
+			GS.REALM.pilgrimage(self)
 		"army":
 			_army_panel(inter["id"])
 
@@ -330,6 +337,12 @@ func _town_panel(id: int) -> void:
 		opts.append(["Negociar con %s" % N.full(lord), func(): COURT.court(self, li, id)])
 	opts.append_array(GS.SIEGE.town_options(self, t))
 	opts.append_array(GS.HOSTS.town_options(self, t))
+	if war and not t["vassal"] and GS.REALM.near_river(Vector2(t["x"], t["z"]), 30.0):
+		opts.append(["Asalto por el río con barcazas (60 madera): las murallas defienden un nivel menos", func():
+			GS.pay({"madera": 60})
+			d["battle"] = {"kind": "asedio", "town": id, "enemy": "%s (%s)" % [t["name"], lord["name"]], "troops": defenders, "wall": int(t["wall"]), "river": true}
+			GS.save_game()
+			main.start_battle(), GS.res("madera") >= 60])
 	if not t["vassal"] and (GS.SIEGE.camp().is_empty() or int(GS.SIEGE.camp()["town"]) != id):
 		opts.append(["Atacar (%d tropas tuyas contra %d)%s" % [ARMY.total(), defenders, "" if war else " — declara la guerra"], func():
 			if not N.at_war(-1, li):
@@ -382,6 +395,49 @@ func _manager_panel() -> void:
 		opts.append(["Gestionar %s" % t["name"], func(): _town_panel(tid)])
 	opts.append(["Cerrar", _close_panel])
 	_open_panel("Tus pueblos", GS.ECON.towns_summary(), opts)
+
+
+## El río (con sus barcas) y el santuario de peregrinación.
+var boats: Array = []
+func _draw_river_and_shrine() -> void:
+	var pts: Array = R.region()["river"]
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(0.2, 0.36, 0.5)
+	mat.roughness = 0.3
+	for i in pts.size() - 1:
+		var a := Vector3(pts[i][0], 0.06, pts[i][1])
+		var b := Vector3(pts[i + 1][0], 0.06, pts[i + 1][1])
+		var m := MeshInstance3D.new()
+		var bm := BoxMesh.new()
+		bm.size = Vector3(9.0, 0.05, a.distance_to(b) + 9.0)
+		m.mesh = bm
+		m.material_override = mat
+		add_child(m)
+		m.look_at_from_position((a + b) / 2, b, Vector3.UP)
+	for k in 3:
+		var bt := GS.REALM.boat(self, [Color(0.85, 0.8, 0.7), Color(0.7, 0.2, 0.2), Color(0.25, 0.35, 0.6)][k])
+		bt.scale = Vector3.ONE * 0.8
+		boats.append({"n": bt, "t": k / 3.0, "dir": 1.0 if k % 2 == 0 else -1.0})
+	var sh: Array = R.region()["shrine"]
+	M.put(self, "rts/Temple_FirstAge_Level3.glb", Vector3(sh[0], 0, sh[1]), 0.0, 1.0)
+	var l := _map_label("Santuario de San Millán", 22)
+	l.position = Vector3(sh[0], 10, sh[1])
+	l.modulate = Color(1, 0.95, 0.75)
+	add_child(l)
+
+
+func _move_boats(delta: float) -> void:
+	var pts: Array = R.region()["river"]
+	for b in boats:
+		b["t"] = fposmod(float(b["t"]) + delta * 0.006 * float(b["dir"]), 1.0)
+		var f: float = float(b["t"]) * (pts.size() - 1)
+		var i := int(f)
+		var a := Vector3(pts[i][0], 0.1, pts[i][1])
+		var c := Vector3(pts[mini(i + 1, pts.size() - 1)][0], 0.1, pts[mini(i + 1, pts.size() - 1)][1])
+		var n: Node3D = b["n"]
+		n.position = a.lerp(c, f - i)
+		var dirv := (c - a) * float(b["dir"])
+		n.rotation.y = atan2(dirv.x, dirv.z)
 
 
 func _visit(id: int) -> void:

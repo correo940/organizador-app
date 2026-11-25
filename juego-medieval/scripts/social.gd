@@ -72,9 +72,12 @@ static func priest_options(v) -> Array:
 		d["gold"] = int(d["gold"]) - 20
 		d["tithe"] = si
 		d["prestige"] += 5
+		GS.REALM.devotion_add(10)
 		for vv in d["villagers"]:
 			vv["mood"] = mini(100, int(vv["mood"]) + 5)
 		_msg(v, "El párroco agradece tu generosidad desde el púlpito."), int(d["gold"]) >= 20 and int(d.get("tithe", -1)) != si])
+	if d.get("church", {}).get("excommunicated", false):
+		opts.append(["Hacer penitencia pública (200 oro): levanta la excomunión", func(): GS.REALM.penance(v)])
 	opts.append(["Pedir su bendición para la próxima batalla (10 oro)", func():
 		d["gold"] = int(d["gold"]) - 10
 		d["blessed"] = true

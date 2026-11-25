@@ -1076,7 +1076,7 @@ func _interact() -> void:
 			GS.FEST.join(self)
 		"ceremony":
 			GS.FEST.attend(self)
-		"wolf", "bandits":
+		"wolf", "bandits", "boar", "falcon":
 			wild.interact(inter)
 		_:
 			farm.interact(inter)

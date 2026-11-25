@@ -116,6 +116,12 @@ static func court(v, i: int, town_id: int) -> void:
 			d["prestige"] += 5
 			N.add_rel(-1, i, 15)
 			v._say("El banquete es un éxito: música, vino y buena carne. (+15 relación, +5 prestigio)"), err == "" and int(l["feast"]) != si and int(d["gold"]) >= 60])
+		if d.get("falcon", false):
+			opts.append(["Salir de cetrería con vuestros halcones (una vez por estación)", func():
+				l["falconry"] = si
+				N.add_rel(-1, i, 12)
+				d["prestige"] += 3
+				v._say("Vuestros halcones cazan perdices toda la mañana. %s admira el tuyo. (+12 relación, +3 prestigio)" % N.full(l)), err == "" and int(l.get("falconry", -1)) != si])
 		opts.append(["Ir de cacería juntos (no en invierno)", func():
 			l["hunt"] = si
 			N.add_rel(-1, i, 10)
