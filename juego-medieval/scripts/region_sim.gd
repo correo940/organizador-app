@@ -172,7 +172,7 @@ static func day() -> void:
 		var cap: int = [100, 400, 1200][mini(2, tier_of(pop) + 1)]
 		t["pop"] = mini(cap, pop + maxi(1 if randf() < 0.5 else 0, int(pop * 0.004)))
 		if t["owner"] == "jugador":
-			income += pop / 40.0 * governor_mult(int(t["id"])) * GS.ECON.tax_mult(t)
+			income += pop / 40.0 * governor_mult(int(t["id"])) * GS.ECON.tax_mult(t) * (1.15 if GS.POL.has("tesorero") else 1.0)
 		else:
 			t["gold"] = int(t["gold"]) + pop / 20
 			var target := int(pop * 0.08) + 4

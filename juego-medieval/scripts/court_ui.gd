@@ -130,6 +130,10 @@ static func court(v, i: int, town_id: int) -> void:
 		if not N.allied(-1, i):
 			opts.append(["Proponer una alianza (hace falta relación 70)", func():
 				v._say("%s acepta la alianza." % N.full(l) if N.ask_alliance(i) else "%s no se fía lo suficiente de ti." % N.full(l))])
+		opts.append(["Intrigas…", func():
+			var io: Array = GS.POL.intrigue_options(v, i, town_id)
+			io.append(["Volver", func(): court(v, i, town_id)])
+			v._open_panel("Intrigas contra %s" % N.full(l), "Juego peligroso: si te descubren, perderás su confianza o algo peor.", io)])
 		opts.append(["Declarar la guerra", func():
 			N.declare_war(-1, i)
 			court(v, i, town_id)])

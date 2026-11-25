@@ -521,7 +521,10 @@ func _update_hud() -> void:
 	var p = d["player"]
 	var lines := []
 	lines.append("%s %s" % [p["name"], d["dynasty"]])
-	lines.append("%s · %d años · Salud %d" % [["Campesino", "Jefe del pueblo"][int(d["title"])] if p["male"] else ["Campesina", "Jefa del pueblo"][int(d["title"])], int(p["age"]), int(p["health"])])
+	var rank: String = ["Campesino", "Jefe del pueblo"][int(d["title"])] if p["male"] else ["Campesina", "Jefa del pueblo"][int(d["title"])]
+	if d.get("king", false):
+		rank = "Rey de la región" if p["male"] else "Reina de la región"
+	lines.append("%s · %d años · Salud %d" % [rank, int(p["age"]), int(p["health"])])
 	lines.append("Casa: %s" % GS.HOUSE_NAMES[int(d["house_level"])])
 	if d["spouse"] != null:
 		lines.append("Cónyuge: %s" % d["spouse"]["name"])
@@ -1075,6 +1078,13 @@ func _hall_panel() -> void:
 			_hall_panel(), can_tax])
 	text += "\n\n" + _town_report()
 	opts.append_array(GS.SOCIAL.hall_options(self))
+	if int(d["title"]) >= 1:
+		opts.append(["Consejo de la corte", func(): GS.POL.council_panel(self)])
+		if not GS.POL.is_king():
+			text += "\n\n" + GS.POL.crown_text()
+			opts.append(["Coronarte rey de la región (%d oro)" % GS.POL.CROWN_GOLD, func():
+				GS.POL.crown()
+				_close_panel(), GS.POL.can_crown()])
 	opts.append(["Cerrar", _close_panel])
 	_open_panel("Casa del Concejo", text, opts)
 

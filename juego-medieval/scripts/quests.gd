@@ -16,6 +16,7 @@ const LIST := [
 	{"id": "visita", "goal": "Visita otro pueblo de la región", "tip": "Pulsa M para abrir el mapa, viaja hasta un pueblo y elige «Pasear por…».", "gold": 30},
 	{"id": "ciudad", "goal": "Haz crecer el pueblo hasta ciudad", "tip": "Más gente, más edificios y murallas. Puedes fundar aldeas nuevas en el mapa para ganar tributos.", "gold": 100},
 	{"id": "conquista", "goal": "Conquista o vasalla otro pueblo", "tip": "Desde el mapa, ataca un pueblo de un señor con tu ejército y elige qué hacer con él al vencer.", "gold": 150},
+	{"id": "rey", "goal": "Corónate rey de la región", "tip": "Con una ciudad, 4 pueblos tuyos o vasallos, 500 de prestigio y 300 de oro, ve al Concejo y reclama la corona.", "gold": 300},
 ]
 
 
@@ -53,6 +54,8 @@ static func done(id: String) -> bool:
 			return d.get("visited", false)
 		"ciudad":
 			return int(d["tier"]) >= 2
+		"rey":
+			return d.get("king", false)
 		"conquista":
 			return GS.REGION.region()["towns"].any(func(t): return (t["owner"] == "jugador" and not t.get("home", false) and not t.get("founded", false)) or t.get("vassal", false))
 	return false

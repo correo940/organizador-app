@@ -103,7 +103,7 @@ func _spawn(kind: String, team: int, pos: Vector3) -> Dictionary:
 		a.mount([Color(1, 1, 1), Color(1.7, 1.4, 1.1), Color(2.2, 2.1, 2.0), Color(1.3, 0.9, 0.7)].pick_random())
 	a.position = Vector3(pos.x, _h(pos), pos.z)
 	a.rotation.y = PI if team == 0 else 0.0
-	var u := {"a": a, "team": team, "type": kind, "hp": st["hp"], "max": st["hp"], "dmg": st["dmg"], "speed": st["speed"],
+	var u := {"a": a, "team": team, "type": kind, "hp": st["hp"], "max": st["hp"], "dmg": st["dmg"] * (1.1 if team == 0 and GS.POL.has("mariscal") else 1.0), "speed": st["speed"],
 		"reach": st["reach"] * (_range_mult() if st.get("ranged", false) else 1.0), "ranged": st.get("ranged", false), "cd": randf() * 1.0, "alive": true, "hit_at": -1.0,
 		"target": null, "anchor": pos}
 	units.append(u)

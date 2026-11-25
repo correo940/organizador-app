@@ -10,6 +10,7 @@ const EVENTS := preload("res://scripts/events.gd")
 const QUESTS := preload("res://scripts/quests.gd")
 const SOCIAL := preload("res://scripts/social.gd")
 const ECON := preload("res://scripts/economy.gd")
+const POL := preload("res://scripts/politics.gd")
 
 const SAVE_PATH := "user://partida.json"
 const SECONDS_PER_DAY := 40.0
@@ -262,10 +263,11 @@ func next_season() -> void:
 	SIM.season()
 	REGION.season()
 	ECON.season()
+	POL.season()
 	if data.get("game_over", false):
 		return
 	say("Comienza %s del año %d." % [["la primavera", "el verano", "el otoño", "el invierno"][int(data["season"])], int(data["year"])])
-	if data["summons"] == null and data["player"]["age"] >= 16 and data["player"]["age"] <= 60 and randf() < 0.45:
+	if data["summons"] == null and not data.get("king", false) and data["player"]["age"] >= 16 and data["player"]["age"] <= 60 and randf() < 0.45:
 		data["summons"] = {"deadline": int(data["total_days"]) + 4, "enemy": ENEMIES.pick_random()}
 		if int(data["title"]) == 1:
 			say("¡El rey ordena que lleves la milicia del pueblo contra %s! Ve al campamento del este (4 días)." % data["summons"]["enemy"])
