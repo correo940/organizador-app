@@ -309,7 +309,7 @@ func _reset_villagers() -> void:
 		var a := _actor(parts, opts)
 		var home := _door(v)
 		a.position = home + Vector3(randf_range(-4, 4), 0, randf_range(-4, 4))
-		var l := M.label3d("%s\n%s" % [GS.full_name(v), SIM.job_name(v)], 32)
+		var l := M.label3d("%s\n%s%s" % [GS.full_name(v), SIM.job_name(v), " · anciano" if GS.FOLK.is_elder(v) else ""], 32)
 		l.position = Vector3(0, 2.25, 0)
 		a.add_child(l)
 		villagers.append(a)
@@ -732,12 +732,29 @@ func _move_npcs(delta: float) -> void:
 			a.play("Idle")
 	for k in vkids:
 		if k["a"].position.distance_to(k["t"]) < 0.3 and randf() < 0.005:
-			k["t"] = k["home"] + (Vector3.ZERO if night else Vector3(randf_range(-4, 4), 0, randf_range(-4, 4)))
+			# Por la mañana a la escuela (si la hay); de día juegan en la plaza; de noche, a casa.
+			var school := _building_pos("escuela")
+			var tt: float = GS.data["time"]
+			if night:
+				k["t"] = k["home"]
+			elif school != Vector3.INF and tt > 0.3 and tt < 0.5:
+				k["t"] = school + Vector3(randf_range(-3, 3), 0, randf_range(4, 7))
+			elif randf() < 0.5:
+				k["t"] = PLAZA + Vector3(randf_range(-7, 7), 0, randf_range(-7, 7))
+			else:
+				k["t"] = k["home"] + Vector3(randf_range(-4, 4), 0, randf_range(-4, 4))
 		_walk_to(k["a"], k["t"], 1.2, delta)
 	for f in family:
 		if f["a"].position.distance_to(f["t"]) < 0.3 and randf() < 0.004:
 			f["t"] = _front_of_house() + Vector3(randf_range(-3.5, 3.5), 0, randf_range(-3.5, 3.5))
 		_walk_to(f["a"], f["t"], 1.1, delta)
+
+
+func _building_pos(id: String) -> Vector3:
+	for k in GS.data["buildings"]:
+		if GS.data["buildings"][k] == id:
+			return BLD.SLOTS[int(k)]
+	return Vector3.INF
 
 
 ## Rutinas: misa los domingos por la mañana (si hay capilla) y tertulia en la plaza al atardecer.
@@ -1046,7 +1063,7 @@ func _villager_panel(i: int) -> void:
 	var d = GS.data
 	var v = d["villagers"][i]
 	var talked: bool = v["name"] in d["talked"]
-	var text := "%s, %d años. %s.\nAfecto: %d / 100" % [GS.full_name(v), int(v["age"]), SIM.job_name(v), int(v["affection"])]
+	var text := "%s, %d años%s. %s.\nAfecto: %d / 100 · Carácter: %s · Le gusta: %s\n%s" % [GS.full_name(v), int(v["age"]), " (anciano)" if GS.FOLK.is_elder(v) else "", SIM.job_name(v), int(v["affection"]), GS.FOLK.PERS[GS.FOLK.pers(v)], String(GS.ITEMS[v["likes"]][0]).to_lower(), GS.FOLK.friends_text(v)]
 	if v.has("partner"):
 		text += "\n%s con %s." % ["Casado" if v["male"] else "Casada", v["partner"]]
 	elif v.has("suitor"):
@@ -1063,10 +1080,17 @@ func _villager_panel(i: int) -> void:
 	if not fo.is_empty():
 		opts.append(fo)
 	opts.append(["Comerciar", func(): TRADE.open(self, i)])
+	var lk: String = v["likes"]
+	opts.append(["Regalarle %s, lo que más le gusta (+30 afecto)" % String(GS.ITEMS[lk][0]).to_lower(), func():
+		GS.take(lk, 1)
+		v["affection"] = mini(100, int(v["affection"]) + 30)
+		_float("¡Le encanta!", Color(1, 0.9, 0.6))
+		_villager_panel(i), GS.inv(lk) >= 1])
+	opts.append_array(GS.FOLK.elder_options(v, func(t): _open_panel(GS.full_name(v), t, [["Volver", func(): _villager_panel(i)]])))
 	opts.append(["Charlar (una vez al día)", func():
-		v["affection"] = mini(100, int(v["affection"]) + randi_range(6, 12))
+		v["affection"] = mini(100, int(int(v["affection"]) + randi_range(6, 12) * GS.FOLK.chat_mult(v)))
 		d["talked"].append(v["name"])
-		_float(GREETINGS.pick_random(), Color(1, 1, 0.85))
+		_float(GS.FOLK.greeting(v), Color(1, 1, 0.85))
 		_villager_panel(i), not talked])
 	opts.append(["Regalar comida, 5 raciones (+15 afecto)", func():
 		GS.eat(5)

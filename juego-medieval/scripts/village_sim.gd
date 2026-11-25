@@ -322,6 +322,7 @@ static func year() -> void:
 		nv["age"] = k["age"]
 		nv["surname"] = parent["surname"]
 		nv["gold"] = 5
+		GS.FOLK.grown_up(nv)
 		d["villagers"].append(nv)
 		GS.say("%s %s se hace mayor y empieza a trabajar como %s." % [nv["name"], nv["surname"], job_name(nv).to_lower()])
 
@@ -457,6 +458,7 @@ static func _old_age() -> void:
 		if int(v["age"]) < 55 or randf() > (int(v["age"]) - 50) * 0.03:
 			continue
 		d["villagers"].erase(v)
+		GS.FOLK.inheritance(v)
 		var p = by_name(v.get("partner", ""))
 		if p != null:
 			p.erase("partner")
