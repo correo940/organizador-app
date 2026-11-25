@@ -1119,6 +1119,7 @@ func _hall_panel() -> void:
 	opts.append_array(GS.SOCIAL.hall_options(self))
 	if int(d["title"]) >= 1:
 		opts.append(["Consejo de la corte", func(): GS.POL.council_panel(self)])
+		opts.append(["Reinos vecinos", func(): GS.WORLD.kingdoms_panel(self)])
 		opts.append(["Resumen de tus pueblos", func(): _open_panel("Tus pueblos", GS.ECON.towns_summary() + "\n\nPara administrarlos, abre el mapa (M) y pulsa G.", [["Cerrar", _close_panel]])])
 		if not GS.POL.is_king():
 			text += "\n\n" + GS.POL.crown_text()

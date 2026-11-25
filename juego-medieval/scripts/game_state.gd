@@ -13,6 +13,7 @@ const ECON := preload("res://scripts/economy.gd")
 const POL := preload("res://scripts/politics.gd")
 const CHAR := preload("res://scripts/character.gd")
 const SIEGE := preload("res://scripts/siege.gd")
+const WORLD := preload("res://scripts/world.gd")
 
 const SAVE_PATH := "user://partida.json"
 const SECONDS_PER_DAY := 40.0
@@ -230,6 +231,7 @@ func next_day() -> void:
 	REGION.day()
 	EVENTS.day()
 	SIEGE.day()
+	WORLD.day()
 	SOCIAL.day()
 	QUESTS.check()
 	if data["spouse"] != null and data["children"].size() < 6 and p["age"] >= 16 and p["age"] < 48 and data["spouse"]["age"] < 46 and randf() < 0.06:
@@ -277,6 +279,9 @@ func next_season() -> void:
 	REGION.season()
 	ECON.season()
 	POL.season()
+	WORLD.season()
+	WORLD.season_bards()
+	WORLD.tourney_season()
 	if data.get("game_over", false):
 		return
 	say("Comienza %s del año %d." % [["la primavera", "el verano", "el otoño", "el invierno"][int(data["season"])], int(data["year"])])
@@ -537,6 +542,7 @@ func load_game(s := -1) -> bool:
 
 ## Crea (o migra desde partidas antiguas) inventario, parcelas y animales.
 func ensure_economy() -> void:
+	WORLD.ensure()
 	if not data.has("inv"):
 		data["inv"] = {"pan": 4, "zanahoria": 6}
 		if data.has("food"):

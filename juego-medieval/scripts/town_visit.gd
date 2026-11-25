@@ -66,7 +66,7 @@ func _ready() -> void:
 	M.put(self, "village/Inn.glb", Vector3(16, 0, -8), -PI / 2, 1.0)
 	obstacles.append([Vector2(16, -8), 5.0])
 	_npc(Vector3(11, 0, -6), -PI / 2, true, "Idle")
-	spots.append([Vector3(11, 0, -7), "Escuchar rumores en la taberna", func(): COURT.diplomacy(self)])
+	spots.append([Vector3(11, 0, -7), "Entrar en la taberna", func(): _tavern()])
 	M.put(self, "village/Blacksmith.glb", Vector3(-16, 0, -8), PI / 2, 1.0)
 	obstacles.append([Vector2(-16, -8), 4.5])
 
@@ -189,6 +189,13 @@ func _npc(pos: Vector3, rot: float, male: bool, anim: String, soldier := false):
 	if not soldier and anim != "Walk":
 		obstacles.append([Vector2(pos.x, pos.z), 0.6])
 	return a
+
+
+func _tavern() -> void:
+	var opts: Array = [["Escuchar rumores de la región", func(): COURT.diplomacy(self)]]
+	opts.append_array(GS.WORLD.tavern_options(self))
+	opts.append(["Salir", _close_panel])
+	_open_panel("La taberna de %s" % t["name"], "Humo, vino y gente de paso: mercenarios, caballeros sin señor y juglares.\n\n%s\n\n%s" % [GS.WORLD.companions_text(), GS.WORLD.ranking_text()], opts)
 
 
 func _street_point() -> Vector3:

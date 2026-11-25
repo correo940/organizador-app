@@ -241,12 +241,28 @@ func _ready() -> void:
 				l.modulate = Color(0.75, 0.85, 1.0)
 				u["a"].add_child(l)
 				ci += 1
+		# Caballeros andantes a tu servicio.
+		for c in d.get("companions", []):
+			if c["type"] == "caballero":
+				var u := _spawn("infante", 0, Vector3(-2.5 + 5.0 * (ci % 2), 0, 13 + ci / 2 * 1.5))
+				u["hp"] = 120.0
+				u["max"] = 120.0
+				u["dmg"] = 18.0
+				var l := M.label3d(c["name"], 48)
+				l.position = Vector3(0, 2.3, 0)
+				l.modulate = Color(1.0, 0.85, 0.6)
+				u["a"].add_child(l)
+				ci += 1
 
 	# Tus tropas: las que no caben en el campo esperan como refuerzo.
 	var mine := []
 	for k in ARMY.ORDER:
 		for n in int(d["army"][k]):
 			mine.append(k)
+	var mercs = d.get("mercs", null)
+	if mercs != null:
+		for n in int(mercs["n"]):
+			mine.append("merc")
 	if siege.get("kind", "") == "torneo":
 		mine.clear()
 	elif siege.get("kind", "") == "defensa":
@@ -269,7 +285,9 @@ func _ready() -> void:
 		var back := 8.0 if kind == "arquero" else 0.0
 		var col := i % 10
 		row = i / 10
-		_spawn("milicia" if kind == "milicia_local" else kind, 0, Vector3(-11 + col * 2.4 + randf_range(-0.3, 0.3), 0, 15 + row * 2.2 + back))
+		_spawn({"milicia_local": "milicia", "merc": "infante"}.get(kind, kind), 0, Vector3(-11 + col * 2.4 + randf_range(-0.3, 0.3), 0, 15 + row * 2.2 + back))
+		if kind == "merc":
+			units[-1]["merc"] = true
 		units[-1]["real"] = kind in ARMY.UNITS
 		_make_veteran(units[-1])
 
@@ -401,9 +419,9 @@ func _build_hud() -> void:
 	result_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	box.add_child(result_label)
 	var b := Button.new()
-	b.text = "Volver al pueblo" if siege.is_empty() or siege.get("home", false) or siege["kind"] == "bandidos" or (siege["kind"] == "defensa" and GS.REGION.town(int(siege["town"])).get("home", false)) else "Volver al mapa"
+	b.text = "Volver al pueblo" if siege.is_empty() or siege.get("home", false) or siege["kind"] in ["bandidos", "invasion"] or (siege["kind"] == "defensa" and GS.REGION.town(int(siege["town"])).get("home", false)) else "Volver al mapa"
 	b.custom_minimum_size.y = 40
-	b.pressed.connect(func(): main.start_village() if siege.is_empty() or siege["kind"] == "bandidos" or siege.get("home", false) or (siege["kind"] == "defensa" and GS.REGION.town(int(siege["town"])).get("home", false)) else main.start_region())
+	b.pressed.connect(func(): main.start_village() if siege.is_empty() or siege["kind"] in ["bandidos", "invasion"] or siege.get("home", false) or (siege["kind"] == "defensa" and GS.REGION.town(int(siege["town"])).get("home", false)) else main.start_region())
 	back_btn = b
 	box.add_child(b)
 
@@ -548,7 +566,7 @@ func _reinforce(delta: float) -> void:
 	reinforce_cd = 1.2
 	if not ally_reserve.is_empty() and _count(0, false) < MAX_ACTIVE:
 		var kind: String = ally_reserve.pop_front()
-		_spawn("milicia" if kind == "milicia_local" else kind, 0, Vector3(randf_range(-10, 10), 0, HALF - 3))
+		_spawn({"milicia_local": "milicia", "merc": "infante"}.get(kind, kind), 0, Vector3(randf_range(-10, 10), 0, HALF - 3))
 		units[-1]["real"] = kind in ARMY.UNITS
 		_make_veteran(units[-1])
 		units[-1]["anchor"] = pl["a"].position + Vector3(randf_range(-6, 6), 0, 4)
@@ -1128,6 +1146,8 @@ func _damage(t: Dictionary, amount: float, src: Dictionary) -> void:
 		loss *= 0.6
 	morale[side] = maxf(0.0, morale[side] - loss)
 	morale[1 - side] = minf(100.0, morale[1 - side] + 1.5)
+	if t.get("merc", false) and GS.data.get("mercs", null) != null:
+		GS.data["mercs"]["n"] = maxi(0, int(GS.data["mercs"]["n"]) - 1)
 	if t["team"] == 0 and t.get("real", false):
 		dead_by_type[t["type"]] = int(dead_by_type.get(t["type"], 0)) + 1
 	if t.has("player"):
@@ -1283,8 +1303,25 @@ func _end_siege(victory: bool, losses: int) -> void:
 	var d = GS.data
 	var id: int = siege.get("town", -1)
 	d.erase("battle")
+	if siege["kind"] == "invasion":
+		if victory:
+			var loot := 4 * int(siege["troops"])
+			d["gold"] = int(d["gold"]) + loot
+			d["prestige"] += 30 + kills
+			d["player"]["health"] = clampf(pl["hp"], 10.0, 100.0)
+			result_label.text = "¡VICTORIA!\n\nHas expulsado %s de tus tierras.\nBotín: +%d oro · Prestigio: +%d" % [enemy_name, loot, 30 + kills]
+			GS.chronicle("%s expulsa %s." % [d["player"]["name"], enemy_name])
+		else:
+			d["player"]["health"] = 15.0
+			result_label.text = "DERROTA\n\nNo has podido frenar %s." % enemy_name
+			GS.WORLD.invasion_lost(String(siege["kingdom"]))
+		GS.next_day()
+		GS.save_game()
+		result_panel.visible = true
+		return
 	if siege["kind"] == "torneo":
 		var lord: int = siege["lord"]
+		GS.WORLD.add_points(d["player"]["name"] if victory else "Campeón de " + GS.REGION.NOBLES.full(GS.REGION.NOBLES.lord(lord)), 3)
 		if victory:
 			d["gold"] = int(d["gold"]) + 100
 			d["prestige"] += 25

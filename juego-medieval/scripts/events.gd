@@ -12,7 +12,7 @@ static func day() -> void:
 	if randf() > 0.09:
 		return
 	var s := int(d["season"])
-	var pool := ["fuego", "peregrinos", "ratas", "mercader", "rumor"]
+	var pool := ["fuego", "peregrinos", "ratas", "mercader", "rumor", "caballero"]
 	if s in [0, 1]:
 		pool.append("fiesta")
 	if s == 1:
@@ -41,6 +41,7 @@ static func trigger(id: String) -> void:
 		"fiebre": _fever()
 		"pleito": _lawsuit()
 		"rumor": _rumor()
+		"caballero": GS.WORLD.knight_event()
 		"ladron": _thief()
 		"robo": _robbed()
 

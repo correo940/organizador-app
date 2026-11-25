@@ -232,5 +232,7 @@ static func diplomacy(v) -> void:
 	for a in reg["armies"]:
 		marching.append("%s (%d) hacia %s" % [N.full(N.lord(int(a["lord"]))), int(a["troops"]), R.town(int(a["target"])).get("name", "?")])
 	lines.append("Ejércitos en marcha: " + (", ".join(marching) if not marching.is_empty() else "ninguno"))
+	lines.append("")
+	lines.append(GS.WORLD.ranking_text())
 	opts.append(["Cerrar", v._close_panel])
 	v._open_panel("Diplomacia de la región", "\n".join(lines), opts)
