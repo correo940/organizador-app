@@ -162,6 +162,7 @@ func _ready() -> void:
 	help_text = "WASD: andar · Shift: correr · Clic derecho: girar cámara · E: hablar · Esc: menú"
 	_build_hud()
 	SFX.music("aldea")
+	SFX.ambient("gente", -12.0)
 	GS.notify.connect(func(_t): _refresh_log())
 	_refresh_log()
 
@@ -268,6 +269,8 @@ func _unhandled_input(ev: InputEvent) -> void:
 				if panel.visible:
 					_close_panel()
 				else:
-					_open_panel("Pausa", "", [["Continuar", _close_panel], ["Salir al mapa", _leave], ["Guardar partida", func():
+					_open_panel("Pausa", "", [["Continuar", _close_panel], ["Salir al mapa", _leave], ["Opciones", func():
+						_close_panel()
+						preload("res://scripts/options.gd").open(self)], ["Guardar partida", func():
 						GS.save_game()
 						_close_panel()]])

@@ -650,7 +650,24 @@ func _process(delta: float) -> void:
 	for i in villagers.size():
 		vlabels[i].visible = villagers[i].position.distance_to(player.position) < 9
 	M.set_daytime(env, d["time"])
+	_ambience(d, night)
 	_update_hud()
+
+
+## Sonido ambiente según la hora, la estación y el sitio; campana de misa los domingos.
+var bell_day := -1
+func _ambience(d: Dictionary, night: bool) -> void:
+	if int(d["season"]) == 3:
+		SFX.ambient("viento", -14.0)
+	elif night:
+		SFX.ambient("viento", -24.0)
+	elif player.position.distance_to(PLAZA) < 18.0:
+		SFX.ambient("gente", -12.0)
+	else:
+		SFX.ambient("pajaros", -15.0)
+	if int(d["day"]) % 7 == 0 and float(d["time"]) > 0.3 and bell_day != int(d["total_days"]):
+		bell_day = int(d["total_days"])
+		SFX.play("campana", -6.0)
 
 
 func _move_player(delta: float) -> void:
@@ -1119,6 +1136,9 @@ func _pause_menu() -> void:
 			GS.save_game()
 			_float("Partida guardada", Color.WHITE)
 			_close_panel()],
+		["Opciones", func():
+			_close_panel()
+			preload("res://scripts/options.gd").open(self)],
 		["Guardar y volver al menú", func():
 			GS.save_game()
 			main.show_menu()],

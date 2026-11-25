@@ -43,6 +43,7 @@ var duel := false
 var foe_lord := -1
 var blessed := false
 var weather := "despejado"
+var battle_time := 0.42
 var weather_fx: Node3D
 var hill := Vector3.ZERO  # centro de la colina (y = altura); radio en hill_r
 var hill_r := 0.0
@@ -120,7 +121,12 @@ func _ready() -> void:
 	enemy_faction = "bandido" if enemy_name.contains("bandidos") or enemy_name.contains("saqueadores") else "rojo"
 	env = M.make_env(self, Vector3.ZERO, 400)
 	M.set_season_ground(env["grad"], int(d["season"]))
-	M.set_daytime(env, 0.42)
+	# Hora de la batalla: casi siempre de día; a veces al atardecer o de noche.
+	var troll := randf()
+	battle_time = 0.42 if troll < 0.7 or siege.get("kind", "") == "torneo" else (0.78 if troll < 0.85 else 0.93)
+	M.set_daytime(env, battle_time)
+	M.moonlight(env, 0.3)
+	SFX.ambient("" if battle_time < 0.9 else "viento", -22.0)
 	var suffix: String = ["", "", "_Autumn", "_Snow"][int(d["season"])]
 	for i in 120:
 		var a := randf() * TAU
@@ -292,6 +298,7 @@ func _ready() -> void:
 		foe_lord = int(GS.REGION.town(int(siege["town"])).get("lord", -1))
 
 	_setup_engines()
+	_torches()
 	if d.get("blessed", false) and siege.get("kind", "") != "torneo":
 		blessed = true
 		d.erase("blessed")
@@ -481,7 +488,7 @@ func _process(delta: float) -> void:
 	if over:
 		return
 	lbl.text = "   Batalla contra %s      Tus tropas: %d (+%d de refuerzo)      Enemigos: %d (+%d)      Abatidos por ti: %d" % [enemy_name, _count(0, false), ally_reserve.size(), _count(1), enemy_reserve.size(), kills]
-	lbl.text += "      Moral: %d contra %d      Tiempo: %s" % [int(morale[0]), int(morale[1]), weather]
+	lbl.text += "      Moral: %d contra %d      Tiempo: %s%s" % [int(morale[0]), int(morale[1]), weather, " · de noche" if _night() else (" · atardecer" if battle_time > 0.7 else "")]
 	if weather_fx:
 		weather_fx.position = pl["a"].position + Vector3(0, 16, 0)
 	hp_bar.value = pl["hp"]
@@ -744,7 +751,38 @@ func _in_woods(p: Vector3) -> bool:
 
 
 func _range_mult() -> float:
-	return {"lluvia": 0.8, "nieve": 0.8, "niebla": 0.6}.get(weather, 1.0)
+	return {"lluvia": 0.8, "nieve": 0.8, "niebla": 0.6}.get(weather, 1.0) * (0.7 if _night() else 1.0)
+
+
+func _night() -> bool:
+	return battle_time > 0.9
+
+
+## De noche, algunos soldados llevan antorchas.
+func _torches() -> void:
+	if not _night():
+		return
+	var n := 0
+	for u in units:
+		if (u.has("player") or units.find(u) % 5 == 0) and n < 10:
+			n += 1
+			var l := OmniLight3D.new()
+			l.light_color = Color(1.0, 0.65, 0.3)
+			l.light_energy = 2.5
+			l.omni_range = 9.0
+			l.position = Vector3(0.4, 2.2, 0.2)
+			u["a"].add_child(l)
+			var f := MeshInstance3D.new()
+			var sm := SphereMesh.new()
+			sm.radius = 0.09
+			sm.height = 0.25
+			f.mesh = sm
+			var mat := StandardMaterial3D.new()
+			mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+			mat.albedo_color = Color(1.0, 0.75, 0.3)
+			f.material_override = mat
+			f.position = l.position
+			u["a"].add_child(f)
 
 
 func _setup_weather() -> void:
@@ -756,12 +794,13 @@ func _setup_weather() -> void:
 	match weather:
 		"niebla":
 			e.fog_density = 0.035
-			env["sun"].light_energy = 0.6
+			env["sun"].light_energy = minf(env["sun"].light_energy, 0.6)
 		"lluvia", "nieve":
 			e.fog_density = 0.012
-			env["sun"].light_energy = 0.55
-			env["sky"].sky_top_color = Color(0.45, 0.48, 0.52)
-			env["sky"].sky_horizon_color = Color(0.6, 0.62, 0.64)
+			env["sun"].light_energy = minf(env["sun"].light_energy, 0.55)
+			if not _night():
+				env["sky"].sky_top_color = Color(0.45, 0.48, 0.52)
+				env["sky"].sky_horizon_color = Color(0.6, 0.62, 0.64)
 			var p := CPUParticles3D.new()
 			p.amount = 1500 if weather == "lluvia" else 900
 			p.lifetime = 1.2 if weather == "lluvia" else 4.0

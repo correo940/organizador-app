@@ -159,7 +159,7 @@ static func make_env(parent: Node, center: Vector3, size: float) -> Dictionary:
 	sun.rotation_degrees = Vector3(-40, -40, 0)
 	sun.light_color = Color(1, 0.9, 0.76)
 	sun.light_energy = 1.1
-	sun.shadow_enabled = true
+	sun.shadow_enabled = SFX.settings["shadows"]
 	sun.directional_shadow_max_distance = 60
 	parent.add_child(sun)
 	var g := MeshInstance3D.new()
@@ -194,6 +194,24 @@ static func set_season_ground(grad: Gradient, season: int) -> void:
 	][season]
 	grad.set_color(0, cols[0])
 	grad.set_color(1, cols[1])
+
+
+## Luz de luna: de noche se sigue viendo el terreno (mapa y batallas).
+static func moonlight(env: Dictionary, k: float) -> void:
+	var sun: DirectionalLight3D = env["sun"]
+	sun.light_energy = maxf(sun.light_energy, k)
+	var e: Environment = env["env"]
+	e.ambient_light_energy = maxf(e.ambient_light_energy, k)
+	var sm: ProceduralSkyMaterial = env["sky"]
+	var moon_top := Color(0.16, 0.22, 0.4)
+	var moon_hor := Color(0.24, 0.3, 0.45)
+	if sm.sky_top_color.get_luminance() < moon_top.get_luminance():
+		sm.sky_top_color = moon_top
+		sm.sky_horizon_color = moon_hor
+		sm.ground_horizon_color = moon_hor
+		sm.ground_bottom_color = Color(0.1, 0.12, 0.18)
+		e.fog_light_color = moon_hor
+		sun.light_color = Color(0.65, 0.75, 1.0)
 
 
 ## Ciclo de día: t en 0..1 (0.5 = mediodía).

@@ -27,7 +27,7 @@ func _ready() -> void:
 	var d = GS.data
 	env = M.make_env(self, Vector3(R.size() / 2, 0, R.size() / 2), R.size() * 3)
 	M.set_season_ground(env["grad"], int(d["season"]))
-	M.set_daytime(env, 0.45)
+	M.set_daytime(env, _map_time())
 	var e: Environment = env["env"]
 	e.fog_density = 0.0015
 	var sun: DirectionalLight3D = env["sun"]
@@ -169,6 +169,11 @@ func _process(delta: float) -> void:
 			party.play("Idle")
 		R.region()["party"] = [party.position.x, party.position.z]
 		inter = _find_interaction()
+	var tday := _map_time()
+	M.set_daytime(env, tday)
+	M.moonlight(env, 0.4)
+	_town_lights(tday)
+	SFX.ambient("viento", -22.0)
 	var want: Vector3 = party.position + Vector3(0, 55, 42) * zoom
 	cam.position = cam.position.lerp(want, minf(1.0, delta * 6.0)) if cam.position != Vector3.ZERO else want
 	cam.look_at(party.position + Vector3(0, 2, 0), Vector3.UP)
@@ -219,7 +224,9 @@ func _unhandled_input(ev: InputEvent) -> void:
 				else:
 					_open_panel("Pausa", "", [["Continuar", _close_panel], ["Guardar partida", func():
 						GS.save_game()
-						_close_panel()], ["Guardar y volver al menú", func():
+						_close_panel()], ["Opciones", func():
+						_close_panel()
+						preload("res://scripts/options.gd").open(self)], ["Guardar y volver al menú", func():
 						GS.save_game()
 						main.show_menu()]])
 
@@ -323,6 +330,35 @@ func _town_panel(id: int) -> void:
 		_town_panel(id), int(d["gold"]) >= 50])
 	opts.append(["Cerrar", _close_panel])
 	_open_panel(t["name"], text, opts)
+
+
+## La hora en el mapa sigue a lo que llevas andado: cada jornada es un día completo.
+func _map_time() -> float:
+	return fmod(0.3 + float(R.region().get("walked", 0.0)) / R.DAY_DIST, 1.0)
+
+
+## De noche se encienden luces en los pueblos cercanos.
+var lights_node: Node3D
+var lights_cd := 0.0
+func _town_lights(t: float) -> void:
+	lights_cd -= get_process_delta_time()
+	if lights_cd > 0:
+		return
+	lights_cd = 1.0
+	if lights_node:
+		lights_node.queue_free()
+	lights_node = Node3D.new()
+	add_child(lights_node)
+	if t > 0.2 and t < 0.8:
+		return
+	var near: Array = R.region()["towns"].filter(func(tw): return Vector2(tw["x"], tw["z"]).distance_to(Vector2(party.position.x, party.position.z)) < 160.0)
+	for tw in near.slice(0, 10):
+		var l := OmniLight3D.new()
+		l.light_color = Color(1.0, 0.7, 0.35)
+		l.light_energy = 3.0
+		l.omni_range = 22.0
+		l.position = Vector3(tw["x"], 6, tw["z"])
+		lights_node.add_child(l)
 
 
 func _visit(id: int) -> void:

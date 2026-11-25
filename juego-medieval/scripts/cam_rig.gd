@@ -21,8 +21,9 @@ func _ready() -> void:
 
 func _unhandled_input(ev: InputEvent) -> void:
 	if ev is InputEventMouseMotion and (captured or Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT) and not captured):
-		yaw -= ev.relative.x * 0.005
-		pitch = clampf(pitch - ev.relative.y * 0.004, -1.2, 0.25)
+		var k: float = SFX.settings["sens"]
+		yaw -= ev.relative.x * 0.005 * k
+		pitch = clampf(pitch - ev.relative.y * 0.004 * k, -1.2, 0.25)
 	elif ev is InputEventMouseButton and ev.pressed:
 		if ev.button_index == MOUSE_BUTTON_WHEEL_UP:
 			dist = maxf(2.5, dist - 0.4)

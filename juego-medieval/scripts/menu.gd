@@ -61,6 +61,7 @@ func _ready() -> void:
 		SFX.toggle_music()
 		mb.text = "Música: sí" if SFX.music_on else "Música: no")
 	box.add_child(mb)
+	_button(box, "Opciones", func(): preload("res://scripts/options.gd").open(self))
 	_button(box, "Salir", func(): get_tree().quit())
 	SFX.music("aldea")
 

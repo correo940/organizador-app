@@ -16,6 +16,11 @@ const SOUNDS := {
 }
 
 var music_on := true
+## Ajustes del jugador (se guardan en user://ajustes.cfg).
+var settings := {"music": 70, "sfx": 80, "sens": 1.0, "fullscreen": false, "shadows": true}
+const SETTINGS_PATH := "user://ajustes.cfg"
+var _amb: AudioStreamPlayer
+var _amb_name := ""
 var _pool: Array = []
 var _next := 0
 var _last := {}
@@ -35,6 +40,19 @@ func _ready() -> void:
 	add_child(_music)
 	_music_old = AudioStreamPlayer.new()
 	add_child(_music_old)
+	_amb = AudioStreamPlayer.new()
+	add_child(_amb)
+	# Buses propios para poder regular música y efectos por separado.
+	for b in ["Musica", "Efectos"]:
+		if AudioServer.get_bus_index(b) < 0:
+			AudioServer.add_bus()
+			AudioServer.set_bus_name(AudioServer.bus_count - 1, b)
+	_music.bus = "Musica"
+	_music_old.bus = "Musica"
+	_amb.bus = "Efectos"
+	for p in _pool:
+		p.bus = "Efectos"
+	load_settings()
 
 
 func _stream(name: String) -> AudioStream:
@@ -75,6 +93,44 @@ func music(track: String) -> void:
 	tw.tween_property(_music, "volume_db", -11.0, 2.0)
 	tw.parallel().tween_property(_music_old, "volume_db", -40.0, 2.0)
 	tw.tween_callback(_music_old.stop)
+
+
+func load_settings() -> void:
+	var cf := ConfigFile.new()
+	if cf.load(SETTINGS_PATH) == OK:
+		for k in settings:
+			settings[k] = cf.get_value("ajustes", k, settings[k])
+	apply_settings()
+
+
+func save_settings() -> void:
+	var cf := ConfigFile.new()
+	for k in settings:
+		cf.set_value("ajustes", k, settings[k])
+	cf.save(SETTINGS_PATH)
+
+
+func apply_settings() -> void:
+	AudioServer.set_bus_volume_db(AudioServer.get_bus_index("Musica"), linear_to_db(maxf(0.001, float(settings["music"]) / 100.0)))
+	AudioServer.set_bus_volume_db(AudioServer.get_bus_index("Efectos"), linear_to_db(maxf(0.001, float(settings["sfx"]) / 100.0)))
+	if not Engine.is_editor_hint() and DisplayServer.get_name() != "headless":
+		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN if settings["fullscreen"] else DisplayServer.WINDOW_MODE_WINDOWED)
+
+
+## Sonido ambiente en bucle (viento, pajaros, gente) o "" para silencio.
+func ambient(name: String, vol_db := -14.0) -> void:
+	if name == _amb_name:
+		_amb.volume_db = vol_db
+		return
+	_amb_name = name
+	_amb.stop()
+	if name == "":
+		return
+	var s: AudioStreamOggVorbis = _stream("ambiente_" + name)
+	s.loop = true
+	_amb.stream = s
+	_amb.volume_db = vol_db
+	_amb.play()
 
 
 func toggle_music() -> void:
