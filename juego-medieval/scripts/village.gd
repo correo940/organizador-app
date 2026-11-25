@@ -416,7 +416,6 @@ func _rebuild_lands() -> void:
 	for c in lands_node.get_children():
 		c.queue_free()
 	var d = GS.data
-	var kinds := ["village/House_2.glb", "village/House_3.glb", "village/House_1.glb", "village/House_4.glb", "village/House_2.glb", "village/House_3.glb"]
 	for i in d["lands"].size():
 		var l = d["lands"][i]
 		if not l["open"] or i == int(d["player_land"]):
@@ -433,7 +432,7 @@ func _rebuild_lands() -> void:
 			M.put(lands_node, "village/Crate.glb", p + Vector3(1.5, 0, 1), 0.8, 1.4)
 		else:
 			text = ("Casa de la %s" if String(l["owner"]).begins_with("familia") else "Casa de %s") % l["owner"]
-			M.put(lands_node, kinds[i], p, PI, 1.7)
+			M.medieval_house(lands_node, p, PI, 1 + i % 2, i, 1.0)
 		if l["owner"] == "" or l["owner"] == "jugador":
 			for o in [Vector3(-4, 0, -4), Vector3(4, 0, -4), Vector3(-4, 0, 4), Vector3(4, 0, 4)]:
 				M.put(lands_node, "village/Fence.glb", p + o, 0.0, 1.0)

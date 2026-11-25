@@ -165,6 +165,8 @@ static func make_env(parent: Node, center: Vector3, size: float) -> Dictionary:
 	e.sky = sky
 	e.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
 	e.ambient_light_energy = 0.5
+	e.ambient_light_sky_contribution = 0.55
+	e.ambient_light_color = Color(0.78, 0.7, 0.58)
 	e.tonemap_mode = Environment.TONE_MAPPER_ACES
 	e.tonemap_exposure = 1.05
 	e.fog_enabled = true
@@ -530,6 +532,7 @@ static func _mats() -> void:
 	_plank.uv1_triplanar = true
 	_plank.uv1_scale = Vector3(0.45, 0.45, 0.45)
 	_plank.roughness = 0.9
+	_plank.metallic_specular = 0.2
 	var im2 := Image.create(128, 128, false, Image.FORMAT_RGB8)
 	for y in 128:
 		for x in 128:
@@ -542,12 +545,13 @@ static func _mats() -> void:
 	var pn := Image.create(64, 64, false, Image.FORMAT_RGB8)
 	for y in 64:
 		for x in 64:
-			pn.set_pixel(x, y, Color(0.95, 0.91, 0.8).darkened(r.randf() * 0.08 + 0.05 * sin(x * 0.3 + y * 0.17)))
+			pn.set_pixel(x, y, Color(0.97, 0.86, 0.66).darkened(r.randf() * 0.08 + 0.05 * sin(x * 0.3 + y * 0.17)))
 	_plaster = StandardMaterial3D.new()
 	_plaster.albedo_texture = ImageTexture.create_from_image(pn)
 	_plaster.uv1_triplanar = true
 	_plaster.uv1_scale = Vector3(0.5, 0.5, 0.5)
 	_plaster.roughness = 1.0
+	_plaster.metallic_specular = 0.08
 	_beam = _plank.duplicate()
 	_beam.albedo_color = Color(0.42, 0.33, 0.26)
 	_shingle = _plank.duplicate()
@@ -683,6 +687,142 @@ static func medieval_house(parent: Node, pos: Vector3, rot: float, level: int, v
 	sq.material = smat
 	smoke.mesh = sq
 	n.add_child(smoke)
+	return n
+
+
+static func _node(parent: Node, pos: Vector3, rot: float, s: float) -> Node3D:
+	_mats()
+	var n := Node3D.new()
+	n.position = pos
+	n.rotation.y = rot
+	n.scale = Vector3.ONE * s
+	parent.add_child(n)
+	return n
+
+
+static func _roof(n: Node3D, size: Vector3, pos: Vector3, mat: Material) -> void:
+	var m := MeshInstance3D.new()
+	var pm := PrismMesh.new()
+	pm.size = size
+	m.mesh = pm
+	m.material_override = mat
+	m.position = pos
+	n.add_child(m)
+
+
+static func _cyl(n: Node3D, r: float, h: float, pos: Vector3, mat: Material) -> void:
+	var m := MeshInstance3D.new()
+	var c := CylinderMesh.new()
+	c.top_radius = r
+	c.bottom_radius = r
+	c.height = h
+	m.mesh = c
+	m.material_override = mat
+	m.position = pos
+	n.add_child(m)
+
+
+## Capilla de piedra: nave con tejado de tablilla, espadaña con campana y cruz.
+static func chapel(parent: Node, pos: Vector3, rot: float, s := 1.0) -> Node3D:
+	var n := _node(parent, pos, rot, s)
+	_bx(n, Vector3(6.0, 4.2, 9.0), Vector3(0, 2.1, -0.5), _stonewall)
+	_roof(n, Vector3(6.8, 3.0, 9.6), Vector3(0, 5.7, -0.5), _shingle)
+	_bx(n, Vector3(3.0, 8.0, 0.9), Vector3(0, 4.0, 4.2), _stonewall)
+	_roof(n, Vector3(3.2, 1.2, 1.1), Vector3(0, 8.6, 4.2), _shingle)
+	var dark := flat(Color(0.07, 0.05, 0.04))
+	_bx(n, Vector3(0.9, 1.1, 0.95), Vector3(0, 6.6, 4.2), dark)
+	_bx(n, Vector3(0.55, 0.6, 0.6), Vector3(0, 6.5, 4.2), flat(Color(0.55, 0.42, 0.18)))
+	_bx(n, Vector3(1.5, 2.6, 0.14), Vector3(0, 1.3, 4.7), _beam)
+	_bx(n, Vector3(0.16, 1.4, 0.16), Vector3(0, 9.9, 4.2), _beam)
+	_bx(n, Vector3(0.8, 0.16, 0.16), Vector3(0, 10.2, 4.2), _beam)
+	for z in [-3.0, 0.0]:
+		for sd in [-1, 1]:
+			_bx(n, Vector3(0.06, 1.4, 0.5), Vector3(sd * 3.0, 2.8, z), dark)
+	return n
+
+
+## Granero o establo: tablones, tejado de paja grande y portón doble.
+static func barn(parent: Node, pos: Vector3, rot: float, s := 1.0) -> Node3D:
+	var n := _node(parent, pos, rot, s)
+	_bx(n, Vector3(7.0, 3.6, 6.0), Vector3(0, 1.8, 0), _plank)
+	_roof(n, Vector3(7.8, 3.0, 6.8), Vector3(0, 5.1, 0), _thatch)
+	_bx(n, Vector3(2.8, 3.0, 0.12), Vector3(0, 1.5, 3.02), _beam)
+	_bx(n, Vector3(0.12, 3.0, 0.16), Vector3(0, 1.5, 3.08), flat(Color(0.12, 0.08, 0.05)))
+	for sd in [-1, 1]:
+		_bx(n, Vector3(0.2, 3.6, 0.2), Vector3(sd * 3.5, 1.8, 3.0), _beam)
+		_bx(n, Vector3(3.2, 0.14, 0.14), Vector3(sd * 0.75, 1.5, 3.1), _beam, sd * 0.75)
+	return n
+
+
+## Torre de piedra con chapitel (universidad, iglesia mayor).
+static func tower(parent: Node, pos: Vector3, h: float, s := 1.0) -> Node3D:
+	var n := _node(parent, pos, 0.0, s)
+	_bx(n, Vector3(3.2, h, 3.2), Vector3(0, h / 2, 0), _stonewall)
+	var m := MeshInstance3D.new()
+	var c := CylinderMesh.new()
+	c.top_radius = 0.0
+	c.bottom_radius = 2.6
+	c.height = 3.5
+	c.radial_segments = 4
+	m.mesh = c
+	m.material_override = _shingle
+	m.position = Vector3(0, h + 1.75, 0)
+	m.rotation.y = PI / 4
+	n.add_child(m)
+	return n
+
+
+## Talleres con su aspecto propio: casa medieval y lo que delata el oficio.
+const WORKSHOPS := ["herreria", "telar", "curtiduria", "queseria", "cerveceria", "escuela", "hospital", "establo", "granero", "capilla", "universidad"]
+static func workshop(parent: Node, id: String, pos: Vector3, rot: float, s := 1.0) -> Node3D:
+	var n := _node(parent, pos, rot, s)
+	var dark := flat(Color(0.2, 0.2, 0.22))
+	match id:
+		"herreria":
+			medieval_house(n, Vector3(0, 0, -0.5), 0.0, 1, 2)
+			# Cobertizo abierto de la fragua, con yunque y brasas.
+			for x in [3.2, 5.6]:
+				for z in [-1.8, 1.8]:
+					_bx(n, Vector3(0.18, 2.6, 0.18), Vector3(x, 1.3, z), _beam)
+			_bx(n, Vector3(3.0, 0.15, 4.2), Vector3(4.4, 2.7, 0), _shingle, -0.18)
+			_bx(n, Vector3(1.2, 0.9, 1.2), Vector3(4.6, 0.45, -1.0), _stonewall)
+			_bx(n, Vector3(0.8, 0.12, 0.8), Vector3(4.6, 0.95, -1.0), flat(Color(1.0, 0.35, 0.05)))
+			var l := OmniLight3D.new()
+			l.light_color = Color(1.0, 0.5, 0.2)
+			l.omni_range = 4.0
+			l.light_energy = 1.2
+			l.position = Vector3(4.6, 1.4, -1.0)
+			n.add_child(l)
+			_bx(n, Vector3(0.7, 0.45, 0.35), Vector3(4.3, 0.75, 1.0), dark)
+			_bx(n, Vector3(0.35, 0.5, 0.3), Vector3(4.3, 0.25, 1.0), _beam)
+		"telar", "curtiduria", "queseria":
+			medieval_house(n, Vector3(0, 0, -0.5), 0.0, 1, id.length())
+			var cols: Array = {"telar": [Color(0.6, 0.15, 0.12), Color(0.2, 0.3, 0.6), Color(0.85, 0.8, 0.6)], "curtiduria": [Color(0.45, 0.3, 0.18), Color(0.5, 0.36, 0.22), Color(0.4, 0.27, 0.16)], "queseria": []}[id]
+			if not cols.is_empty():
+				# Tendedero con telas o pieles.
+				for x in [-3.4, 3.4]:
+					_bx(n, Vector3(0.14, 2.2, 0.14), Vector3(x, 1.1, 4.2), _beam)
+				_bx(n, Vector3(6.8, 0.08, 0.08), Vector3(0, 2.15, 4.2), _beam)
+				for k in 3:
+					_bx(n, Vector3(1.4, 1.3, 0.04), Vector3(-2.2 + k * 2.2, 1.45, 4.2), flat(cols[k]))
+			if id == "curtiduria":
+				for x in [-3.6, 3.6]:
+					_cyl(n, 0.6, 0.8, Vector3(x, 0.4, 2.0), _plank)
+			if id == "queseria":
+				_bx(n, Vector3(2.0, 0.08, 0.7), Vector3(-3.2, 0.9, 2.2), _beam)
+				for k in 4:
+					_cyl(n, 0.28, 0.16, Vector3(-3.9 + k * 0.45, 1.02, 2.2), flat(Color(0.95, 0.8, 0.35)))
+		"cerveceria", "escuela", "hospital":
+			medieval_house(n, Vector3(0, 0, -0.5), 0.0, 2, id.length())
+		"establo":
+			barn(n, Vector3.ZERO, 0.0, 1.0)
+		"granero":
+			barn(n, Vector3.ZERO, 0.0, 1.15)
+		"capilla":
+			chapel(n, Vector3(0, 0, -0.5), 0.0, 1.0)
+		"universidad":
+			medieval_house(n, Vector3(-1.2, 0, -0.5), 0.0, 2, 1, 1.15)
+			tower(n, Vector3(3.6, 0, -1.5), 9.0)
 	return n
 
 

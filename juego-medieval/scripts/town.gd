@@ -71,8 +71,8 @@ func _ready() -> void:
 		M.road(self, Vector3(8, 0, -20), Vector3(124, 0, -20), 4.0, dirt)
 		_slots([84.0, 92.0, 112.0, 120.0], [-30.0, -11.0], -20.0)
 		_slots([10.0, 19.0, 28.0, 37.0, 46.0], [-30.0, -11.0], -20.0)
-		var cat := M.put(self, "rts/Temple_FirstAge_Level3.glb", CATHEDRAL, PI, 1.0)
-		_fit(cat, 15.0)
+		M.chapel(self, CATHEDRAL, PI, 1.7)
+		M.tower(self, CATHEDRAL + Vector3(-6.5, 0, 4), 14.0, 1.2)
 		obstacles.append([Vector2(CATHEDRAL.x, CATHEDRAL.z), 7.0])
 		_label(CATHEDRAL + Vector3(0, 16, 0), "Catedral")
 		_stone_walls(bounds(2).grow(-0.5))
@@ -156,7 +156,7 @@ func _process(delta: float) -> void:
 	if want != shown:
 		for i in slots.size():
 			if i < want and house_nodes[i] == null:
-				house_nodes[i] = M.put(self, HOUSES[i % HOUSES.size()], slots[i][0], slots[i][1], 1.6)
+				house_nodes[i] = M.medieval_house(self, slots[i][0], slots[i][1], 2 if i % 3 == 0 else 1, i, 1.1)
 			elif i >= want and house_nodes[i] != null:
 				house_nodes[i].queue_free()
 				house_nodes[i] = null

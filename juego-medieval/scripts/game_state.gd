@@ -23,8 +23,8 @@ const LEG := preload("res://scripts/legacy.gd")
 const REALM := preload("res://scripts/realm.gd")
 
 const SAVE_PATH := "user://partida.json"
-const SECONDS_PER_DAY := 60.0
-const NIGHT_FAST := 3.5  # la noche pasa así de rápido: los días son largos y las noches cortas
+const SECONDS_PER_DAY := 150.0
+const NIGHT_FAST := 4.0  # la noche pasa así de rápido: los días son largos y las noches cortas
 const DAYS_PER_SEASON := 5
 const SEASONS := ["Primavera", "Verano", "Otoño", "Invierno"]
 const HOUSE_NAMES := ["Sin casa", "Choza", "Casa de piedra", "Casa solariega", "Casona", "Casa fuerte"]

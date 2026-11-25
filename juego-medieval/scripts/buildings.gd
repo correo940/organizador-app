@@ -227,7 +227,9 @@ func _rebuild(i: int, id: String) -> void:
 		M.put(root, "village/Bench_1.glb", Vector3(0, 0, 3), 0.0, 1.3)
 	else:
 		label = GS.BUILDINGS[id]["name"]
-		for part in LOOK[id]:
+		if id in M.WORKSHOPS:
+			M.workshop(root, id, Vector3.ZERO, 0.0, 1.15)
+		for part in ([] if id in M.WORKSHOPS else LOOK[id]):
 			var pos: Vector3 = (part[2] if part.size() > 2 else Vector3.ZERO) * 1.2
 			var pn = _put_sized(root, part[0], pos, 0.0, part[1] * (1.2 if part[1] > 0 else 1.0))
 			if id == "castillo" and pn != null:

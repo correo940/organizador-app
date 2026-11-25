@@ -63,11 +63,12 @@ func _ready() -> void:
 	spots.append([merchant.position, "Comerciar en el mercado de %s" % t["name"], func(): COURT.market(self, id)])
 
 	# Taberna: rumores de la región.
-	M.put(self, "village/Inn.glb", Vector3(16, 0, -8), -PI / 2, 1.0)
+	M.medieval_house(self, Vector3(16, 0, -8), -PI / 2, 2, 3, 1.3)
+	preload("res://scripts/buildings.gd").signboard(self, Vector3(12.0, 0, -11.5), "Taberna")
 	obstacles.append([Vector2(16, -8), 5.0])
 	_npc(Vector3(11, 0, -6), -PI / 2, true, "Idle")
 	spots.append([Vector3(11, 0, -7), "Entrar en la taberna", func(): _tavern()])
-	M.put(self, "village/Blacksmith.glb", Vector3(-16, 0, -8), PI / 2, 1.0)
+	M.workshop(self, "herreria", Vector3(-16, 0, -8), PI / 2, 1.0)
 	obstacles.append([Vector2(-16, -8), 4.5])
 
 	# Castillo o casa fuerte del señor, al fondo de la calle mayor.
@@ -76,7 +77,7 @@ func _ready() -> void:
 		for x in range(-11, 12):
 			obstacles.append([Vector2(x, -36), 2.2])
 	else:
-		M.put(self, "village/House_4.glb", Vector3(0, 0, -34), 0.0, 1.6)
+		M.medieval_house(self, Vector3(0, 0, -34), 0.0, 2, 0, 1.4)
 		obstacles.append([Vector2(0, -34), 5.0])
 	M.recolor(M.put(self, "castle/Banner.glb", Vector3(-4, 0, -27), 0.0, 1.6), col)
 	M.recolor(M.put(self, "castle/Banner.glb", Vector3(4, 0, -27), 0.0, 1.6), col)
@@ -102,7 +103,11 @@ func _ready() -> void:
 		if obstacles.any(func(o): return o[0].distance_to(Vector2(p.x, p.z)) < o[1] + 4.0):
 			continue
 		var rot := 0.0 if absf(p.x) > absf(p.z) else PI / 2
-		M.put(self, HOUSES[r.randi() % 4], p, rot + (PI if p.x > 0 else 0.0), 1.0)
+		var hl := r.randi() % 5
+		if hl == 0 and tier == 0:
+			M.hut(self, p, rot + (PI if p.x > 0 else 0.0), 1.0)
+		else:
+			M.medieval_house(self, p, rot + (PI if p.x > 0 else 0.0), 2 if hl >= 3 + tier else 1, r.randi(), 1.0)
 		obstacles.append([Vector2(p.x, p.z), 3.4])
 		n -= 1
 
