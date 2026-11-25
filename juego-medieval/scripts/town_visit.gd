@@ -28,6 +28,7 @@ func _ready() -> void:
 	var d = GS.data
 	id = int(d["visit"])
 	d["visited"] = true
+	GS.tip("visita", "visitar pueblos", "Pasea por el pueblo: en la plaza está el mercado, en la taberna oirás rumores de la región y en el castillo te recibe su señor. Vuelve a la puerta para salir al mapa.")
 	t = R.town(id)
 	tier = R.tier_of(int(t["pop"]))
 	var r := RandomNumberGenerator.new()

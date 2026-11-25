@@ -249,6 +249,7 @@ func find_interaction(pp: Vector3) -> Dictionary:
 
 
 func barracks_panel() -> void:
+	GS.tip("cuartel", "el cuartel", "Recluta tropas del pueblo llano: cada soldado cobra paga diaria y, sin oro, desertan. Los lanceros paran a la caballería y los arqueros disparan desde atrás. En el taller de asedio construyes arietes, balistas, torres y catapultas.")
 	var d = GS.data
 	var err := ARMY.can_recruit()
 	var box := VBoxContainer.new()

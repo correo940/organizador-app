@@ -8,6 +8,10 @@ static func open(parent: Node) -> void:
 	var layer := CanvasLayer.new()
 	layer.layer = 50
 	parent.add_child(layer)
+	var dim := ColorRect.new()
+	dim.color = Color(0, 0, 0, 0.6)
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	layer.add_child(dim)
 	var center := CenterContainer.new()
 	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	layer.add_child(center)
@@ -28,6 +32,7 @@ static func open(parent: Node) -> void:
 	_slider(box, "Volumen de los efectos", 0, 100, 5, s["sfx"], func(v): s["sfx"] = v)
 	_slider(box, "Sensibilidad del ratón", 0.3, 2.5, 0.1, s["sens"], func(v): s["sens"] = v)
 	_check(box, "Pantalla completa", s["fullscreen"], func(v): s["fullscreen"] = v)
+	_check(box, "Mostrar consejos la primera vez que ves algo", s.get("tips", true), func(v): s["tips"] = v)
 	_check(box, "Sombras (desactívalas si el juego va lento; se aplica al cambiar de escena)", s["shadows"], func(v): s["shadows"] = v)
 	var b := Button.new()
 	b.text = "Cerrar"

@@ -274,7 +274,7 @@ func _ready() -> void:
 		_make_veteran(units[-1])
 
 	# Ejército enemigo, en proporción al tuyo.
-	enemy_total = 6 + mini(8, (int(d["year"]) - 1100) / 2) + randi_range(0, 2) + int(ARMY.total() * 0.7)
+	enemy_total = int((6 + mini(8, (int(d["year"]) - 1100) / 2) + randi_range(0, 2) + int(ARMY.total() * 0.7)) * GS.diff_mult(0.75, 1.3))
 	if not siege.is_empty():
 		enemy_total = maxi(3, int(siege["troops"]) - 1)
 		if siege["kind"] == "torneo":
@@ -1216,6 +1216,7 @@ func _child_fell(n: String) -> void:
 	for c in d["children"]:
 		if c["name"] == n:
 			d["children"].erase(c)
+			GS.chronicle("%s cae en la batalla contra %s." % [n, enemy_name])
 			GS.popups.append({"title": "Ha caído %s" % n, "text": "Tu %s %s ha muerto luchando a tu lado. Toda la familia guarda luto." % ["hijo" if c["male"] else "hija", n], "button": "Continuar"})
 			GS.say("%s ha caído en la batalla." % n)
 			return
@@ -1305,6 +1306,7 @@ func _end_siege(victory: bool, losses: int) -> void:
 			d["player"]["health"] = clampf(pl["hp"], 10.0, 100.0)
 			result_label.text = "¡%s RESISTE!\n\nHas rechazado al ejército de %s.\nBotín: +%d oro · Prestigio: +%d · Bajas de tus tropas: %d" % [String(dt.get("name", "")).to_upper(), enemy_name, loot, 20 + kills, losses]
 			GS.say("Defiendes %s y rechazas a %s. +%d oro." % [dt.get("name", ""), enemy_name, loot])
+			GS.chronicle("%s defiende %s y rechaza al ejército de %s." % [d["player"]["name"], dt.get("name", ""), enemy_name])
 		else:
 			d["player"]["health"] = 15.0
 			var a := GS.REGION.army_by_id(int(siege["army"]))
@@ -1363,6 +1365,7 @@ func _end_siege(victory: bool, losses: int) -> void:
 			b.custom_minimum_size.y = 38
 			b.pressed.connect(func():
 				var msg := GS.REGION.after_victory(id, choice[1])
+				GS.chronicle("%s toma %s al asalto. %s" % [d["player"]["name"], enemy_name, msg])
 				GS.say(msg)
 				GS.next_day()
 				GS.save_game()

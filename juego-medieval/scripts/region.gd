@@ -63,6 +63,7 @@ func _ready() -> void:
 	cam.fov = 50
 	add_child(cam)
 	cam.make_current()
+	GS.tip("mapa", "el mapa de la región", "Haz clic para marchar con tu séquito. Cada jornada de camino pasa un día. Acércate a un pueblo y pulsa E para entrar, comerciar o visitar su corte; D abre la diplomacia. Cuidado con los ejércitos enemigos: pueden emboscarte.")
 	help_text = "Clic izquierdo: marchar · Rueda: zoom · E: entrar / interactuar · D: diplomacia · Esc: menú"
 	_build_hud()
 	SFX.music("mapa")

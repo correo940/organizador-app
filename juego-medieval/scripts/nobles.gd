@@ -353,6 +353,7 @@ static func propose_marriage(i: int, who: String, kid: String) -> String:
 	if who == "tú":
 		d["spouse"] = {"name": k["name"], "male": k["male"], "age": k["age"], "noble": full(l)}
 		GS.say("¡Boda noble! Te casas con %s, %s de %s. (+40 prestigio)" % [k["name"], "hijo" if k["male"] else "hija", full(l)])
+		GS.chronicle("Boda noble: %s se casa con %s, de la casa de %s." % [GS.data["player"]["name"], k["name"], full(l)])
 	else:
 		for c in d["children"].duplicate():
 			if c["name"] == who:

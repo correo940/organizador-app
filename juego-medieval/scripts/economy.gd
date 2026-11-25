@@ -65,6 +65,7 @@ static func caravan_day(c: Dictionary, t: Dictionary, arrived: bool) -> bool:
 
 ## Panel para elegir producto y destino de una caravana.
 static func caravan_panel(v, from_id: int) -> void:
+	GS.tip("caravana", "las caravanas", "Una caravana lleva 10 unidades a vender al mercado que elijas; cuanto más lejos, más días tarda. Con escolta de 5 soldados es difícil que la asalten; los soldados vuelven al llegar.")
 	var opts := []
 	for k in R.TRADE_ITEMS:
 		if GS.res(k) >= CARAVAN_N:
@@ -175,6 +176,7 @@ static func _revolt(t: Dictionary) -> void:
 	t["garrison"] = 0
 	t["unrest"] = 0
 	R.NOBLES.declare_war(-1, ni)
+	GS.chronicle("%s se subleva contra tus impuestos y se independiza." % t["name"])
 	GS.popups.append({"title": "¡%s se independiza!" % t["name"], "text": "Hartos de tus impuestos, los vecinos de %s expulsan a tus soldados y se entregan a %s, que te declara la guerra." % [t["name"], R.NOBLES.full(R.NOBLES.lord(ni))], "button": "Continuar"})
 
 

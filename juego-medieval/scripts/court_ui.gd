@@ -79,6 +79,7 @@ static func status_text(i: int) -> String:
 
 
 static func court(v, i: int, town_id: int) -> void:
+	GS.tip("corte", "la corte de un señor", "Visitas, banquetes, cacerías y partidas de ajedrez mejoran tu relación. Con relación alta aceptan alianzas y bodas entre vuestras casas. En «Intrigas…» puedes jugar sucio, pero si te descubren habrá guerra.")
 	var d = GS.data
 	var l := N.lord(i)
 	var si := GS.season_index()

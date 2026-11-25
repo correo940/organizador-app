@@ -103,7 +103,7 @@ static func daily_pay() -> float:
 	var t := 0.0
 	for k in UNITS:
 		t += float(UNITS[k]["pay"]) * int(GS.data["army"][k])
-	return t
+	return t * GS.diff_mult(0.7, 1.25)
 
 
 ## Paga diaria. Si no hay oro, parte de la tropa deserta y vuelve al pueblo.

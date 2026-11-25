@@ -168,6 +168,7 @@ func new_game(pname: String, dynasty: String, male: bool) -> void:
 	ensure_economy()
 	popups.clear()
 	say("%s %s llega a la aldea con lo puesto. Empieza tu linaje." % [pname, dynasty])
+	chronicle("%s %s llega a %s con lo puesto. Así empieza el linaje." % [pname, dynasty, data["town"]])
 	popups.append({"title": "Bienvenido a %s" % data["town"], "text": "Llegas con lo puesto. Tu meta: levantar una casa, formar una familia y llegar a señor de ciudades.\n\nControles: WASD para andar, Shift para correr, clic derecho y ratón para girar la cámara, E para interactuar (mantén E para talar o picar), I para el inventario, M para el mapa, T para acelerar el tiempo.\n\nArriba a la derecha verás siempre tu objetivo actual y una pista.\n\nPrimer objetivo: %s\n%s" % [QUESTS.LIST[0]["goal"], QUESTS.LIST[0]["tip"]], "button": "¡A trabajar!"})
 
 
@@ -232,6 +233,7 @@ func next_day() -> void:
 		data["children"].append({"name": cname, "male": m, "age": 0, "trait": TRAITS.keys().pick_random()})
 		data["prestige"] += 5
 		say("¡Ha nacido tu %s %s! (+5 prestigio)" % ["hijo" if m else "hija", cname])
+		chronicle("Nace %s, %s de %s." % [cname, "hijo" if m else "hija", p["name"]])
 	if data["summons"] != null and data["total_days"] > data["summons"]["deadline"]:
 		data["summons"] = null
 		data["prestige"] = maxi(0, int(data["prestige"]) - 20)
@@ -263,6 +265,7 @@ func next_season() -> void:
 	if crafts > 0:
 		data["gold"] = int(data["gold"]) + crafts
 		say("Tus hijos con oficio aportan %d de oro a la casa." % crafts)
+	autosave()
 	SIM.season()
 	REGION.season()
 	ECON.season()
@@ -317,12 +320,16 @@ func battle_bonus(p: Dictionary) -> Array:
 func player_death(reason: String) -> void:
 	var p = data["player"]
 	var text := "%s %s %s a los %d años." % [p["name"], data["dynasty"], reason, int(p["age"])]
+	chronicle(text)
+	if not data.has("ancestors"):
+		data["ancestors"] = []
+	data["ancestors"].append({"name": p["name"], "male": p["male"], "age": int(p["age"]), "year": int(data["year"]), "reason": reason})
 	data["summons"] = null
 	if data["children"].is_empty():
 		data["game_over"] = true
 		popups.append({"title": "Fin del linaje", "text": text + "\n\nNo dejó herederos. El linaje %s se ha extinguido.\nGeneraciones: %d · Prestigio final: %d" % [data["dynasty"], int(data["generation"]), int(data["prestige"])]})
-		if FileAccess.file_exists(SAVE_PATH):
-			DirAccess.remove_absolute(SAVE_PATH)
+		if FileAccess.file_exists(save_path(slot)):
+			DirAccess.remove_absolute(save_path(slot))
 		return
 	var heir_i := 0
 	for i in data["children"].size():
@@ -380,6 +387,7 @@ func marry(i: int) -> String:
 	data["villagers"][i] = new_villager(Vector2(v["hx"], v["hy"]))
 	data["prestige"] += 10
 	say("¡Te has casado con %s! (+10 prestigio)" % v["name"])
+	chronicle("%s se casa con %s." % [data["player"]["name"], v["name"]])
 	return ""
 
 
@@ -387,6 +395,7 @@ func claim_chief() -> String:
 	if int(data["prestige"]) < CHIEF_PRESTIGE or int(data["house_level"]) < 2:
 		return "Necesitas %d de prestigio y una Casa de piedra." % CHIEF_PRESTIGE
 	data["title"] = 1
+	chronicle("%s es elegido jefe de %s." % [data["player"]["name"], data["town"]])
 	data["prestige"] += 30
 	say("¡%s %s es ahora el jefe del pueblo!" % [data["player"]["name"], data["dynasty"]])
 	return ""
@@ -394,25 +403,95 @@ func claim_chief() -> String:
 
 # ---------------- Guardado ----------------
 
+## Crónica del linaje: los hechos importantes, con su año.
+func chronicle(text: String) -> void:
+	if not data.has("chronicle"):
+		data["chronicle"] = []
+	data["chronicle"].append({"y": int(data["year"]), "t": text})
+	if data["chronicle"].size() > 300:
+		data["chronicle"].pop_front()
+
+
+## Consejo que sale una sola vez la primera vez que ves algo (se puede desactivar en Opciones).
+func tip(id: String, title: String, text: String) -> void:
+	if not SFX.settings.get("tips", true):
+		return
+	if not data.has("tips"):
+		data["tips"] = []
+	if id in data["tips"]:
+		return
+	data["tips"].append(id)
+	popups.append({"title": "Consejo: " + title, "text": text, "button": "Entendido"})
+
+
+## Dificultad: 0 fácil, 1 normal, 2 difícil.
+func diff_mult(easy: float, hard: float) -> float:
+	return [easy, 1.0, hard][int(data.get("difficulty", 1))]
+
+
+## Ranuras de guardado: 1, 2 y 3 (la 1 es la partida antigua) y 0 = guardado automático.
+var slot := 1
+
+
+func save_path(s: int) -> String:
+	return SAVE_PATH if s == 1 else ("user://partida_auto.json" if s == 0 else "user://partida_%d.json" % s)
+
+
 func save_game() -> void:
 	if data.is_empty() or data.get("game_over", false):
 		return
-	var f := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
+	data["slot"] = slot
+	var f := FileAccess.open(save_path(slot), FileAccess.WRITE)
+	if f:
+		f.store_string(JSON.stringify(data))
+
+
+## Copia automática cada estación, aparte de tu ranura.
+func autosave() -> void:
+	if data.is_empty() or data.get("game_over", false):
+		return
+	data["slot"] = slot
+	var f := FileAccess.open(save_path(0), FileAccess.WRITE)
 	if f:
 		f.store_string(JSON.stringify(data))
 
 
 func has_save() -> bool:
-	return FileAccess.file_exists(SAVE_PATH)
+	return [0, 1, 2, 3].any(func(s): return FileAccess.file_exists(save_path(s)))
 
 
-func load_game() -> bool:
-	if not has_save():
+## Ranura guardada más reciente.
+func latest_slot() -> int:
+	var best := -1
+	var bt := -1
+	for s in [0, 1, 2, 3]:
+		if FileAccess.file_exists(save_path(s)):
+			var t := FileAccess.get_modified_time(save_path(s))
+			if t > bt:
+				bt = t
+				best = s
+	return best
+
+
+func slot_info(s: int) -> String:
+	if not FileAccess.file_exists(save_path(s)):
+		return "vacía"
+	var p = JSON.parse_string(FileAccess.get_file_as_string(save_path(s)))
+	if typeof(p) != TYPE_DICTIONARY:
+		return "dañada"
+	return "%s %s · año %d · generación %d" % [p["player"]["name"], p["dynasty"], int(p["year"]), int(p["generation"])]
+
+
+func load_game(s := -1) -> bool:
+	if s < 0:
+		s = latest_slot()
+	if s < 0 or not FileAccess.file_exists(save_path(s)):
 		return false
-	var parsed = JSON.parse_string(FileAccess.get_file_as_string(SAVE_PATH))
+	var parsed = JSON.parse_string(FileAccess.get_file_as_string(save_path(s)))
 	if typeof(parsed) != TYPE_DICTIONARY:
 		return false
 	data = parsed
+	slot = int(data.get("slot", maxi(s, 1)))
 	ensure_economy()
 	popups.clear()
 	return true

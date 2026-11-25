@@ -17,7 +17,7 @@ const SOUNDS := {
 
 var music_on := true
 ## Ajustes del jugador (se guardan en user://ajustes.cfg).
-var settings := {"music": 70, "sfx": 80, "sens": 1.0, "fullscreen": false, "shadows": true}
+var settings := {"music": 70, "sfx": 80, "sens": 1.0, "fullscreen": false, "shadows": true, "tips": true}
 const SETTINGS_PATH := "user://ajustes.cfg"
 var _amb: AudioStreamPlayer
 var _amb_name := ""

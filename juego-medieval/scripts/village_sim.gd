@@ -534,5 +534,6 @@ static func _grow_commons() -> void:
 			text += "Se abren barrios al norte, se levantan murallas de piedra y se alza una catedral."
 		text += "\nCabe hasta %d habitantes." % int(TIERS[t]["cap"])
 		GS.popups.append({"title": "¡%s!" % town_title(), "text": text, "button": "Continuar"})
+		GS.chronicle("%s se convierte en %s." % [d["town"], TIERS[t]["name"].to_lower()])
 		GS.say("%s es ahora %s. (+%d prestigio)" % [d["town"], "una villa" if t == 1 else "una ciudad", 40 * t])
 		d["prestige"] += 40 * t

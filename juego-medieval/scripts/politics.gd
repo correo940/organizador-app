@@ -60,6 +60,7 @@ static func crown() -> void:
 	text += "Se niegan a reconocerte y se alzan en armas: %s." % (", ".join(rebels) if not rebels.is_empty() else "nadie")
 	GS.popups.append({"title": "¡Larga vida al rey!" if d["player"]["male"] else "¡Larga vida a la reina!", "text": text, "button": "Continuar"})
 	GS.say("Te coronas %s de la región." % ("rey" if d["player"]["male"] else "reina"))
+	GS.chronicle("%s se corona %s de la región." % [d["player"]["name"], "rey" if d["player"]["male"] else "reina"])
 
 
 # ---------------- El consejo ----------------

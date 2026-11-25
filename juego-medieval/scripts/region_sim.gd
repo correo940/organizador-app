@@ -386,6 +386,8 @@ static func raise_armies() -> void:
 			base["troops"] = int(base["troops"]) + troops
 			continue
 		var tgt = targets[0]
+		if tgt["owner"] == "jugador":
+			troops = int(troops * GS.diff_mult(0.7, 1.3))
 		reg["armies"].append({"id": randi(), "lord": i, "x": float(base["x"]), "z": float(base["z"]) + 8.0, "troops": troops, "target": int(tgt["id"]), "home": int(base["id"])})
 		GS.say("%s marcha con %d soldados contra %s." % [NOBLES.full(reg["lords"][i]), troops, tgt["name"]])
 
@@ -583,7 +585,7 @@ static func market_price(t: Dictionary, k: String, buying: bool) -> int:
 	elif k in mk["want"]:
 		f = 1.7
 	f *= float(mk["mult"].get(k, 1.0))
-	var p := base * f * (1.15 if buying else 0.9)
+	var p := base * f * (1.15 * GS.diff_mult(0.9, 1.15) if buying else 0.9)
 	return maxi(1, int(round(p)))
 
 

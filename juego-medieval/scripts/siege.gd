@@ -16,6 +16,7 @@ static func days_needed(t: Dictionary) -> int:
 
 
 static func start(id: int) -> void:
+	GS.tip("cerco", "el cerco", "Mientras mantengas el cerco (quédate junto al pueblo), los defensores pierden hombres cada día y acabarán rindiéndose. Usa «Esperar» para que pasen los días. A los 3 días tendrás escalas para un asalto más fácil.")
 	GS.data["siege_camp"] = {"town": id, "days": 0}
 	GS.say("Pones cerco a %s. Nadie entra ni sale." % R.town(id)["name"])
 
@@ -55,6 +56,7 @@ static func day() -> void:
 		var id := int(t["id"])
 		d["siege_camp"] = null
 		d["prestige"] += 15
+		GS.chronicle("%s se rinde tras %d días de cerco." % [t["name"], int(c["days"])])
 		var opts := []
 		for choice in [["Saquearlo (botín de oro)", "saquear"], ["Conquistarlo (pasa a ser tuyo)", "conquistar"], ["Exigir vasallaje (tributo cada estación)", "vasallo"]]:
 			var ch: String = choice[1]

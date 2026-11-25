@@ -922,6 +922,7 @@ func _house_panel() -> void:
 			GS.sleep()
 			_close_panel()])
 	opts.append(["Ver familia", _family_panel])
+	opts.append(["Crónica y árbol del linaje", _chronicle_panel])
 	opts.append(["Llamar al físico (30 oro): +30 salud, puede curar heridas", func(): GS.CHAR.physician(self)])
 	opts.append(["Guardar partida", func():
 		GS.save_game()
@@ -932,6 +933,7 @@ func _house_panel() -> void:
 
 
 func _family_panel() -> void:
+	GS.tip("familia", "la familia", "Tus hijos heredan cuando mueres: sin hijos, el linaje se acaba. Edúcalos desde los 6 años y, de mayores, nómbralos capitanes o gobernadores. Cada uno tiene un rasgo que le hace mejor en algo.")
 	var d = GS.data
 	var p = d["player"]
 	var lines := ["Linaje %s · Generación %d" % [d["dynasty"], int(d["generation"])], "", "%s (%d años) — cabeza de familia · %s" % [p["name"], int(p["age"]), GS.TRAITS[GS.trait_of(p)]]]
@@ -964,6 +966,31 @@ func _family_panel() -> void:
 	lines.append(GS.CHAR.summary())
 	opts.append_array([["Volver", _house_panel], ["Cerrar", _close_panel]])
 	_open_panel("Familia", "\n".join(lines), opts)
+
+
+func _chronicle_panel() -> void:
+	var d = GS.data
+	var lines := ["ÁRBOL DEL LINAJE %s" % String(d["dynasty"]).to_upper(), ""]
+	var gen := 1
+	for a in d.get("ancestors", []):
+		lines.append("%d. %s (%s a los %d años, año %d)" % [gen, a["name"], a["reason"], int(a["age"]), int(a["year"])])
+		gen += 1
+	lines.append("%d. %s — cabeza de familia, %d años%s" % [gen, d["player"]["name"], int(d["player"]["age"]), (", con " + d["spouse"]["name"]) if d["spouse"] != null else ""])
+	for c in d["children"]:
+		lines.append("      └ %s (%d años)" % [c["name"], int(c["age"])])
+	lines.append("")
+	lines.append("CRÓNICA")
+	var ch: Array = d.get("chronicle", [])
+	for e in ch.slice(maxi(0, ch.size() - 40)):
+		lines.append("Año %d: %s" % [int(e["y"]), e["t"]])
+	var l := Label.new()
+	l.text = "\n".join(lines)
+	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	l.custom_minimum_size.x = 640
+	var sc := ScrollContainer.new()
+	sc.custom_minimum_size = Vector2(680, 420)
+	sc.add_child(l)
+	_open_custom("Crónica del linaje", sc)
 
 
 func _educate(c: Dictionary) -> void:
