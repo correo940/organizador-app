@@ -447,7 +447,8 @@ static func _wedding(v: Dictionary, w: Dictionary) -> void:
 	# La pareja vive en casa de él.
 	w["hx"] = v["hx"]
 	w["hy"] = v["hy"]
-	GS.say("¡Boda en el pueblo! %s %s y %s %s se casan." % [v["name"], v["surname"], w["name"], w["surname"]])
+	GS.say("¡Boda en el pueblo! %s %s y %s %s se casan. Hoy es el banquete." % [v["name"], v["surname"], w["name"], w["surname"]])
+	GS.FEST.ceremony("boda", "La boda de %s y %s" % [v["name"], w["name"]], [v["name"], w["name"]])
 	if int(w["affection"]) >= 50 and GS.data["spouse"] == null:
 		GS.say("%s, a quien tanto apreciabas, ya no está libre." % w["name"])
 
@@ -466,7 +467,8 @@ static func _old_age() -> void:
 			p["kids"].append_array(v["kids"])
 		elif not v["kids"].is_empty():
 			GS.say("Los hijos de %s se van a vivir con parientes de fuera." % v["name"])
-		GS.say("Ha fallecido %s %s a los %d años." % [v["name"], v["surname"], int(v["age"])])
+		GS.say("Ha fallecido %s %s a los %d años. Hoy es su funeral." % [v["name"], v["surname"], int(v["age"])])
+		GS.FEST.ceremony("funeral", "El funeral de %s" % v["name"], [v["name"], v.get("partner", "")])
 
 
 # ---------------- Población y crecimiento de aldea a ciudad ----------------

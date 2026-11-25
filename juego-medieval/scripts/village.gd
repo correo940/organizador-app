@@ -663,7 +663,9 @@ func _process(delta: float) -> void:
 var civic_node: Node3D
 var civic_sig := ""
 func _update_civic() -> void:
-	var sig := str(GS.TL.market_day()) + str(GS.TL.current_work()) + str(GS.TL.works_done())
+	var feast: Dictionary = GS.FEST.feast_today()
+	var cer = GS.data.get("ceremony", null)
+	var sig := str(GS.TL.market_day()) + str(GS.TL.current_work()) + str(GS.TL.works_done()) + str(feast) + str(cer)
 	if sig == civic_sig:
 		return
 	civic_sig = sig
@@ -687,6 +689,38 @@ func _update_civic() -> void:
 		lb.position = PLAZA + Vector3(0, 6, 0)
 		lb.modulate = Color(1, 0.85, 0.4)
 		civic_node.add_child(lb)
+	if not feast.is_empty():
+		var cols := [Color(0.8, 0.15, 0.15), Color(0.95, 0.8, 0.2), Color(0.2, 0.4, 0.8), Color(0.2, 0.6, 0.25)]
+		for k in 8:
+			var ang := k * TAU / 8.0
+			var p := PLAZA + Vector3(cos(ang), 0, sin(ang)) * 7.5
+			ENG._box(civic_node, Vector3(0.15, 4.0, 0.15), p + Vector3(0, 2.0, 0), Color(0.45, 0.3, 0.17))
+			for j in 3:
+				ENG._box(civic_node, Vector3(0.5, 0.6, 0.05), p + Vector3(0, 3.6 - j * 0.15, 0) + Vector3(-sin(ang), 0, cos(ang)) * (0.6 + j * 0.7), cols[(k + j) % 4], Vector3(0, -rad_to_deg(ang), 0))
+		match int(GS.data["season"]):
+			1, 3:
+				M.put(civic_node, "village/Bonfire_Lit.glb", PLAZA + Vector3(0, 0, -12), 0.0, 2.0)
+				var fl := OmniLight3D.new()
+				fl.light_color = Color(1.0, 0.6, 0.3)
+				fl.light_energy = 3.0
+				fl.omni_range = 16.0
+				fl.position = PLAZA + Vector3(0, 2, -12)
+				civic_node.add_child(fl)
+			2:
+				for k in 6:
+					M.put(civic_node, "crops/Pumpkin_4.glb", PLAZA + Vector3(-5 + k * 2.0, 0, -9.5), randf() * TAU, 1.0)
+			0:
+				for k in 6:
+					M.put(civic_node, "crops/BushBerries_4.glb", PLAZA + Vector3(-5 + k * 2.0, 0, -9.5), randf() * TAU, 1.0)
+		var lf := M.label3d("¡%s!" % feast["name"], 64)
+		lf.position = PLAZA + Vector3(0, 7.5, 0)
+		lf.modulate = Color(1, 0.8, 0.4)
+		civic_node.add_child(lf)
+	if cer != null and int(cer["day"]) == int(GS.data["total_days"]):
+		var lc := M.label3d(cer["title"], 44)
+		lc.position = _ceremony_spot() + Vector3(0, 4.5, 0)
+		lc.modulate = Color(1, 0.95, 0.8) if cer["kind"] == "boda" else Color(0.75, 0.75, 0.85)
+		civic_node.add_child(lc)
 	var spot := PLAZA + Vector3(13, 0, 13)
 	if GS.TL.current_work() != null:
 		for k in 4:
@@ -768,7 +802,7 @@ func _move_npcs(delta: float) -> void:
 			if spd > 2:
 				a.play("Jog_Fwd")
 		elif rt != null:
-			a.play("Idle_Talking")
+			a.play("Dance" if not GS.FEST.feast_today().is_empty() and t > 0.4 and t < 0.86 else "Idle_Talking")
 		elif not night and not job_off:
 			vwork[i] -= delta
 			if vwork[i] <= 0:
@@ -796,6 +830,11 @@ func _move_npcs(delta: float) -> void:
 		_walk_to(f["a"], f["t"], 1.1, delta)
 
 
+func _ceremony_spot() -> Vector3:
+	var cp := _building_pos("capilla")
+	return cp + Vector3(0, 0, 7) if cp != Vector3.INF else PLAZA + Vector3(-11, 0, -11)
+
+
 func _building_pos(id: String) -> Vector3:
 	for k in GS.data["buildings"]:
 		if GS.data["buildings"][k] == id:
@@ -807,6 +846,12 @@ func _building_pos(id: String) -> Vector3:
 func _routine_spot(i: int, t: float) -> Variant:
 	var d = GS.data
 	var ang := float(i) * 2.399
+	# Fiesta: todo el pueblo en la plaza; boda o funeral: junto a la capilla (o la plaza).
+	if not GS.FEST.feast_today().is_empty() and t > 0.4 and t < 0.86:
+		return PLAZA + Vector3(cos(ang), 0, sin(ang)) * (4.0 + (i % 4) * 1.2)
+	var cer = d.get("ceremony", null)
+	if cer != null and int(cer["day"]) == int(d["total_days"]) and t > 0.3 and t < 0.6:
+		return _ceremony_spot() + Vector3(cos(ang), 0, sin(ang)) * (2.5 + (i % 3))
 	if int(d["day"]) % 7 == 0 and t > 0.32 and t < 0.45:
 		for k in d["buildings"]:
 			if d["buildings"][k] == "capilla":
@@ -833,6 +878,11 @@ func _find_interaction() -> Dictionary:
 	var wi: Dictionary = wild.find_interaction(pp)
 	if not wi.is_empty():
 		return wi
+	if not GS.FEST.feast_today().is_empty() and pp.distance_to(PLAZA) < 9.0:
+		return {"type": "feast", "label": "Unirse a la fiesta: %s" % GS.FEST.feast_today()["name"]}
+	var cer = GS.data.get("ceremony", null)
+	if cer != null and not cer["attended"] and int(cer["day"]) == int(GS.data["total_days"]) and pp.distance_to(_ceremony_spot()) < 8.0:
+		return {"type": "ceremony", "label": "Asistir a " + String(cer["title"]).to_lower()}
 	for i in villagers.size():
 		if pp.distance_to(villagers[i].position) < 1.8:
 			return {"type": "villager", "i": i, "label": "Hablar con %s" % d["villagers"][i]["name"]}
@@ -935,6 +985,10 @@ func _interact() -> void:
 			_land_panel(inter["i"])
 		"barracks":
 			town.barracks_panel()
+		"feast":
+			GS.FEST.join(self)
+		"ceremony":
+			GS.FEST.attend(self)
 		"wolf", "bandits":
 			wild.interact(inter)
 		_:

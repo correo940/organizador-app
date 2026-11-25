@@ -17,6 +17,7 @@ const WORLD := preload("res://scripts/world.gd")
 const HOSTS := preload("res://scripts/hosts.gd")
 const FOLK := preload("res://scripts/folk.gd")
 const TL := preload("res://scripts/townlife.gd")
+const FEST := preload("res://scripts/festivals.gd")
 
 const SAVE_PATH := "user://partida.json"
 const SECONDS_PER_DAY := 40.0
@@ -242,6 +243,7 @@ func next_day() -> void:
 	HOSTS.rescue_day()
 	FOLK.day()
 	TL.day()
+	FEST.day()
 	SOCIAL.day()
 	QUESTS.check()
 	if data["spouse"] != null and data["children"].size() < 6 and p["age"] >= 16 and p["age"] < 48 and data["spouse"]["age"] < 46 and randf() < 0.06:
