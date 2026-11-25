@@ -514,19 +514,15 @@ static func hut(parent: Node, pos: Vector3, rot: float, s := 1.0) -> Node3D:
 		# Tablones verticales con juntas oscuras y veta; paja en hileras con mechones.
 		var r := RandomNumberGenerator.new()
 		r.seed = 5
-		var img := Image.create(128, 128, false, Image.FORMAT_RGB8)
-		for x in 128:
-			var board := x / 16
-			var base := Color(0.42, 0.29, 0.16).lerp(Color(0.55, 0.39, 0.22), fmod(board * 0.37, 1.0))
-			for y in 128:
-				var c := base.darkened(0.12 * sin(y * 0.21 + board * 2.0) + r.randf() * 0.08)
-				if x % 16 == 0 or (y + board * 37) % 128 < 2:
-					c = Color(0.16, 0.1, 0.05)
-				img.set_pixel(x, y, c)
+		# Tablones fotográficos (Poly Haven, CC0), un poco más oscuros y gastados.
 		_plank = StandardMaterial3D.new()
-		_plank.albedo_texture = ImageTexture.create_from_image(img)
-		_plank.uv1_scale = Vector3(2, 1, 1)
-		_plank.roughness = 0.95
+		_plank.albedo_texture = load("res://assets/tex/madera_color.jpg")
+		_plank.albedo_color = Color(0.85, 0.82, 0.78)
+		_plank.normal_enabled = true
+		_plank.normal_texture = load("res://assets/tex/madera_normal.png")
+		_plank.uv1_triplanar = true
+		_plank.uv1_scale = Vector3(0.45, 0.45, 0.45)
+		_plank.roughness = 0.9
 		var im2 := Image.create(128, 128, false, Image.FORMAT_RGB8)
 		for y in 128:
 			for x in 128:
