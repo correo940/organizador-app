@@ -120,6 +120,8 @@ func _ready() -> void:
 	_build_hud()
 	_reset_villagers()
 	cam = CAM.new()
+	cam.dist = 8.0
+	cam.pitch = -0.45
 	add_child(cam)
 	_update_player_model()
 	cam.target = player
@@ -190,6 +192,25 @@ func _build_static() -> void:
 		M.recolor(rk, Color(0.42, 0.44, 0.4))
 	nature_node = Node3D.new()
 	add_child(nature_node)
+	# Piedras sueltas por el campo y colinas suaves en el horizonte.
+	var rr := RandomNumberGenerator.new()
+	rr.seed = 99
+	for i in 90:
+		var p := Vector3(rr.randf_range(0, 125), 0, rr.randf_range(0, 92))
+		if _free_ground(p, 1.0) and p.distance_to(PLAZA) > 11.0 and p.distance_to(FARM.POND) > 9.0:
+			M.recolor(M.put(self, "nature/Rock_%d.glb" % (1 + i % 7), p, rr.randf() * TAU, rr.randf_range(0.25, 0.7)), Color(0.55, 0.53, 0.5))
+	var hill_mat := M.flat(Color(0.42, 0.44, 0.24))
+	for i in 18:
+		var a := float(i) / 18.0 * TAU + rr.randf() * 0.2
+		var h := MeshInstance3D.new()
+		var sm := SphereMesh.new()
+		sm.radius = rr.randf_range(45, 80)
+		sm.height = sm.radius * 2.0
+		h.mesh = sm
+		h.material_override = hill_mat
+		h.scale = Vector3(1.0, rr.randf_range(0.18, 0.35), 1.0)
+		h.position = Vector3(80 + cos(a) * rr.randf_range(210, 250), -2.0, 40 + sin(a) * rr.randf_range(190, 230))
+		add_child(h)
 
 
 ## Farol de calle: poste con una luz cálida que se enciende al anochecer.

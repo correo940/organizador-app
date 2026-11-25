@@ -198,8 +198,8 @@ static func make_env(parent: Node, center: Vector3, size: float) -> Dictionary:
 		e.fog_density = 0.0015
 		e.ssr_enabled = true
 		e.ssr_max_steps = 48
-		e.adjustment_saturation = 1.08
-		e.adjustment_contrast = 1.04
+		e.adjustment_saturation = 1.15
+		e.adjustment_contrast = 1.08
 		e.tonemap_mode = Environment.TONE_MAPPER_FILMIC
 		e.tonemap_exposure = 1.15
 	var sun := DirectionalLight3D.new()
@@ -315,7 +315,7 @@ void vertex() {
 	VERTEX *= 1.0 - hide;
 }
 void fragment() {
-	ALBEDO = mix(base.rgb, tip.rgb, hgt);
+	ALBEDO = mix(base.rgb, tip.rgb, hgt) * COLOR.rgb;
 	NORMAL = normalize((VIEW_MATRIX * vec4(0.0, 1.0, 0.0, 0.0)).xyz);
 	ROUGHNESS = 0.9;
 	BACKLIGHT = vec3(0.25, 0.3, 0.1) * hgt;
@@ -351,6 +351,7 @@ static func grass(parent: Node, center: Vector3, half: float, count: int, keep: 
 			st.add_vertex(v[i])
 	var mm := MultiMesh.new()
 	mm.transform_format = MultiMesh.TRANSFORM_3D
+	mm.use_colors = true
 	mm.mesh = st.commit()
 	var xs: Array[Transform3D] = []
 	var r := RandomNumberGenerator.new()
@@ -368,6 +369,9 @@ static func grass(parent: Node, center: Vector3, half: float, count: int, keep: 
 	mm.instance_count = xs.size()
 	for i in xs.size():
 		mm.set_instance_transform(i, xs[i])
+		# Matas de hierba seca entre la verde.
+		var dry := clampf(noise.get_noise_2d(xs[i].origin.x * 3.0 + 50.0, xs[i].origin.z * 3.0) * 2.0 + 0.3 + r.randf() * 0.3, 0.0, 1.0)
+		mm.set_instance_color(i, Color(1, 1, 1).lerp(Color(1.7, 1.35, 0.55), dry))
 	var mi := MultiMeshInstance3D.new()
 	mi.multimesh = mm
 	mi.material_override = grass_material()
@@ -467,16 +471,19 @@ static func set_daytime(env: Dictionary, t: float) -> void:
 	else:
 		elev = -sin(fposmod(t - 0.85, 1.0) / 0.37 * PI) * 0.6
 	var sun: DirectionalLight3D = env["sun"]
-	sun.rotation_degrees = Vector3(-5 - clampf(elev, 0.05, 1.0) * 60.0, -60 + u * 120.0, 0)
+	# Sol bajo y dorado todo el día (sombras largas), como una tarde de verano.
+	sun.rotation_degrees = Vector3(-6 - clampf(elev, 0.05, 1.0) * 42.0, -60 + u * 120.0, 0)
 	var day := clampf(elev * 2.6 + 0.35, 0.0, 1.0)
-	sun.light_energy = lerpf(0.12, 1.1, day)
-	sun.light_color = Color(0.6, 0.7, 1.0).lerp(Color(1, 0.9, 0.76), day)
+	var gold := Color(1.0, 0.8, 0.58).lerp(Color(1.0, 0.88, 0.7), clampf(elev, 0, 1))
+	sun.light_energy = lerpf(0.12, 1.3, day)
+	sun.light_color = Color(0.6, 0.7, 1.0).lerp(gold, day)
 	var e: Environment = env["env"]
-	e.ambient_light_energy = lerpf(0.15, 0.5, day)
+	e.ambient_light_energy = lerpf(0.15, 0.55, day)
 	var sm: ProceduralSkyMaterial = env["sky"]
-	sm.sky_top_color = Color(0.03, 0.05, 0.12).lerp(Color(0.32, 0.45, 0.68), day)
-	sm.sky_horizon_color = Color(0.08, 0.1, 0.18).lerp(Color(0.75, 0.72, 0.66), day)
-	e.fog_light_color = Color(0.08, 0.1, 0.16).lerp(Color(0.62, 0.66, 0.7), day)
+	sm.sky_top_color = Color(0.03, 0.05, 0.12).lerp(Color(0.48, 0.6, 0.76), day)
+	sm.sky_horizon_color = Color(0.08, 0.1, 0.18).lerp(Color(0.98, 0.8, 0.58), day)
+	sm.ground_horizon_color = sm.sky_horizon_color.darkened(0.2)
+	e.fog_light_color = Color(0.08, 0.1, 0.16).lerp(Color(0.92, 0.76, 0.56), day)
 	cloud_material().set_shader_parameter("light", lerpf(0.12, 1.0, day))
 
 
@@ -563,7 +570,8 @@ static func _mats() -> void:
 	_stonewall.normal_texture = load("res://assets/tex/muro_normal.png")
 	_stonewall.roughness_texture = load("res://assets/tex/muro_rough.jpg")
 	_stonewall.uv1_triplanar = true
-	_stonewall.uv1_scale = Vector3(0.35, 0.35, 0.35)
+	_stonewall.uv1_scale = Vector3(0.26, 0.26, 0.26)
+	_stonewall.albedo_color = Color(1.12, 1.1, 1.06)
 
 
 static var _plaster: StandardMaterial3D
@@ -723,6 +731,14 @@ static func _roof_slabs(n: Node3D, ww: float, wd: float, top: float, rh: float, 
 	for sd in [-1, 1]:
 		var m := _bx(n, Vector3(L, 0.38, wd + 1.1), Vector3(-sd * (half / 2 - 0.12), top + rh - half * tan(ang) / 2 + 0.12, 0), mat, sd * ang)
 		m.rotation.z = sd * ang
+	if mat == _thatch:
+		# Paja en capas: escalones a lo largo del faldón y un borde grueso en el alero.
+		for sd in [-1, 1]:
+			for k in [0.36, 0.7]:
+				var px: float = -sd * half * k
+				var py: float = top + rh - half * k * tan(ang) + 0.3
+				var t := _bx(n, Vector3(L * 0.08, 0.16, wd + 1.12), Vector3(px, py, 0), mat, sd * ang)
+				t.rotation.z = sd * ang
 	var rid := MeshInstance3D.new()
 	var c := CylinderMesh.new()
 	c.top_radius = 0.3
@@ -971,14 +987,44 @@ static func hut(parent: Node, pos: Vector3, rot: float, s := 1.0) -> Node3D:
 
 static func road(parent: Node, a: Vector3, b: Vector3, w: float, col: Color) -> MeshInstance3D:
 	roads.append([Vector2(a.x, a.z), Vector2(b.x, b.z), w * 0.5 + 0.4])
+	# Camino de tierra con bordes irregulares que se funden con la hierba.
 	var m := MeshInstance3D.new()
-	var bm := BoxMesh.new()
-	bm.size = Vector3(w, 0.04, a.distance_to(b) + w)
-	m.mesh = bm
-	m.material_override = dirt(col)
+	var pm := PlaneMesh.new()
+	pm.size = Vector2(w * 1.45, a.distance_to(b) + w)
+	m.mesh = pm
+	m.material_override = soft_road(col)
 	parent.add_child(m)
-	m.look_at_from_position((a + b) / 2 + Vector3(0, 0.02, 0), b + Vector3(0, 0.02, 0), Vector3.UP)
+	m.look_at_from_position((a + b) / 2 + Vector3(0, 0.03, 0), b + Vector3(0, 0.03, 0), Vector3.UP)
 	return m
+
+
+static var _soft := {}
+static func soft_road(col: Color) -> ShaderMaterial:
+	if not _soft.has(col):
+		var sh := Shader.new()
+		sh.code = """shader_type spatial;
+render_mode blend_mix, depth_draw_opaque, cull_disabled;
+uniform sampler2D tex : source_color, filter_linear_mipmap, repeat_enable;
+uniform sampler2D nmap : hint_normal, filter_linear_mipmap, repeat_enable;
+uniform vec4 tint : source_color;
+varying vec3 wp;
+void vertex() { wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
+void fragment() {
+	vec2 uv = wp.xz * 0.25;
+	ALBEDO = texture(tex, uv).rgb * tint.rgb;
+	NORMAL_MAP = texture(nmap, uv).rgb;
+	ROUGHNESS = 1.0;
+	float n = texture(tex, wp.xz * 0.045).r;
+	float edge = 0.26 + (n - 0.4) * 0.35;
+	ALPHA = smoothstep(0.0, edge, UV.x) * smoothstep(1.0, 1.0 - edge, UV.x);
+}"""
+		var m := ShaderMaterial.new()
+		m.shader = sh
+		m.set_shader_parameter("tex", load("res://assets/tex/tierra_color.jpg"))
+		m.set_shader_parameter("nmap", load("res://assets/tex/tierra_normal.png"))
+		m.set_shader_parameter("tint", Color(col.r / 0.416, col.g / 0.351, col.b / 0.265))
+		_soft[col] = m
+	return _soft[col]
 
 
 static func tent(parent: Node, pos: Vector3, rot: float, col: Color) -> void:

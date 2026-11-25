@@ -28,7 +28,7 @@ func _unhandled_input(ev: InputEvent) -> void:
 		if ev.button_index == MOUSE_BUTTON_WHEEL_UP:
 			dist = maxf(2.5, dist - 0.4)
 		elif ev.button_index == MOUSE_BUTTON_WHEEL_DOWN:
-			dist = minf(12.0, dist + 0.4)
+			dist = minf(16.0, dist + 0.4)
 
 
 func _process(delta: float) -> void:
