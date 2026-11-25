@@ -202,7 +202,7 @@ static func rescue_day() -> void:
 	var reg := R.region()
 	for p in prisoners():
 		var li := int(p["lord"])
-		if int(d["total_days"]) - int(p["day"]) < 5 or randf() > 0.04:
+		if int(d["total_days"]) - int(p["day"]) < 5 or randf() > 0.025:
 			continue
 		if reg["armies"].any(func(a): return a.get("rescue", -1) == li):
 			continue

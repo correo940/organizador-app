@@ -709,7 +709,7 @@ func _process(delta: float) -> void:
 	_update_family()
 	_update_player_model()
 	if not panel.visible and not GS.popups.is_empty():
-		_show_popup(GS.popups.pop_front())
+		_show_popup(GS.next_popup())
 	if not panel.visible and not d.get("game_over", false):
 		_move_player(delta)
 		GS.advance(delta)
@@ -1012,6 +1012,9 @@ func _unhandled_input(ev: InputEvent) -> void:
 				_pause_menu()
 		KEY_T:
 			GS.speed = {1.0: 3.0, 3.0: 6.0}.get(GS.speed, 1.0)
+		KEY_F1:
+			if not panel.visible:
+				preload("res://scripts/help.gd").open(self)
 		KEY_H:
 			if GS.data.get("horse", false) and not panel.visible:
 				GS.data["riding"] = not GS.data.get("riding", false)
@@ -1412,6 +1415,7 @@ func _pause_menu() -> void:
 			GS.save_game()
 			_float("Partida guardada", Color.WHITE)
 			_close_panel()],
+		["Ayuda (F1)", func(): preload("res://scripts/help.gd").open(self)],
 		["Opciones", func():
 			_close_panel()
 			preload("res://scripts/options.gd").open(self)],

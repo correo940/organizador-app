@@ -459,6 +459,18 @@ func edu_cost() -> int:
 	return 0 if has_building("universidad") else EDU_COST
 
 
+## Siguiente aviso que mostrar: los avisos sin decisiones que se juntan se muestran en una sola ventana.
+func next_popup() -> Dictionary:
+	var first: Dictionary = popups.pop_front()
+	if first.has("options") or popups.is_empty() or popups[0].has("options") or data.get("game_over", false):
+		return first
+	var parts := ["%s\n%s" % [first["title"].to_upper(), first["text"]]]
+	while not popups.is_empty() and not popups[0].has("options") and parts.size() < 6:
+		var p: Dictionary = popups.pop_front()
+		parts.append("%s\n%s" % [p["title"].to_upper(), p["text"]])
+	return {"title": "Novedades (%d)" % parts.size(), "text": "\n\n".join(parts), "button": first.get("button", "Continuar")}
+
+
 ## Crónica del linaje: los hechos importantes, con su año.
 func chronicle(text: String) -> void:
 	if not data.has("chronicle"):

@@ -32,6 +32,7 @@ static func open(parent: Node) -> void:
 	_slider(box, "Volumen de los efectos", 0, 100, 5, s["sfx"], func(v): s["sfx"] = v)
 	_slider(box, "Sensibilidad del ratón", 0.3, 2.5, 0.1, s["sens"], func(v): s["sens"] = v)
 	_check(box, "Pantalla completa", s["fullscreen"], func(v): s["fullscreen"] = v)
+	_check(box, "Modo rendimiento: menos soldados a la vez, menos árboles y efectos (para ordenadores modestos)", s.get("low", false), func(v): s["low"] = v)
 	_check(box, "Mostrar consejos la primera vez que ves algo", s.get("tips", true), func(v): s["tips"] = v)
 	_check(box, "Sombras (desactívalas si el juego va lento; se aplica al cambiar de escena)", s["shadows"], func(v): s["shadows"] = v)
 	var b := Button.new()

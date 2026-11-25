@@ -29,7 +29,7 @@ static func day() -> void:
 		d["animals"]["cerdo"] = maxi(0, int(d["animals"]["cerdo"]) - 1)
 		d["loose"] = null
 		GS.say("El cerdo que se escapó no ha vuelto: lo das por perdido.")
-	elif loose == null and int(d["animals"].get("cerdo", 0)) > 0 and randf() < 0.06:
+	elif loose == null and int(d["animals"].get("cerdo", 0)) > 0 and randf() < 0.04:
 		d["loose"] = {"since": int(d["total_days"])}
 		GS.say("¡Se ha escapado un cerdo del corral! Anda suelto por el pueblo.")
 	if d.get("fox", false):
@@ -37,7 +37,7 @@ static func day() -> void:
 		if int(d["animals"].get("gallina", 0)) > 0:
 			d["animals"]["gallina"] = int(d["animals"]["gallina"]) - 1
 			GS.say("Un zorro se ha llevado una gallina esta noche.")
-	if int(d["animals"].get("gallina", 0)) > 0 and randf() < 0.08:
+	if int(d["animals"].get("gallina", 0)) > 0 and randf() < 0.05:
 		d["fox"] = true
 	if d.get("bailiff", false):
 		if int(d["gold"]) >= 3:

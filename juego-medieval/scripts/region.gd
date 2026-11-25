@@ -36,7 +36,7 @@ func _ready() -> void:
 	var r := RandomNumberGenerator.new()
 	r.seed = 99
 	var reg := R.region()
-	for i in int(260 * pow(R.size() / 300.0, 2)):
+	for i in int(260 * pow(R.size() / 300.0, 2) * (0.4 if SFX.settings.get("low", false) else 1.0)):
 		var p := Vector3(r.randf_range(0, R.size()), 0, r.randf_range(0, R.size()))
 		if reg["sites"].any(func(s): return Vector2(s[0], s[1]).distance_to(Vector2(p.x, p.z)) < 20) or Vector2(p.x, p.z).distance_to(R.home()) < 24:
 			continue
@@ -143,7 +143,7 @@ func _process(delta: float) -> void:
 		towns_sig = ts
 		_rebuild_towns()
 	if not panel.visible and not GS.popups.is_empty():
-		var pp: Dictionary = GS.popups.pop_front()
+		var pp: Dictionary = GS.next_popup()
 		if d.get("game_over", false):
 			_open_panel(pp["title"], pp["text"], [["Volver al menú", func(): main.show_menu()]])
 		elif pp.has("options"):
@@ -222,6 +222,9 @@ func _unhandled_input(ev: InputEvent) -> void:
 			KEY_G:
 				if not panel.visible:
 					_manager_panel()
+			KEY_F1:
+				if not panel.visible:
+					preload("res://scripts/help.gd").open(self)
 			KEY_ESCAPE:
 				if panel.visible:
 					_close_panel()

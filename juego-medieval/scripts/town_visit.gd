@@ -222,7 +222,7 @@ func _process(delta: float) -> void:
 			w["a"].position += to.normalized() * minf(to.length(), 1.4 * delta)
 			w["a"].rotation.y = lerp_angle(w["a"].rotation.y, atan2(to.x, to.z), minf(1.0, delta * 6.0))
 	if not panel.visible and not GS.popups.is_empty():
-		var pp: Dictionary = GS.popups.pop_front()
+		var pp: Dictionary = GS.next_popup()
 		if pp.has("options"):
 			_open_panel(pp["title"], pp["text"], pp["options"].map(func(o): return [o[0], func():
 				_close_panel()
@@ -273,6 +273,9 @@ func _unhandled_input(ev: InputEvent) -> void:
 			KEY_E:
 				if not panel.visible and inter != null:
 					inter[2].call()
+			KEY_F1:
+				if not panel.visible:
+					preload("res://scripts/help.gd").open(self)
 			KEY_ESCAPE:
 				if panel.visible:
 					_close_panel()

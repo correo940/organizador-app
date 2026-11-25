@@ -45,7 +45,7 @@ static func season() -> void:
 	var k: Dictionary = d["kingdoms"].pick_random()
 	var roll := randf()
 	var kings: bool = d.get("king", false)
-	if roll < 0.04 + (0.04 if kings else 0.0) and int(k["rel"]) < 60 and not k["wed"]:
+	if roll < 0.03 + (0.02 if kings else 0.0) and int(k["rel"]) < 60 and not k["wed"]:
 		_invasion(k)
 	elif roll < 0.15:
 		_embassy(k)

@@ -86,7 +86,7 @@ static func guild_season() -> void:
 	for g in GUILDS:
 		var st: Dictionary = _g().get(g, {"priv": false, "refused": 0})
 		_g()[g] = st
-		if members(g) < 2 or st.get("priv", false) or randf() > 0.4:
+		if members(g) < 2 or st.get("priv", false) or randf() > 0.25:
 			continue
 		GS.popups.append({"title": "Petición del %s" % GUILDS[g]["name"].to_lower(), "text": "Los maestros del %s piden al jefe del pueblo privilegios: exención de algunos impuestos y el monopolio de su oficio. A cambio prometen trabajar más y mejor." % GUILDS[g]["name"].to_lower(), "options": [
 			["Concederlos (60 oro)", func():

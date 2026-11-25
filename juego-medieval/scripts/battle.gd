@@ -9,7 +9,7 @@ const CAM := preload("res://scripts/cam_rig.gd")
 const ARMY := preload("res://scripts/army.gd")
 const ENG := preload("res://scripts/engines.gd")
 const HALF := 34.0
-const MAX_ACTIVE := 32
+var MAX_ACTIVE: int = 20 if SFX.settings.get("low", false) else 32
 const ORDERS := ["¡Cargad!", "Mantened la posición", "Seguidme"]
 const HOUSES_BG := ["village/House_1.glb", "village/House_2.glb", "village/House_3.glb", "village/House_4.glb"]
 const KING := {"name": "Soldados del rey", "hp": 55.0, "dmg": 10.0, "speed": 3.5, "reach": 1.8}
@@ -130,7 +130,7 @@ func _ready() -> void:
 	M.moonlight(env, 0.3)
 	SFX.ambient("" if battle_time < 0.9 else "viento", -22.0)
 	var suffix: String = ["", "", "_Autumn", "_Snow"][int(d["season"])]
-	for i in 120:
+	for i in (50 if SFX.settings.get("low", false) else 120):
 		var a := randf() * TAU
 		var r := randf_range(HALF + 4, HALF + 35)
 		M.put(self, "nature/%s%s_%d.glb" % [["CommonTree", "PineTree", "BirchTree"][i % 3], suffix, randi_range(1, 5)], Vector3(cos(a) * r, 0, sin(a) * r), randf() * TAU, randf_range(2.4, 3.4))
@@ -973,7 +973,7 @@ func _setup_weather() -> void:
 				env["sky"].sky_top_color = Color(0.45, 0.48, 0.52)
 				env["sky"].sky_horizon_color = Color(0.6, 0.62, 0.64)
 			var p := CPUParticles3D.new()
-			p.amount = 1500 if weather == "lluvia" else 900
+			p.amount = (1500 if weather == "lluvia" else 900) / (3 if SFX.settings.get("low", false) else 1)
 			p.lifetime = 1.2 if weather == "lluvia" else 4.0
 			p.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
 			p.emission_box_extents = Vector3(30, 0.5, 30)
