@@ -237,11 +237,9 @@ func _yard(h: Vector3, rot: float, i: int) -> void:
 	var fwd := Vector3(sin(rot), 0, cos(rot))
 	var side := Vector3(fwd.z, 0, -fwd.x)
 	var back := h - fwd * 6.5
-	for k in 4:
-		M.put(self, "village/Fence.glb", back - fwd * 2.5 + side * (-2.25 + k * 1.5), rot, 1.9)
+	M.wattle(self, back - fwd * 2.5 - side * 2.9, back - fwd * 2.5 + side * 2.9)
 	for sd in [-1, 1]:
-		for k in 2:
-			M.put(self, "village/Fence.glb", back + side * 2.95 * sd + fwd * (0.9 - k * 1.6), rot + PI / 2, 2.0)
+		M.wattle(self, back + side * 2.9 * sd - fwd * 2.5, back + side * 2.9 * sd + fwd * 1.8)
 	var crop: String = ["crops/Carrot_3.glb", "crops/Lettuce_3.glb", "crops/Beet_3.glb", "crops/Pumpkin_3.glb"][i % 4]
 	for k in 6:
 		M.put(self, crop, back + side * (-1.7 + (k % 3) * 1.7) + fwd * (-1.4 + (k / 3) * 1.8), randf() * TAU, 0.5)

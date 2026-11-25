@@ -553,7 +553,7 @@ static func _mats() -> void:
 	_plaster.roughness = 1.0
 	_plaster.metallic_specular = 0.08
 	_beam = _plank.duplicate()
-	_beam.albedo_color = Color(0.42, 0.33, 0.26)
+	_beam.albedo_color = Color(1.0, 0.82, 0.66)
 	_shingle = _plank.duplicate()
 	_shingle.albedo_color = Color(0.55, 0.42, 0.34)
 	_shingle.uv1_scale = Vector3(1.4, 1.4, 1.4)
@@ -623,7 +623,7 @@ static func _timber_side(n: Node3D, w: float, dp: float, y0: float, h: float, oz
 
 ## Casa medieval hecha a mano. level 1: entramado de una planta con desván; level 2: planta baja de
 ## piedra y piso de entramado volado. variant cambia tejado (paja / tablilla) y detalles.
-static func medieval_house(parent: Node, pos: Vector3, rot: float, level: int, variant: int, s := 1.0) -> Node3D:
+static func medieval_house(parent: Node, pos: Vector3, rot: float, level: int, variant: int, s := 1.0, props := true) -> Node3D:
 	_mats()
 	var n := Node3D.new()
 	n.position = pos
@@ -648,28 +648,42 @@ static func medieval_house(parent: Node, pos: Vector3, rot: float, level: int, v
 		for sd in [-1, 1]:
 			_bx(n, Vector3(0.45, 0.8, 0.06), Vector3(sd * 1.6, 1.7, dp / 2 + 0.02), dark)
 		# Piso volado de entramado (sobresale hacia la calle).
-		_bx(n, Vector3(w + 0.3, 0.25, dp + 0.8), Vector3(0, 3.12, 0.4), _beam)
-		_bx(n, Vector3(w + 0.1, 2.5, dp + 0.6), Vector3(0, 3.25 + 1.25, 0.3), _plaster)
-		_timber_face(n, w + 0.1, 3.25, 2.5, dp / 2 + 0.63, false, variant)
-		_timber_face(n, w + 0.1, 3.25, 2.5, -dp / 2 - 0.03, false, variant + 1)
-		_timber_side(n, w + 0.1, dp + 0.6, 3.25, 2.5, 0.3)
+		_bx(n, Vector3(w + 0.7, 0.25, dp + 0.7), Vector3(0, 3.12, 0), _beam)
+		for k in 5:
+			_bx(n, Vector3(0.18, 0.18, 0.5), Vector3(-w / 2 + 0.5 + k * (w - 1.0) / 4.0, 2.92, dp / 2 + 0.1), _beam)
+		_bx(n, Vector3(w + 0.5, 2.5, dp + 0.5), Vector3(0, 3.25 + 1.25, 0), _plaster)
+		_timber_face(n, w + 0.5, 3.25, 2.5, dp / 2 + 0.28, false, variant)
+		_timber_face(n, w + 0.5, 3.25, 2.5, -dp / 2 - 0.28, false, variant + 1)
+		_timber_side(n, w + 0.5, dp + 0.5, 3.25, 2.5)
 		top = 5.75
-	# Tejado empinado con alero: paja o tablillas de madera.
-	var roof := MeshInstance3D.new()
-	var pm := PrismMesh.new()
-	var rh := 2.8 if level <= 1 else 2.5
-	pm.size = Vector3(w + 1.0, rh, dp + (1.6 if level >= 2 else 1.0))
-	roof.mesh = pm
-	roof.material_override = _thatch if (variant % 3 != 2 and level <= 1) or (level >= 2 and variant % 2 == 0) else _shingle
-	roof.position = Vector3(0, top + rh / 2, 0.3 if level >= 2 else 0.0)
-	n.add_child(roof)
+	# Tejado de paja grueso con alero; el frontón queda a la vista (encalado y con vigas).
+	var ww := w if level <= 1 else w + 0.5
+	var wd := dp if level <= 1 else dp + 0.5
+	var rh := 2.7 if level <= 1 else 2.4
+	var thatch := (variant % 3 != 2 and level <= 1) or (level >= 2 and variant % 2 == 0)
+	_roof_slabs(n, ww, wd, top, rh, _thatch if thatch else _shingle)
+	for z in [wd / 2, -wd / 2]:
+		var g := MeshInstance3D.new()
+		var gp := PrismMesh.new()
+		gp.size = Vector3(ww - 0.1, rh - 0.1, 0.16)
+		g.mesh = gp
+		g.material_override = _plaster
+		g.position = Vector3(0, top + (rh - 0.1) / 2, z)
+		n.add_child(g)
+		var zz: float = z + signf(z) * 0.07
+		_bx(n, Vector3(0.17, rh * 0.85, 0.12), Vector3(0, top + rh * 0.42, zz), _beam)
+		for sd in [-1, 1]:
+			var dx := ww * 0.3
+			var dy := rh * 0.62
+			_bx(n, Vector3(sqrt(dx * dx + dy * dy), 0.15, 0.12), Vector3(sd * dx / 2, top + dy / 2, zz), _beam, -sd * atan2(dy, dx))
 	# Chimenea de piedra con humo.
-	var cx := w / 2 - 0.9 if variant % 2 == 0 else -w / 2 + 0.9
-	_bx(n, Vector3(0.7, rh + 1.0, 0.7), Vector3(cx, top + (rh + 1.0) / 2, -dp / 4), _stonewall)
+	var cx := 0.0
+	_bx(n, Vector3(0.75, rh + 1.0, 0.75), Vector3(cx, top + (rh + 1.0) / 2, -dp / 4), _stonewall)
+	_bx(n, Vector3(0.9, 0.18, 0.9), Vector3(cx, top + rh + 1.0, -dp / 4), _stonewall)
 	var smoke := CPUParticles3D.new()
 	smoke.amount = 10
 	smoke.lifetime = 4.0
-	smoke.position = Vector3(cx, top + rh + 1.1, -dp / 4)
+	smoke.position = Vector3(cx, top + rh + 1.2, -dp / 4)
 	smoke.direction = Vector3(0.3, 1, 0)
 	smoke.spread = 25.0
 	smoke.gravity = Vector3(0.25, 0.35, 0)
@@ -680,14 +694,110 @@ static func medieval_house(parent: Node, pos: Vector3, rot: float, level: int, v
 	var sq := QuadMesh.new()
 	sq.size = Vector2(0.9, 0.9)
 	var smat := StandardMaterial3D.new()
-	smat.albedo_color = Color(0.7, 0.7, 0.72, 0.13)
+	var gt := GradientTexture2D.new()
+	var gr := Gradient.new()
+	gr.set_color(0, Color(1, 1, 1, 1))
+	gr.set_color(1, Color(1, 1, 1, 0))
+	gt.gradient = gr
+	gt.fill = GradientTexture2D.FILL_RADIAL
+	gt.fill_from = Vector2(0.5, 0.5)
+	gt.fill_to = Vector2(1.0, 0.5)
+	smat.albedo_texture = gt
+	smat.albedo_color = Color(0.72, 0.72, 0.74, 0.3)
 	smat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	smat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	smat.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
 	sq.material = smat
 	smoke.mesh = sq
 	n.add_child(smoke)
+	if props:
+		_props(n, w, dp, variant)
 	return n
+
+
+## Dos faldones gruesos (ridge a lo largo de la casa) y una cumbrera redondeada.
+static func _roof_slabs(n: Node3D, ww: float, wd: float, top: float, rh: float, mat: Material) -> void:
+	var half := ww / 2 + 0.55
+	var ang := atan2(rh, ww / 2)
+	var L := half / cos(ang)
+	for sd in [-1, 1]:
+		var m := _bx(n, Vector3(L, 0.38, wd + 1.1), Vector3(-sd * (half / 2 - 0.12), top + rh - half * tan(ang) / 2 + 0.12, 0), mat, sd * ang)
+		m.rotation.z = sd * ang
+	var rid := MeshInstance3D.new()
+	var c := CylinderMesh.new()
+	c.top_radius = 0.3
+	c.bottom_radius = 0.3
+	c.height = wd + 1.1
+	rid.mesh = c
+	rid.material_override = mat
+	rid.rotation.x = PI / 2
+	rid.position = Vector3(0, top + rh + 0.12, 0)
+	n.add_child(rid)
+
+
+## Leña apilada, cajas y un barril junto a la puerta.
+static func _props(n: Node3D, w: float, dp: float, variant: int) -> void:
+	var sd := 1 if variant % 2 == 0 else -1
+	var fx: float = sd * (w / 2 - 0.4)
+	var logm := _plank
+	for row in 3:
+		for k in 4 - row:
+			var m := MeshInstance3D.new()
+			var c := CylinderMesh.new()
+			c.top_radius = 0.14
+			c.bottom_radius = 0.14
+			c.height = 1.1
+			m.mesh = c
+			m.material_override = logm
+			m.rotation.z = PI / 2
+			m.position = Vector3(fx, 0.14 + row * 0.25, dp / 2 + 0.35 + (k - (3 - row) / 2.0) * 0.28)
+			m.rotation.y = PI / 2
+			n.add_child(m)
+	if variant % 3 != 1:
+		_bx(n, Vector3(0.7, 0.6, 0.7), Vector3(-fx, 0.3, dp / 2 + 0.6), _plank)
+		_bx(n, Vector3(0.55, 0.5, 0.55), Vector3(-fx * 0.82, 0.25, dp / 2 + 1.25), _plank)
+	put(n, "village/Barrel.glb", Vector3(-fx * 0.45, 0, dp / 2 + 0.55), 0.3, 1.25)
+
+
+## Valla de mimbre trenzado entre dos puntos, con estacas.
+static var _wattle_mat: StandardMaterial3D
+static func wattle(parent: Node, a: Vector3, b: Vector3, h := 0.95) -> void:
+	_mats()
+	if _wattle_mat == null:
+		var img := Image.create(64, 64, false, Image.FORMAT_RGB8)
+		for y in 64:
+			for x in 64:
+				var strand := (y / 8) % 2
+				var wave := sin((x + strand * 16) * PI / 16.0)
+				var c := Color(0.42, 0.3, 0.17).lightened(0.12 * wave) if (y % 8) > 0 else Color(0.18, 0.12, 0.07)
+				img.set_pixel(x, y, c)
+		_wattle_mat = StandardMaterial3D.new()
+		_wattle_mat.albedo_texture = ImageTexture.create_from_image(img)
+		_wattle_mat.uv1_triplanar = true
+		_wattle_mat.uv1_scale = Vector3(0.9, 0.9, 0.9)
+		_wattle_mat.roughness = 1.0
+	var len := a.distance_to(b)
+	var mid := (a + b) / 2
+	var panel := MeshInstance3D.new()
+	var bm := BoxMesh.new()
+	bm.size = Vector3(len, h, 0.09)
+	panel.mesh = bm
+	panel.material_override = _wattle_mat
+	parent.add_child(panel)
+	panel.position = mid + Vector3(0, h / 2, 0)
+	panel.rotation.y = atan2(-(b.z - a.z), b.x - a.x)
+	var n := int(ceil(len / 1.2)) + 1
+	for k in n:
+		var p := a.lerp(b, float(k) / float(n - 1))
+		var m := MeshInstance3D.new()
+		var c := CylinderMesh.new()
+		c.top_radius = 0.05
+		c.bottom_radius = 0.06
+		c.height = h + 0.25
+		m.mesh = c
+		m.material_override = _beam
+		m.position = p + Vector3(0, (h + 0.25) / 2, 0)
+		parent.add_child(m)
 
 
 static func _node(parent: Node, pos: Vector3, rot: float, s: float) -> Node3D:
