@@ -411,7 +411,7 @@ func _draw_river_and_shrine() -> void:
 		var bm := BoxMesh.new()
 		bm.size = Vector3(9.0, 0.05, a.distance_to(b) + 9.0)
 		m.mesh = bm
-		m.material_override = mat
+		m.material_override = M.water_material()
 		add_child(m)
 		m.look_at_from_position((a + b) / 2, b, Vector3.UP)
 	for k in 3:

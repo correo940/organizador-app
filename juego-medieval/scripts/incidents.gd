@@ -97,7 +97,7 @@ func _update_fire(delta: float, d: Dictionary) -> void:
 				fm.mesh = cm
 				var mat := StandardMaterial3D.new()
 				mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-				mat.albedo_color = [Color(1.0, 0.45, 0.1), Color(1.0, 0.7, 0.15), Color(0.95, 0.25, 0.05)][k % 3]
+				mat.albedo_color = [Color(1.0, 0.45, 0.1), Color(1.0, 0.7, 0.15), Color(0.95, 0.25, 0.05)][k % 3] * 2.2
 				fm.material_override = mat
 				fm.position = p + Vector3(randf_range(-2.2, 2.2), up + cm.height / 2, randf_range(-2.2, 2.2))
 				fire_node.add_child(fm)

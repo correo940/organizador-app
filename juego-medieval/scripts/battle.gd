@@ -849,7 +849,7 @@ func _setup_river() -> void:
 	var mat := StandardMaterial3D.new()
 	mat.albedo_color = Color(0.14, 0.3, 0.42)
 	mat.roughness = 0.35
-	w.material_override = mat
+	w.material_override = M.water_material()
 	w.position = Vector3(0, 0.03, river_z)
 	add_child(w)
 	bridges = [randf_range(-14, -4), randf_range(6, 16)] if randf() < 0.6 else [randf_range(-6, 6)]

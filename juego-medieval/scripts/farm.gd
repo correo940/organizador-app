@@ -100,7 +100,7 @@ func _build_static() -> void:
 	wm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	wm.roughness = 0.05
 	wm.metallic_specular = 0.25
-	water.material_override = wm
+	water.material_override = M.water_material()
 	water.position = POND + Vector3(0, 0.09, 0)
 	add_child(water)
 	for i in 4:

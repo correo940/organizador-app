@@ -155,11 +155,41 @@ static func make_env(parent: Node, center: Vector3, size: float) -> Dictionary:
 	e.adjustment_contrast = 1.06
 	we.environment = e
 	parent.add_child(we)
+	# Calidad alta (Forward+ con tarjeta gráfica moderna): luz rebotada, sombras de contacto,
+	# resplandor y niebla volumétrica. En modo rendimiento o con OpenGL se queda en lo básico.
+	if hq():
+		e.sdfgi_enabled = true
+		e.sdfgi_use_occlusion = true
+		e.sdfgi_energy = 0.9
+		e.ssao_enabled = true
+		e.ssao_radius = 1.2
+		e.ssao_intensity = 1.6
+		e.ssil_enabled = true
+		e.glow_enabled = true
+		e.glow_intensity = 0.55
+		e.glow_bloom = 0.04
+		e.glow_hdr_threshold = 1.1
+		e.volumetric_fog_enabled = true
+		e.volumetric_fog_density = 0.0022
+		e.volumetric_fog_albedo = Color(0.9, 0.9, 0.95)
+		e.volumetric_fog_length = 120.0
+		e.fog_density = 0.0015
+		e.ssr_enabled = true
+		e.ssr_max_steps = 48
+		e.adjustment_saturation = 1.08
+		e.adjustment_contrast = 1.04
+		e.tonemap_mode = Environment.TONE_MAPPER_FILMIC
+		e.tonemap_exposure = 1.15
 	var sun := DirectionalLight3D.new()
 	sun.rotation_degrees = Vector3(-40, -40, 0)
 	sun.light_color = Color(1, 0.9, 0.76)
 	sun.light_energy = 1.1
 	sun.shadow_enabled = SFX.settings["shadows"]
+	if hq():
+		sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS
+		sun.directional_shadow_max_distance = 120
+		sun.shadow_blur = 1.5
+		sun.light_volumetric_fog_energy = 1.2
 	sun.directional_shadow_max_distance = 60
 	parent.add_child(sun)
 	var g := MeshInstance3D.new()
@@ -194,6 +224,42 @@ static func set_season_ground(grad: Gradient, season: int) -> void:
 	][season]
 	grad.set_color(0, cols[0])
 	grad.set_color(1, cols[1])
+
+
+## ¿Se pueden usar los efectos avanzados? (Forward+ y sin modo rendimiento)
+static func hq() -> bool:
+	return RenderingServer.get_rendering_device() != null and not SFX.settings.get("low", false)
+
+
+## Agua con olas y reflejos (estanques, río del mapa y de las batallas).
+static var _water: ShaderMaterial
+static func water_material() -> Material:
+	if _water == null:
+		var sh := Shader.new()
+		sh.code = """shader_type spatial;
+render_mode blend_mix, cull_back, specular_schlick_ggx;
+uniform vec4 deep : source_color = vec4(0.02, 0.09, 0.14, 1.0);
+uniform vec4 shallow : source_color = vec4(0.08, 0.25, 0.32, 1.0);
+float wave(vec2 p, float t) {
+	return sin(p.x * 0.9 + t * 1.3) * 0.5 + sin(p.y * 1.3 - t * 1.1) * 0.5 + sin((p.x + p.y) * 2.1 + t * 2.0) * 0.25;
+}
+void fragment() {
+	vec3 wp = (INV_VIEW_MATRIX * vec4(VERTEX, 1.0)).xyz;
+	float t = TIME;
+	float e = 0.08;
+	float h = wave(wp.xz, t);
+	vec3 n = normalize(vec3(wave(wp.xz + vec2(e, 0.0), t) - h, 1.6, wave(wp.xz + vec2(0.0, e), t) - h));
+	NORMAL = normalize((VIEW_MATRIX * vec4(n, 0.0)).xyz);
+	float fres = pow(1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0), 3.0);
+	ALBEDO = mix(deep.rgb, shallow.rgb, 0.35 + 0.3 * h * 0.5);
+	ROUGHNESS = 0.06;
+	METALLIC = 0.0;
+	SPECULAR = 0.7;
+	ALPHA = 0.94 + fres * 0.06;
+}"""
+		_water = ShaderMaterial.new()
+		_water.shader = sh
+	return _water
 
 
 ## Capa de nieve: se pinta de blanco lo que mira hacia arriba (tejados, copas, rocas).
