@@ -36,7 +36,7 @@ static func practice(skill: String, n := 1) -> void:
 	if not p.has("skills"):
 		p["skills"] = {}
 	var before := level(skill)
-	p["skills"][skill] = int(p["skills"].get(skill, 0)) + n
+	p["skills"][skill] = int(p["skills"].get(skill, 0)) + (int(ceil(n * 1.5)) if GS.has_building("universidad") else n)
 	if level(skill) > before:
 		GS.say("Tu habilidad de %s sube a nivel %d." % [skill, level(skill)])
 

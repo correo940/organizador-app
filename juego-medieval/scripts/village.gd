@@ -923,6 +923,15 @@ func _house_panel() -> void:
 			_close_panel()])
 	opts.append(["Ver familia", _family_panel])
 	opts.append(["Crónica y árbol del linaje", _chronicle_panel])
+	if d.get("steward", false):
+		opts.append(["Despedir al mayordomo", func():
+			d["steward"] = false
+			_house_panel()])
+	else:
+		opts.append(["Contratar un mayordomo (4 oro/día): cosecha, resiembra y vende lo que sobra", func():
+			d["steward"] = true
+			GS.say("Contratas un mayordomo. Él se ocupará de los campos y de vender lo que sobre.")
+			_house_panel(), lvl >= 1])
 	opts.append(["Llamar al físico (30 oro): +30 salud, puede curar heridas", func(): GS.CHAR.physician(self)])
 	opts.append(["Guardar partida", func():
 		GS.save_game()
@@ -956,7 +965,7 @@ func _family_panel() -> void:
 		if int(c["age"]) >= 16:
 			opts.append(["Cargos de %s" % c["name"], func(): _child_roles(c)])
 		elif int(c["age"]) >= 6 and edu == "":
-			opts.append(["Educar a %s (%d oro)" % [c["name"], GS.EDU_COST], func(): _educate(c)])
+			opts.append(["Educar a %s (%d oro)" % [c["name"], GS.edu_cost()], func(): _educate(c)])
 	if d["children"].is_empty():
 		lines.append("")
 		lines.append("Sin hijos. Si mueres sin herederos, tu linaje se extingue.")
@@ -998,10 +1007,10 @@ func _educate(c: Dictionary) -> void:
 	var opts := []
 	for k in GS.EDU:
 		opts.append([GS.EDU[k], func():
-			d["gold"] = int(d["gold"]) - GS.EDU_COST
+			d["gold"] = int(d["gold"]) - GS.edu_cost()
 			c["edu"] = k
 			GS.say("%s empieza su educación: %s." % [c["name"], k])
-			_family_panel(), int(d["gold"]) >= GS.EDU_COST])
+			_family_panel(), int(d["gold"]) >= GS.edu_cost()])
 	opts.append(["Volver", _family_panel])
 	_open_panel("Educar a %s" % c["name"], "Elige cómo se educará %s (%s). Lo que aprenda le servirá de mayor como capitán, gobernador o para traer dinero a casa.\nCuesta %d de oro." % [c["name"], GS.TRAITS[GS.trait_of(c)], GS.EDU_COST], opts)
 
@@ -1110,6 +1119,7 @@ func _hall_panel() -> void:
 	opts.append_array(GS.SOCIAL.hall_options(self))
 	if int(d["title"]) >= 1:
 		opts.append(["Consejo de la corte", func(): GS.POL.council_panel(self)])
+		opts.append(["Resumen de tus pueblos", func(): _open_panel("Tus pueblos", GS.ECON.towns_summary() + "\n\nPara administrarlos, abre el mapa (M) y pulsa G.", [["Cerrar", _close_panel]])])
 		if not GS.POL.is_king():
 			text += "\n\n" + GS.POL.crown_text()
 			opts.append(["Coronarte rey de la región (%d oro)" % GS.POL.CROWN_GOLD, func():

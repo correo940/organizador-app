@@ -53,7 +53,7 @@ static func caravan_day(c: Dictionary, t: Dictionary, arrived: bool) -> bool:
 		SFX.play("monedas")
 		GS.say("Tu caravana vende %d de %s en %s: +%d oro.%s" % [int(c["n"]), item_name, t["name"], gold, " La escolta vuelve a casa." if int(c["escort"]) > 0 else ""])
 		return true
-	if randf() < (0.025 if int(c["escort"]) > 0 else 0.08):
+	if randf() < (0.025 if int(c["escort"]) > 0 else 0.08) * (0.3 if GS.has_building("puerto") else 1.0):
 		if int(c["escort"]) > 0 and randf() < 0.75:
 			c["escort"] = int(c["escort"]) - 1
 			GS.say("Unos bandidos atacan tu caravana, pero la escolta los rechaza (cae un soldado).")
@@ -203,7 +203,7 @@ static func _crisis() -> void:
 		for t in R.region()["towns"]:
 			if t.has("pop"):
 				t["pop"] = int(int(t["pop"]) * 0.8)
-		var lost := int(int(d["commons"]) * 0.15)
+		var lost := int(int(d["commons"]) * 0.15 * (0.5 if GS.has_building("hospital") else 1.0))
 		d["commons"] = int(d["commons"]) - lost
 		var extra := ""
 		if randf() < 0.35:
@@ -215,3 +215,25 @@ static func _crisis() -> void:
 			d["children"].erase(c)
 			extra += "\nLa peste se lleva a tu %s %s." % ["hijo" if c["male"] else "hija", c["name"]]
 		GS.popups.append({"title": "¡La peste!", "text": "Una peste terrible recorre la región: uno de cada cinco vecinos muere en todos los pueblos. En el tuyo mueren %d personas.%s" % [lost, extra], "button": "Continuar"})
+
+
+# ---------------- Gestor de tus pueblos ----------------
+
+static func my_towns() -> Array:
+	return R.region()["towns"].filter(func(t): return t["owner"] == "jugador" and not t.get("home", false))
+
+
+static func towns_summary() -> String:
+	var ts := my_towns()
+	if ts.is_empty():
+		return "Aún no tienes otros pueblos. Funda aldeas en lugares libres del mapa o conquístalas."
+	var lines := []
+	var total := 0.0
+	for t in ts:
+		var inc := int(t["pop"]) / 40.0 * R.governor_mult(int(t["id"])) * tax_mult(t) * (1.15 if GS.POL.has("tesorero") else 1.0)
+		total += inc
+		var spec: String = t.get("spec", "")
+		lines.append("%s · %d hab. · guarnición %d · %s · impuestos %s · descontento %d · %.1f oro/día%s" % [t["name"], int(t["pop"]), int(t["garrison"]), SPECS[spec]["name"].to_lower() if spec != "" else "sin especialidad", TAX_NAMES[int(t.get("tax", 1))], int(t.get("unrest", 0)), inc, (" · gobernador " + R.governor_of(int(t["id"]))) if R.governor_of(int(t["id"])) != "" else ""])
+	lines.append("")
+	lines.append("Total: %.1f de oro al día." % total)
+	return "\n".join(lines)

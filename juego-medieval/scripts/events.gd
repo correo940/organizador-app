@@ -56,7 +56,7 @@ static func _mood_all(n: int) -> void:
 
 
 static func _lose_commons(frac: float) -> int:
-	var n := int(int(GS.data["commons"]) * frac)
+	var n := int(int(GS.data["commons"]) * frac * (0.5 if GS.has_building("hospital") else 1.0))
 	GS.data["commons"] = int(GS.data["commons"]) - n
 	return n
 

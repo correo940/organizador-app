@@ -71,6 +71,10 @@ const BUILDINGS := {
 	"granero": {"name": "Granero", "cost": {"madera": 40, "piedra": 20}, "desc": "Las cosechas rinden un 25% más."},
 	"colmenar": {"name": "Colmenar", "cost": {"madera": 15, "oro": 10}, "desc": "Las abejas producen miel (en invierno no)."},
 	"capilla": {"name": "Capilla", "cost": {"madera": 30, "piedra": 60, "oro": 40}, "desc": "+40 de prestigio y +3 cada estación."},
+	"hospital": {"name": "Hospital", "cost": {"madera": 40, "piedra": 40, "oro": 60}, "desc": "Tu familia recupera +2 de salud al día y las fiebres y la peste matan a la mitad."},
+	"universidad": {"name": "Universidad", "cost": {"madera": 50, "piedra": 80, "oro": 120}, "tier": 2, "desc": "Educar a tus hijos sale gratis y tus habilidades suben un 50% más rápido. (Solo en una ciudad)"},
+	"puerto": {"name": "Embarcadero", "cost": {"madera": 60, "oro": 40}, "desc": "Tus caravanas van por el río: el doble de rápido y casi sin asaltos."},
+	"castillo": {"name": "Castillo", "cost": {"madera": 80, "piedra": 150, "oro": 150}, "tier": 1, "desc": "Fortaleza del señor: tu pueblo resiste mucho mejor los asaltos, tus tropas defienden mejor sus murallas y ganas +5 de prestigio cada estación. (Desde villa)"},
 }
 const MINE_COST := {"madera": 30, "oro": 20}
 const RECIPES := {
@@ -215,10 +219,11 @@ func next_day() -> void:
 	data["talked"] = []
 	var p = data["player"]
 	if eat(family_size()):
-		p["health"] = minf(100.0, p["health"] + 4.0)
+		p["health"] = minf(100.0, p["health"] + 4.0 + (2.0 if has_building("hospital") else 0.0))
 	else:
 		p["health"] -= 15.0
 		say("Tu familia pasa hambre. (-15 salud)")
+	_steward_day()
 	farm_day()
 	SIM.day()
 	ARMY.day()
@@ -258,6 +263,8 @@ func next_season() -> void:
 		data["prestige"] += 3
 	if trait_of(data["player"]) == "piadoso":
 		data["prestige"] += 3
+	if has_building("castillo"):
+		data["prestige"] += 5
 	var crafts := 0
 	for c in data["children"]:
 		if c.get("edu", "") == "oficio" and int(c["age"]) >= 16:
@@ -402,6 +409,35 @@ func claim_chief() -> String:
 
 
 # ---------------- Guardado ----------------
+
+## Mayordomo: cosecha y vuelve a sembrar tus campos y vende lo que sobra. Cobra 4 de oro al día.
+func _steward_day() -> void:
+	if not data.get("steward", false):
+		return
+	if int(data["gold"]) < 4:
+		data["steward"] = false
+		say("Tu mayordomo se marcha: no tienes oro para pagarle.")
+		return
+	data["gold"] = int(data["gold"]) - 4
+	for i in data["fields"].size():
+		var f = data["fields"][i]
+		if f["owned"] and field_ready(f):
+			var crop: String = f["crop"]
+			harvest(i)
+			plant(i, crop)
+	var earned := 0
+	for k in ITEMS:
+		var extra := inv(k) - 40
+		if extra > 0 and int(ITEMS[k][1]) > 0:
+			take(k, extra)
+			earned += int(extra * int(ITEMS[k][1]) * 0.8)
+	if earned > 0:
+		data["gold"] = int(data["gold"]) + earned
+
+
+func edu_cost() -> int:
+	return 0 if has_building("universidad") else EDU_COST
+
 
 ## Crónica del linaje: los hechos importantes, con su año.
 func chronicle(text: String) -> void:
@@ -766,6 +802,8 @@ func construct(slot: int, id: String) -> String:
 	var b = BUILDINGS[id]
 	if has_building(id):
 		return "Ya tienes ese edificio."
+	if int(data["tier"]) < int(b.get("tier", 0)):
+		return "Tu pueblo aún es demasiado pequeño para eso."
 	if not can_pay(b["cost"]):
 		return "Te faltan materiales: " + cost_text(b["cost"])
 	pay(b["cost"])

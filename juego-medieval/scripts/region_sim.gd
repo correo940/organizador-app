@@ -457,7 +457,7 @@ static func _assault(a: Dictionary, t: Dictionary) -> void:
 	if t.get("home", false):
 		var party := Vector2(reg["party"][0], reg["party"][1])
 		var eng: Dictionary = d.get("engines", {})
-		defense = (GS.ARMY.total() if party.distance_to(home()) < 30 else 0) + int(d["commons"]) * 0.05 + int(d["tier"]) * 12 + int(eng.get("balista", 0)) * 8 + int(eng.get("catapulta", 0)) * 10
+		defense = (40 if GS.has_building("castillo") else 0) + (GS.ARMY.total() if party.distance_to(home()) < 30 else 0) + int(d["commons"]) * 0.05 + int(d["tier"]) * 12 + int(eng.get("balista", 0)) * 8 + int(eng.get("catapulta", 0)) * 10
 	elif t["owner"] == "jugador":
 		defense = int(t["garrison"]) * 1.2 * (1.0 + 0.25 * int(t["wall"])) + int(t["pop"]) * 0.02 + int(t.get("towers", 0)) * 10
 	else:
@@ -556,7 +556,7 @@ static func _move_caravans() -> void:
 			t["gold"] = int(t.get("gold", 0)) + 25
 			reg["caravans"].erase(c)
 		else:
-			var step := to.normalized() * DAY_DIST * 0.7
+			var step := to.normalized() * DAY_DIST * 0.7 * (2.0 if c.get("mine", false) and GS.has_building("puerto") else 1.0)
 			c["x"] = float(c["x"]) + step.x
 			c["z"] = float(c["z"]) + step.y
 	if reg["caravans"].size() < 6 and randf() < 0.6:

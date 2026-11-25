@@ -16,6 +16,10 @@ const LOOK := {
 	"establo": [["village/Stable.glb", 1.8], ["village/Hay.glb", 1.4, Vector3(-3.5, 0, 2.5)]],
 	"granero": [["rts/Storage_FirstAge_Level2.glb", -8.0]],
 	"capilla": [["rts/Temple_FirstAge_Level2.glb", -10.0]],
+	"hospital": [["village/House_4.glb", 1.6], ["village/Cauldron.glb", 1.4, Vector3(3.2, 0, 2.6)], ["village/Bench_1.glb", 1.4, Vector3(-3, 0, 2.8)]],
+	"universidad": [["rts/Temple_FirstAge_Level3.glb", -10.0]],
+	"puerto": [["rts/Market_FirstAge_Level2.glb", -9.0], ["village/Barrel.glb", 1.4, Vector3(4, 0, 3)], ["village/Crate.glb", 1.4, Vector3(-4, 0, 3)]],
+	"castillo": [["castle/LargeTower.glb", 2.4], ["castle/TallWall.glb", 2.4, Vector3(3.6, 0, 0.4)], ["castle/TallWall.glb", 2.4, Vector3(-3.6, 0, 0.4)]],
 }
 
 var v
@@ -109,7 +113,9 @@ func _rebuild(i: int, id: String) -> void:
 		label = GS.BUILDINGS[id]["name"]
 		for part in LOOK[id]:
 			var pos: Vector3 = part[2] if part.size() > 2 else Vector3.ZERO
-			_put_sized(root, part[0], pos, 0.0, part[1])
+			var pn = _put_sized(root, part[0], pos, 0.0, part[1])
+			if id == "castillo" and pn != null:
+				M.recolor(pn, Color(0.52, 0.5, 0.46))
 	var l := M.label3d(label, 42)
 	l.position = Vector3(0, 2.2 if id == "" or id == "colmenar" else 7.5, 0)
 	l.modulate = Color(1, 0.9, 0.6)
@@ -202,7 +208,7 @@ func build_panel(i: int) -> void:
 			var err: String = GS.construct(i, id)
 			if err != "":
 				v._float(err, Color(1, 0.5, 0.4))
-			v._close_panel(), GS.can_pay(b["cost"])])
+			v._close_panel(), GS.can_pay(b["cost"]) and int(GS.data["tier"]) >= int(b.get("tier", 0))])
 	var lines := ["Elige qué construir en este solar. Cada edificio solo se puede tener una vez.", ""]
 	for id in GS.BUILDINGS:
 		if not GS.has_building(id):

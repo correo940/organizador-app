@@ -298,7 +298,7 @@ func _ready() -> void:
 				u["hp"] *= 1.0 + 0.2 * eff_wall
 				u["max"] = u["hp"]
 			elif siege["kind"] == "defensa" and u["team"] == 0 and not u.has("player"):
-				u["hp"] *= 1.0 + 0.1 * int(siege["wall"])
+				u["hp"] *= 1.0 + 0.1 * int(siege["wall"]) + (0.15 if GS.has_building("castillo") and GS.REGION.town(int(siege["town"])).get("home", false) else 0.0)
 				u["max"] = u["hp"]
 	var cap := _spawn("infante", 1, Vector3(0, 0, -19))
 	cap["captain"] = true

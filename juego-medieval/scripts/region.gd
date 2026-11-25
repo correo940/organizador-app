@@ -64,7 +64,7 @@ func _ready() -> void:
 	add_child(cam)
 	cam.make_current()
 	GS.tip("mapa", "el mapa de la región", "Haz clic para marchar con tu séquito. Cada jornada de camino pasa un día. Acércate a un pueblo y pulsa E para entrar, comerciar o visitar su corte; D abre la diplomacia. Cuidado con los ejércitos enemigos: pueden emboscarte.")
-	help_text = "Clic izquierdo: marchar · Rueda: zoom · E: entrar / interactuar · D: diplomacia · Esc: menú"
+	help_text = "Clic izquierdo: marchar · Rueda: zoom · E: entrar / interactuar · D: diplomacia · G: tus pueblos · Esc: menú"
 	_build_hud()
 	SFX.music("mapa")
 	GS.notify.connect(func(_t): _refresh_log())
@@ -219,6 +219,9 @@ func _unhandled_input(ev: InputEvent) -> void:
 			KEY_D:
 				if not panel.visible:
 					COURT.diplomacy(self)
+			KEY_G:
+				if not panel.visible:
+					_manager_panel()
 			KEY_ESCAPE:
 				if panel.visible:
 					_close_panel()
@@ -365,6 +368,16 @@ func _town_lights(t: float) -> void:
 		l.omni_range = 22.0
 		l.position = Vector3(tw["x"], 6, tw["z"])
 		lights_node.add_child(l)
+
+
+## Gestor: todos tus pueblos en una ventana; desde aquí se administran sin viajar.
+func _manager_panel() -> void:
+	var opts := []
+	for t in GS.ECON.my_towns():
+		var tid := int(t["id"])
+		opts.append(["Gestionar %s" % t["name"], func(): _town_panel(tid)])
+	opts.append(["Cerrar", _close_panel])
+	_open_panel("Tus pueblos", GS.ECON.towns_summary(), opts)
 
 
 func _visit(id: int) -> void:
