@@ -225,9 +225,9 @@ func _rebuild_homes(levels: Array) -> void:
 			0:
 				M.hut(homes_node, h, rot, 1.05 + (i % 3) * 0.04)
 			1:
-				M.put(homes_node, ["village/House_1.glb", "village/House_3.glb"][i % 2], h, rot, [2.35, 2.6][i % 2])
+				M.medieval_house(homes_node, h, rot, 1, i, 1.0)
 			_:
-				M.put(homes_node, "village/House_2.glb", h, rot, 2.3)
+				M.medieval_house(homes_node, h, rot, 2, i, 1.0)
 	if season == 3:
 		M.set_snow(homes_node, true)
 
@@ -393,9 +393,9 @@ func _rebuild_house() -> void:
 		1:
 			M.hut(house_node, hp, rot, 1.15)
 		2:
-			M.put(house_node, "village/House_4.glb", hp, rot, 1.8)
+			M.medieval_house(house_node, hp, rot, 1, 0, 1.25)
 		3:
-			M.put(house_node, "village/Inn.glb", hp, rot, 1.8)
+			M.medieval_house(house_node, hp, rot, 2, 1, 1.35)
 			M.recolor(M.put(house_node, "castle/Banner.glb", hp + Vector3(4.5, 0, 3), 0, 1.4), Color(0.6, 0.1, 0.1))
 		4:
 			M.put(house_node, "village/Inn.glb", hp, rot, 2.2)

@@ -23,7 +23,8 @@ const LEG := preload("res://scripts/legacy.gd")
 const REALM := preload("res://scripts/realm.gd")
 
 const SAVE_PATH := "user://partida.json"
-const SECONDS_PER_DAY := 40.0
+const SECONDS_PER_DAY := 60.0
+const NIGHT_FAST := 3.5  # la noche pasa así de rápido: los días son largos y las noches cortas
 const DAYS_PER_SEASON := 5
 const SEASONS := ["Primavera", "Verano", "Otoño", "Invierno"]
 const HOUSE_NAMES := ["Sin casa", "Choza", "Casa de piedra", "Casa solariega", "Casona", "Casa fuerte"]
@@ -221,7 +222,8 @@ func season_index() -> int:
 func advance(delta: float) -> void:
 	if data.get("game_over", false):
 		return
-	data["time"] += delta * speed / SECONDS_PER_DAY
+	var tt: float = data["time"]
+	data["time"] += delta * speed / SECONDS_PER_DAY * (NIGHT_FAST if tt < 0.22 or tt > 0.85 else 1.0)
 	if data["time"] >= 1.0:
 		data["time"] -= 1.0
 		next_day()

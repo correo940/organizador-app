@@ -457,10 +457,16 @@ static func moonlight(env: Dictionary, k: float) -> void:
 
 ## Ciclo de día: t en 0..1 (0.5 = mediodía).
 static func set_daytime(env: Dictionary, t: float) -> void:
-	var elev := sin((t - 0.25) * TAU)
+	# El sol sale a las 0.22 y se pone a las 0.85 (como la noche del juego); la noche es corta.
+	var elev: float
+	var u := clampf((t - 0.22) / 0.63, 0.0, 1.0)
+	if t >= 0.22 and t <= 0.85:
+		elev = sin(u * PI)
+	else:
+		elev = -sin(fposmod(t - 0.85, 1.0) / 0.37 * PI) * 0.6
 	var sun: DirectionalLight3D = env["sun"]
-	sun.rotation_degrees = Vector3(-5 - clampf(elev, 0.05, 1.0) * 60.0, -40 + t * 80.0, 0)
-	var day := clampf(elev * 2.2 + 0.75, 0.0, 1.0)
+	sun.rotation_degrees = Vector3(-5 - clampf(elev, 0.05, 1.0) * 60.0, -60 + u * 120.0, 0)
+	var day := clampf(elev * 2.6 + 0.35, 0.0, 1.0)
 	sun.light_energy = lerpf(0.12, 1.1, day)
 	sun.light_color = Color(0.6, 0.7, 1.0).lerp(Color(1, 0.9, 0.76), day)
 	var e: Environment = env["env"]
@@ -509,29 +515,179 @@ static func paving() -> StandardMaterial3D:
 ## Cabaña de madera humilde: tablones, tejado de paja, puerta baja y un ventanuco.
 static var _plank: StandardMaterial3D
 static var _thatch: StandardMaterial3D
+static func _mats() -> void:
+	if _plank != null:
+		return
+	# Tablones verticales con juntas oscuras y veta; paja en hileras con mechones.
+	var r := RandomNumberGenerator.new()
+	r.seed = 5
+	# Tablones fotográficos (Poly Haven, CC0), un poco más oscuros y gastados.
+	_plank = StandardMaterial3D.new()
+	_plank.albedo_texture = load("res://assets/tex/madera_color.jpg")
+	_plank.albedo_color = Color(0.85, 0.82, 0.78)
+	_plank.normal_enabled = true
+	_plank.normal_texture = load("res://assets/tex/madera_normal.png")
+	_plank.uv1_triplanar = true
+	_plank.uv1_scale = Vector3(0.45, 0.45, 0.45)
+	_plank.roughness = 0.9
+	var im2 := Image.create(128, 128, false, Image.FORMAT_RGB8)
+	for y in 128:
+		for x in 128:
+			var c := Color(0.62, 0.5, 0.27).darkened(0.25 * float((y + int(r.randf() * 3)) % 16) / 16.0 + r.randf() * 0.12)
+			im2.set_pixel(x, y, c)
+	_thatch = StandardMaterial3D.new()
+	_thatch.albedo_texture = ImageTexture.create_from_image(im2)
+	_thatch.uv1_scale = Vector3(3, 3, 1)
+	_thatch.roughness = 1.0
+	var pn := Image.create(64, 64, false, Image.FORMAT_RGB8)
+	for y in 64:
+		for x in 64:
+			pn.set_pixel(x, y, Color(0.95, 0.91, 0.8).darkened(r.randf() * 0.08 + 0.05 * sin(x * 0.3 + y * 0.17)))
+	_plaster = StandardMaterial3D.new()
+	_plaster.albedo_texture = ImageTexture.create_from_image(pn)
+	_plaster.uv1_triplanar = true
+	_plaster.uv1_scale = Vector3(0.5, 0.5, 0.5)
+	_plaster.roughness = 1.0
+	_beam = _plank.duplicate()
+	_beam.albedo_color = Color(0.42, 0.33, 0.26)
+	_shingle = _plank.duplicate()
+	_shingle.albedo_color = Color(0.55, 0.42, 0.34)
+	_shingle.uv1_scale = Vector3(1.4, 1.4, 1.4)
+	_stonewall = StandardMaterial3D.new()
+	_stonewall.albedo_texture = load("res://assets/tex/muro_color.jpg")
+	_stonewall.normal_enabled = true
+	_stonewall.normal_texture = load("res://assets/tex/muro_normal.png")
+	_stonewall.roughness_texture = load("res://assets/tex/muro_rough.jpg")
+	_stonewall.uv1_triplanar = true
+	_stonewall.uv1_scale = Vector3(0.35, 0.35, 0.35)
+
+
+static var _plaster: StandardMaterial3D
+static var _beam: StandardMaterial3D
+static var _shingle: StandardMaterial3D
+static var _stonewall: StandardMaterial3D
+static func _bx(n: Node3D, size: Vector3, pos: Vector3, mat: Material, rz := 0.0) -> MeshInstance3D:
+	var m := MeshInstance3D.new()
+	var b := BoxMesh.new()
+	b.size = size
+	m.mesh = b
+	m.material_override = mat
+	m.position = pos
+	m.rotation.z = rz
+	n.add_child(m)
+	return m
+
+
+## Fachada de entramado: postes, carreras, tornapuntas en aspa y ventanas con contraventanas.
+static func _timber_face(n: Node3D, w: float, y0: float, h: float, z: float, door: bool, variant: int) -> void:
+	var t := 0.17
+	for x in [-w / 2 + 0.09, w / 2 - 0.09, -w / 6, w / 6]:
+		_bx(n, Vector3(t, h, t), Vector3(x, y0 + h / 2, z), _beam)
+	_bx(n, Vector3(w + 0.1, t, t + 0.04), Vector3(0, y0 + h - 0.08, z), _beam)
+	_bx(n, Vector3(w + 0.1, t, t + 0.04), Vector3(0, y0 + 0.08, z), _beam)
+	var bw := w / 3.0 - 0.1
+	var bh := h * 0.5 - 0.15
+	var diag := sqrt(bw * bw + bh * bh)
+	var ang := atan2(bh, bw)
+	for sd in [-1, 1]:
+		_bx(n, Vector3(w / 3.0, t * 0.8, t), Vector3(sd * w / 3.0, y0 + h * 0.55, z), _beam)
+		_bx(n, Vector3(diag, t * 0.8, t), Vector3(sd * w / 3.0, y0 + 0.1 + bh / 2 + 0.05, z), _beam, ang * sd * (1 if variant % 2 == 0 else -1))
+	if door:
+		_bx(n, Vector3(1.05, 2.0, 0.12), Vector3(0, y0 + 1.0, z + 0.04), _beam)
+		_bx(n, Vector3(1.3, 0.16, 0.2), Vector3(0, y0 + 2.08, z + 0.05), _beam)
+	var dark := flat(Color(0.08, 0.06, 0.05))
+	for sd in [-1, 1]:
+		var wy := y0 + h * 0.78
+		_bx(n, Vector3(0.7, 0.8, 0.06), Vector3(sd * w / 3.0, wy, z + 0.02), dark)
+		_bx(n, Vector3(0.36, 0.86, 0.07), Vector3(sd * w / 3.0 - 0.55, wy, z + 0.05), _beam)
+		_bx(n, Vector3(0.36, 0.86, 0.07), Vector3(sd * w / 3.0 + 0.55, wy, z + 0.05), _beam)
+
+
+## Vigas de los laterales: carrera arriba y abajo, postes y una riostra.
+static func _timber_side(n: Node3D, w: float, dp: float, y0: float, h: float, oz := 0.0) -> void:
+	var t := 0.17
+	for sd in [-1, 1]:
+		var x: float = sd * (w / 2 + 0.03)
+		_bx(n, Vector3(t, t, dp + 0.1), Vector3(x, y0 + h - 0.08, oz), _beam)
+		_bx(n, Vector3(t, t, dp + 0.1), Vector3(x, y0 + 0.08, oz), _beam)
+		_bx(n, Vector3(t, t * 0.8, dp), Vector3(x, y0 + h * 0.55, oz), _beam)
+		for z in [-dp / 6, dp / 6]:
+			_bx(n, Vector3(t, h, t), Vector3(x, y0 + h / 2, oz + z), _beam)
+		var m := _bx(n, Vector3(t, t * 0.8, sqrt(pow(dp / 3.0, 2) + pow(h * 0.4, 2))), Vector3(x, y0 + h * 0.3, oz + dp / 3.0), _beam)
+		m.rotation.x = atan2(h * 0.4, dp / 3.0) * sd
+
+
+## Casa medieval hecha a mano. level 1: entramado de una planta con desván; level 2: planta baja de
+## piedra y piso de entramado volado. variant cambia tejado (paja / tablilla) y detalles.
+static func medieval_house(parent: Node, pos: Vector3, rot: float, level: int, variant: int, s := 1.0) -> Node3D:
+	_mats()
+	var n := Node3D.new()
+	n.position = pos
+	n.rotation.y = rot
+	n.scale = Vector3.ONE * s
+	parent.add_child(n)
+	var w := 5.0
+	var dp := 5.4
+	var top := 0.0
+	if level <= 1:
+		_bx(n, Vector3(w + 0.2, 0.55, dp + 0.2), Vector3(0, 0.27, 0), _stonewall)
+		_bx(n, Vector3(w, 2.7, dp), Vector3(0, 0.55 + 1.35, 0), _plaster)
+		_timber_face(n, w, 0.55, 2.7, dp / 2 + 0.03, true, variant)
+		_timber_face(n, w, 0.55, 2.7, -dp / 2 - 0.03, false, variant + 1)
+		_timber_side(n, w, dp, 0.55, 2.7)
+		top = 3.25
+	else:
+		_bx(n, Vector3(w, 3.0, dp), Vector3(0, 1.5, 0), _stonewall)
+		_bx(n, Vector3(1.1, 2.1, 0.14), Vector3(0, 1.05, dp / 2 + 0.03), _beam)
+		_bx(n, Vector3(1.5, 0.3, 0.3), Vector3(0, 2.25, dp / 2 + 0.05), _stonewall)
+		var dark := flat(Color(0.08, 0.06, 0.05))
+		for sd in [-1, 1]:
+			_bx(n, Vector3(0.45, 0.8, 0.06), Vector3(sd * 1.6, 1.7, dp / 2 + 0.02), dark)
+		# Piso volado de entramado (sobresale hacia la calle).
+		_bx(n, Vector3(w + 0.3, 0.25, dp + 0.8), Vector3(0, 3.12, 0.4), _beam)
+		_bx(n, Vector3(w + 0.1, 2.5, dp + 0.6), Vector3(0, 3.25 + 1.25, 0.3), _plaster)
+		_timber_face(n, w + 0.1, 3.25, 2.5, dp / 2 + 0.63, false, variant)
+		_timber_face(n, w + 0.1, 3.25, 2.5, -dp / 2 - 0.03, false, variant + 1)
+		_timber_side(n, w + 0.1, dp + 0.6, 3.25, 2.5, 0.3)
+		top = 5.75
+	# Tejado empinado con alero: paja o tablillas de madera.
+	var roof := MeshInstance3D.new()
+	var pm := PrismMesh.new()
+	var rh := 2.8 if level <= 1 else 2.5
+	pm.size = Vector3(w + 1.0, rh, dp + (1.6 if level >= 2 else 1.0))
+	roof.mesh = pm
+	roof.material_override = _thatch if (variant % 3 != 2 and level <= 1) or (level >= 2 and variant % 2 == 0) else _shingle
+	roof.position = Vector3(0, top + rh / 2, 0.3 if level >= 2 else 0.0)
+	n.add_child(roof)
+	# Chimenea de piedra con humo.
+	var cx := w / 2 - 0.9 if variant % 2 == 0 else -w / 2 + 0.9
+	_bx(n, Vector3(0.7, rh + 1.0, 0.7), Vector3(cx, top + (rh + 1.0) / 2, -dp / 4), _stonewall)
+	var smoke := CPUParticles3D.new()
+	smoke.amount = 10
+	smoke.lifetime = 4.0
+	smoke.position = Vector3(cx, top + rh + 1.1, -dp / 4)
+	smoke.direction = Vector3(0.3, 1, 0)
+	smoke.spread = 25.0
+	smoke.gravity = Vector3(0.25, 0.35, 0)
+	smoke.initial_velocity_min = 0.4
+	smoke.initial_velocity_max = 0.7
+	smoke.scale_amount_min = 0.6
+	smoke.scale_amount_max = 1.6
+	var sq := QuadMesh.new()
+	sq.size = Vector2(0.9, 0.9)
+	var smat := StandardMaterial3D.new()
+	smat.albedo_color = Color(0.7, 0.7, 0.72, 0.13)
+	smat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	smat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	smat.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+	sq.material = smat
+	smoke.mesh = sq
+	n.add_child(smoke)
+	return n
+
+
 static func hut(parent: Node, pos: Vector3, rot: float, s := 1.0) -> Node3D:
-	if _plank == null:
-		# Tablones verticales con juntas oscuras y veta; paja en hileras con mechones.
-		var r := RandomNumberGenerator.new()
-		r.seed = 5
-		# Tablones fotográficos (Poly Haven, CC0), un poco más oscuros y gastados.
-		_plank = StandardMaterial3D.new()
-		_plank.albedo_texture = load("res://assets/tex/madera_color.jpg")
-		_plank.albedo_color = Color(0.85, 0.82, 0.78)
-		_plank.normal_enabled = true
-		_plank.normal_texture = load("res://assets/tex/madera_normal.png")
-		_plank.uv1_triplanar = true
-		_plank.uv1_scale = Vector3(0.45, 0.45, 0.45)
-		_plank.roughness = 0.9
-		var im2 := Image.create(128, 128, false, Image.FORMAT_RGB8)
-		for y in 128:
-			for x in 128:
-				var c := Color(0.62, 0.5, 0.27).darkened(0.25 * float((y + int(r.randf() * 3)) % 16) / 16.0 + r.randf() * 0.12)
-				im2.set_pixel(x, y, c)
-		_thatch = StandardMaterial3D.new()
-		_thatch.albedo_texture = ImageTexture.create_from_image(im2)
-		_thatch.uv1_scale = Vector3(3, 3, 1)
-		_thatch.roughness = 1.0
+	_mats()
 	var n := Node3D.new()
 	n.position = pos
 	n.rotation.y = rot
