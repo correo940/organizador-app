@@ -172,7 +172,7 @@ static func day() -> void:
 		var cap: int = [100, 400, 1200][mini(2, tier_of(pop) + 1)]
 		t["pop"] = mini(cap, pop + maxi(1 if randf() < 0.5 else 0, int(pop * 0.004)))
 		if t["owner"] == "jugador":
-			income += pop / 40.0 * governor_mult(int(t["id"]))
+			income += pop / 40.0 * governor_mult(int(t["id"])) * GS.ECON.tax_mult(t)
 		else:
 			t["gold"] = int(t["gold"]) + pop / 20
 			var target := int(pop * 0.08) + 4
@@ -546,6 +546,10 @@ static func _move_caravans() -> void:
 			reg["caravans"].erase(c)
 			continue
 		var to := Vector2(t["x"], t["z"]) - Vector2(c["x"], c["z"])
+		if c.get("mine", false):
+			if GS.ECON.caravan_day(c, t, to.length() <= DAY_DIST * 0.7):
+				reg["caravans"].erase(c)
+				continue
 		if to.length() <= DAY_DIST * 0.7:
 			t["gold"] = int(t.get("gold", 0)) + 25
 			reg["caravans"].erase(c)

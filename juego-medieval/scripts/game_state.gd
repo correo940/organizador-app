@@ -9,6 +9,7 @@ const REGION := preload("res://scripts/region_sim.gd")
 const EVENTS := preload("res://scripts/events.gd")
 const QUESTS := preload("res://scripts/quests.gd")
 const SOCIAL := preload("res://scripts/social.gd")
+const ECON := preload("res://scripts/economy.gd")
 
 const SAVE_PATH := "user://partida.json"
 const SECONDS_PER_DAY := 40.0
@@ -260,6 +261,7 @@ func next_season() -> void:
 		say("Tus hijos con oficio aportan %d de oro a la casa." % crafts)
 	SIM.season()
 	REGION.season()
+	ECON.season()
 	if data.get("game_over", false):
 		return
 	say("Comienza %s del año %d." % [["la primavera", "el verano", "el otoño", "el invierno"][int(data["season"])], int(data["year"])])

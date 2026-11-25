@@ -262,13 +262,14 @@ func _town_panel(id: int) -> void:
 			["Entrar en %s" % t["name"], func():
 				GS.save_game()
 				main.start_village()],
+			["Enviar una caravana comercial", func(): GS.ECON.caravan_panel(self, id)],
 			["Cerrar", _close_panel]])
 		return
 	var tier := R.tier_of(int(t["pop"]))
 	var walls: String = ["sin defensas", "empalizada", "murallas de piedra"][int(t["wall"])]
 	if t["owner"] == "jugador":
 		var gov := R.governor_of(id)
-		var text := "%s tuya · %d habitantes · %s · guarnición de %d soldados.\nTe rinde unos %.1f de oro al día.\n%s" % [R.tier_name(tier), int(t["pop"]), walls, int(t["garrison"]), int(t["pop"]) / 40.0 * R.governor_mult(id), ("Lo gobierna %s, de tu familia (+%d%% de rentas)." % [gov, int(round((R.governor_mult(id) - 1.0) * 100))]) if gov != "" else "Sin gobernador: nombra a un hijo adulto desde tu casa (Ver familia) y rentará un 50% más."]
+		var text := "%s tuya · %d habitantes · %s · guarnición de %d soldados.\nTe rinde unos %.1f de oro al día.\n%s" % [R.tier_name(tier), int(t["pop"]), walls, int(t["garrison"]), int(t["pop"]) / 40.0 * R.governor_mult(id) * GS.ECON.tax_mult(t), ("Lo gobierna %s, de tu familia (+%d%% de rentas)." % [gov, int(round((R.governor_mult(id) - 1.0) * 100))]) if gov != "" else "Sin gobernador: nombra a un hijo adulto desde tu casa (Ver familia) y rentará un 50% más."] + GS.ECON.town_text(t)
 		_open_panel(t["name"], text, [
 			["Levantar empalizada (40 madera)", func():
 				GS.pay({"madera": 40})
@@ -296,6 +297,7 @@ func _town_panel(id: int) -> void:
 				_town_panel(id), int(t["garrison"]) > 0],
 			["Mercado de %s" % t["name"], func(): COURT.market(self, id)],
 			["Pasear por %s" % t["name"], func(): _visit(id)],
+		] + GS.ECON.town_options(self, t, func(): _town_panel(id)) + [
 			["Enviar %d colonos de tu pueblo" % R.SETTLERS, func():
 				d["commons"] = int(d["commons"]) - R.SETTLERS
 				t["pop"] = int(t["pop"]) + R.SETTLERS
@@ -400,7 +402,9 @@ func _rebuild_moving() -> void:
 			rot = atan2(float(tgt["x"]) - p.x, float(tgt["z"]) - p.z)
 		M.put(moving_node, "village/Cart.glb", p, rot, 2.2)
 		M.put(moving_node, "animals/Horse.glb", p + Vector3(sin(rot), 0, cos(rot)) * 3.0, rot, 0.5)
-		var l := _map_label("Caravana", 16)
+		var l := _map_label(("Tu caravana" + (" (escoltada)" if int(cv.get("escort", 0)) > 0 else "")) if cv.get("mine", false) else "Caravana", 18 if cv.get("mine", false) else 16)
+		if cv.get("mine", false):
+			l.modulate = Color(0.7, 0.85, 1.0)
 		l.position = p + Vector3(0, 5, 0)
 		moving_node.add_child(l)
 
