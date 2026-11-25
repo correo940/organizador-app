@@ -1358,11 +1358,11 @@ func _end_siege(victory: bool, losses: int) -> void:
 			d["gold"] = int(d["gold"]) + loot
 			d["prestige"] += 30 + kills
 			d["player"]["health"] = clampf(pl["hp"], 10.0, 100.0)
-			result_label.text = "¡VICTORIA!\n\nHas expulsado %s de tus tierras.\nBotín: +%d oro · Prestigio: +%d" % [enemy_name, loot, 30 + kills]
-			GS.chronicle("%s expulsa %s." % [d["player"]["name"], enemy_name])
+			result_label.text = "¡VICTORIA!\n\nHas expulsado de tus tierras al ejército del %s.\nBotín: +%d oro · Prestigio: +%d" % [siege["kingdom"], loot, 30 + kills]
+			GS.chronicle("%s expulsa de sus tierras al ejército del %s." % [d["player"]["name"], siege["kingdom"]])
 		else:
 			d["player"]["health"] = 15.0
-			result_label.text = "DERROTA\n\nNo has podido frenar %s." % enemy_name
+			result_label.text = "DERROTA\n\nNo has podido frenar al ejército del %s." % siege["kingdom"]
 			GS.WORLD.invasion_lost(String(siege["kingdom"]))
 		GS.next_day()
 		GS.save_game()

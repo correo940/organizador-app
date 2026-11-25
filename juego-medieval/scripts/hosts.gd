@@ -165,9 +165,10 @@ static func dungeon_panel(v) -> void:
 			for i in R.region()["lords"].size():
 				N.add_rel(-1, i, -10)
 			prisoners().erase(p)
-			l["age"] = 200
-			GS.chronicle("%s manda ejecutar a %s." % [d["player"]["name"], N.full(l)])
-			GS.say("Ejecutas a %s. Toda la nobleza te mira con espanto. (-40 prestigio)" % N.full(l))
+			var dead_name := N.full(l)
+			GS.chronicle("%s manda ejecutar a %s." % [d["player"]["name"], dead_name])
+			N._succession(li)
+			GS.say("Ejecutas a %s. Toda la nobleza te mira con espanto. (-40 prestigio) Le sucede %s." % [dead_name, N.full(N.lord(li))])
 			dungeon_panel(v)])
 	if prisoners().is_empty():
 		lines.append("No tienes prisioneros.")
