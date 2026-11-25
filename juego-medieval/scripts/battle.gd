@@ -368,6 +368,7 @@ func _ready() -> void:
 	add_child(cam)
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 	_build_hud()
+	M.grass(self, Vector3.ZERO, HALF + 20, 50000, func(q: Vector2): return river_z == INF or absf(q.y - river_z) > 4.5)
 	SFX.music("batalla")
 	_set_order(1)
 	if not siege_notes.is_empty():

@@ -190,8 +190,18 @@ static func make_env(parent: Node, center: Vector3, size: float) -> Dictionary:
 		sun.directional_shadow_max_distance = 120
 		sun.shadow_blur = 1.5
 		sun.light_volumetric_fog_energy = 1.2
-	sun.directional_shadow_max_distance = 60
+	else:
+		sun.directional_shadow_max_distance = 60
 	parent.add_child(sun)
+	# Nubes que pasan con el viento (una capa alta, sin niebla).
+	var cl := MeshInstance3D.new()
+	var cp := PlaneMesh.new()
+	cp.size = Vector2(maxf(size * 3.0, 1600.0), maxf(size * 3.0, 1600.0))
+	cl.mesh = cp
+	cl.position = Vector3(center.x, maxf(110.0, size * 0.5), center.z)
+	cl.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	cl.material_override = cloud_material()
+	parent.add_child(cl)
 	var g := MeshInstance3D.new()
 	var pm := PlaneMesh.new()
 	pm.size = Vector2(size, size)
@@ -224,6 +234,109 @@ static func set_season_ground(grad: Gradient, season: int) -> void:
 	][season]
 	grad.set_color(0, cols[0])
 	grad.set_color(1, cols[1])
+	var gm := grass_material()
+	gm.set_shader_parameter("base", cols[0].darkened(0.08))
+	gm.set_shader_parameter("tip", cols[1].lightened(0.1))
+	gm.set_shader_parameter("hide", 1.0 if season == 3 else 0.0)
+
+
+## Nubes procedurales: ruido que se desplaza; 'light' se ajusta con la hora del día.
+static var _cloud: ShaderMaterial
+static func cloud_material() -> ShaderMaterial:
+	if _cloud == null:
+		var sh := Shader.new()
+		sh.code = """shader_type spatial;
+render_mode unshaded, cull_disabled, fog_disabled, depth_draw_never, shadows_disabled;
+uniform float light = 1.0;
+float h(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+float n(vec2 p) {
+	vec2 i = floor(p); vec2 f = fract(p); f = f * f * (3.0 - 2.0 * f);
+	return mix(mix(h(i), h(i + vec2(1, 0)), f.x), mix(h(i + vec2(0, 1)), h(i + vec2(1, 1)), f.x), f.y);
+}
+float fbm(vec2 p) { float v = 0.0; float a = 0.5; for (int k = 0; k < 5; k++) { v += a * n(p); p *= 2.03; a *= 0.5; } return v; }
+void fragment() {
+	vec2 p = UV * 9.0 + vec2(TIME * 0.012, TIME * 0.005);
+	float c = smoothstep(0.38, 0.68, fbm(p));
+	float edge = 1.0 - smoothstep(0.3, 0.5, length(UV - 0.5));
+	ALBEDO = mix(vec3(0.72, 0.74, 0.8), vec3(1.0), fbm(p * 1.7 + 3.0)) * light;
+	ALPHA = c * edge * 0.85;
+}"""
+		_cloud = ShaderMaterial.new()
+		_cloud.shader = sh
+	return _cloud
+
+
+## Hierba con viento: briznas instanciadas (MultiMesh) que se mecen. 'keep' decide dónde crece.
+static var _grass: ShaderMaterial
+static func grass_material() -> ShaderMaterial:
+	if _grass == null:
+		var sh := Shader.new()
+		sh.code = """shader_type spatial;
+render_mode cull_disabled, shadows_disabled;
+uniform vec4 base : source_color = vec4(0.16, 0.25, 0.09, 1.0);
+uniform vec4 tip : source_color = vec4(0.45, 0.52, 0.25, 1.0);
+uniform float hide = 0.0;
+varying float hgt;
+void vertex() {
+	hgt = 1.0 - UV.y;
+	vec3 wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+	float w = sin(wp.x * 0.35 + TIME * 1.7) * 0.6 + sin(wp.z * 0.5 + TIME * 2.3) * 0.4;
+	VERTEX.x += w * 0.14 * hgt * hgt;
+	VERTEX.z += w * 0.07 * hgt * hgt;
+	VERTEX *= 1.0 - hide;
+}
+void fragment() {
+	ALBEDO = mix(base.rgb, tip.rgb, hgt);
+	NORMAL = normalize((VIEW_MATRIX * vec4(0.0, 1.0, 0.0, 0.0)).xyz);
+	ROUGHNESS = 0.9;
+	BACKLIGHT = vec3(0.25, 0.3, 0.1) * hgt;
+}"""
+		_grass = ShaderMaterial.new()
+		_grass.shader = sh
+	return _grass
+
+
+static func grass(parent: Node, center: Vector3, half: float, count: int, keep: Callable) -> void:
+	if SFX.settings.get("low", false):
+		return
+	if not hq():
+		count /= 3
+	# Brizna: dos planos cruzados, más estrechos arriba.
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for a in [0.0, PI / 2.0]:
+		var dx := Vector3(cos(a), 0, sin(a)) * 0.05
+		var top := Vector3(0, 0.34, 0)
+		var v := [-dx, dx, dx * 0.3 + top, -dx * 0.3 + top]
+		var uv := [Vector2(0, 1), Vector2(1, 1), Vector2(1, 0), Vector2(0, 0)]
+		for i in [0, 1, 2, 0, 2, 3]:
+			st.set_normal(Vector3.UP)
+			st.set_uv(uv[i])
+			st.add_vertex(v[i])
+	var mm := MultiMesh.new()
+	mm.transform_format = MultiMesh.TRANSFORM_3D
+	mm.mesh = st.commit()
+	var xs: Array[Transform3D] = []
+	var r := RandomNumberGenerator.new()
+	r.seed = 77
+	var noise := FastNoiseLite.new()
+	noise.frequency = 0.05
+	for k in count * 2:
+		if xs.size() >= count:
+			break
+		var p := Vector3(center.x + r.randf_range(-half, half), 0, center.z + r.randf_range(-half, half))
+		if noise.get_noise_2d(p.x, p.z) < -0.15 or not keep.call(Vector2(p.x, p.z)):
+			continue
+		var s := r.randf_range(0.6, 1.4)
+		xs.append(Transform3D(Basis(Vector3.UP, r.randf() * TAU).scaled(Vector3(s, s * r.randf_range(0.7, 1.3), s)), p))
+	mm.instance_count = xs.size()
+	for i in xs.size():
+		mm.set_instance_transform(i, xs[i])
+	var mi := MultiMeshInstance3D.new()
+	mi.multimesh = mm
+	mi.material_override = grass_material()
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	parent.add_child(mi)
 
 
 ## ¿Se pueden usar los efectos avanzados? (Forward+ y sin modo rendimiento)
@@ -305,6 +418,7 @@ static func moonlight(env: Dictionary, k: float) -> void:
 		sm.ground_bottom_color = Color(0.1, 0.12, 0.18)
 		e.fog_light_color = moon_hor
 		sun.light_color = Color(0.65, 0.75, 1.0)
+		cloud_material().set_shader_parameter("light", 0.25)
 
 
 ## Ciclo de día: t en 0..1 (0.5 = mediodía).
@@ -321,6 +435,7 @@ static func set_daytime(env: Dictionary, t: float) -> void:
 	sm.sky_top_color = Color(0.03, 0.05, 0.12).lerp(Color(0.32, 0.45, 0.68), day)
 	sm.sky_horizon_color = Color(0.08, 0.1, 0.18).lerp(Color(0.75, 0.72, 0.66), day)
 	e.fog_light_color = Color(0.08, 0.1, 0.16).lerp(Color(0.62, 0.66, 0.7), day)
+	cloud_material().set_shader_parameter("light", lerpf(0.12, 1.0, day))
 
 
 static func road(parent: Node, a: Vector3, b: Vector3, w: float, col: Color) -> MeshInstance3D:

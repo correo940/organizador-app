@@ -103,6 +103,12 @@ func _ready() -> void:
 	inc.v = self
 	add_child(inc)
 	obstacles.append_array(town.obstacles)
+	var keep := func(q: Vector2) -> bool:
+		var p3 := Vector3(q.x, 0, q.y)
+		return p3.distance_to(PLAZA) > 12.0 and p3.distance_to(WILD.CAMP) > 6.0 and p3.distance_to(BLD.MINE) > 6.0 \
+			and BLD.SLOTS.all(func(sl): return p3.distance_to(sl) > 6.0) and SIM.LANDS.all(func(l): return q.distance_to(l) > 8.0) \
+			and TOWN.clear_rects(built_tier).all(func(rc): return not rc.has_point(q)) and obstacles.all(func(o): return q.distance_to(o[0]) > float(o[1]) + 1.0)
+	M.grass(self, Vector3(60, 0, 40), 75, 60000, keep)
 	_build_hud()
 	_reset_villagers()
 	cam = CAM.new()
