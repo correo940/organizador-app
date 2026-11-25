@@ -86,7 +86,7 @@ func _build_static() -> void:
 	sc.bottom_radius = POND_R + 1.2
 	sc.height = 0.04
 	shore.mesh = sc
-	shore.material_override = M.flat(Color(0.42, 0.38, 0.27))
+	shore.material_override = M.dirt(Color(0.42, 0.38, 0.27))
 	shore.position = POND + Vector3(0, 0.02, 0)
 	add_child(shore)
 	var water := MeshInstance3D.new()

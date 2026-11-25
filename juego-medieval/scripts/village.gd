@@ -131,7 +131,7 @@ func _build_static() -> void:
 	cm.bottom_radius = 10
 	cm.height = 0.05
 	plaza.mesh = cm
-	plaza.material_override = M.flat(dirt)
+	plaza.material_override = M.dirt(dirt)
 	plaza.position = PLAZA + Vector3(0, 0.01, 0)
 	add_child(plaza)
 	for t in [HALL, CAMP, Vector3(95, 0, 24), Vector3(30, 0, 26), Vector3(28, 0, 60), PLOT, Vector3(60, 0, 80), Vector3(38, 0, 50), Vector3(82, 0, 52), Vector3(83, 0, 28), Vector3(45, 0, 16.5), Vector3(76, 0, 15), Vector3(49, 0, 59), Vector3(69, 0, 59)]:

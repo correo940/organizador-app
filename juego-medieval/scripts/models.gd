@@ -133,6 +133,7 @@ static func _aabb(n: Node, xf: Transform3D, acc: Array) -> void:
 
 ## Crea cielo, sol y suelo. Devuelve referencias para animar el día y las estaciones.
 static func make_env(parent: Node, center: Vector3, size: float) -> Dictionary:
+	roads.clear()
 	var we := WorldEnvironment.new()
 	var e := Environment.new()
 	var sky := Sky.new()
@@ -220,6 +221,13 @@ static func make_env(parent: Node, center: Vector3, size: float) -> Dictionary:
 	mat.albedo_texture = nt
 	mat.uv1_scale = Vector3(size / 6.0, size / 6.0, 1)
 	mat.roughness = 1.0
+	# Detalle fotográfico (tierra de Poly Haven, CC0): piedrecillas y relieve bajo la hierba.
+	mat.detail_enabled = true
+	mat.detail_albedo = load("res://assets/tex/tierra_detalle.jpg")
+	mat.detail_blend_mode = BaseMaterial3D.BLEND_MODE_MUL
+	mat.normal_enabled = true
+	mat.normal_texture = load("res://assets/tex/tierra_normal.png")
+	mat.normal_scale = 0.8
 	g.material_override = mat
 	parent.add_child(g)
 	return {"env": e, "sun": sun, "sky": sm, "grad": grad}
@@ -296,6 +304,13 @@ void fragment() {
 	return _grass
 
 
+static func _on_road(q: Vector2) -> bool:
+	for rd in roads:
+		if Geometry2D.get_closest_point_to_segment(q, rd[0], rd[1]).distance_to(q) < rd[2]:
+			return true
+	return false
+
+
 static func grass(parent: Node, center: Vector3, half: float, count: int, keep: Callable) -> void:
 	if SFX.settings.get("low", false):
 		return
@@ -325,7 +340,7 @@ static func grass(parent: Node, center: Vector3, half: float, count: int, keep: 
 		if xs.size() >= count:
 			break
 		var p := Vector3(center.x + r.randf_range(-half, half), 0, center.z + r.randf_range(-half, half))
-		if noise.get_noise_2d(p.x, p.z) < -0.15 or not keep.call(Vector2(p.x, p.z)):
+		if noise.get_noise_2d(p.x, p.z) < -0.15 or not keep.call(Vector2(p.x, p.z)) or _on_road(Vector2(p.x, p.z)):
 			continue
 		var s := r.randf_range(0.6, 1.4)
 		xs.append(Transform3D(Basis(Vector3.UP, r.randf() * TAU).scaled(Vector3(s, s * r.randf_range(0.7, 1.3), s)), p))
@@ -438,12 +453,31 @@ static func set_daytime(env: Dictionary, t: float) -> void:
 	cloud_material().set_shader_parameter("light", lerpf(0.12, 1.0, day))
 
 
+## Tierra fotográfica teñida con el color pedido (caminos, plazas, eras).
+static var _dirt := {}
+static func dirt(col: Color) -> StandardMaterial3D:
+	if not _dirt.has(col):
+		var m := StandardMaterial3D.new()
+		m.albedo_texture = load("res://assets/tex/tierra_color.jpg")
+		m.albedo_color = Color(col.r / 0.416, col.g / 0.351, col.b / 0.265)
+		m.normal_enabled = true
+		m.normal_texture = load("res://assets/tex/tierra_normal.png")
+		m.roughness = 1.0
+		m.uv1_triplanar = true
+		m.uv1_world_triplanar = true
+		m.uv1_scale = Vector3(0.25, 0.25, 0.25)
+		_dirt[col] = m
+	return _dirt[col]
+
+
+static var roads: Array = []  # tramos de camino de la escena: [a, b, radio] (la hierba no crece encima)
 static func road(parent: Node, a: Vector3, b: Vector3, w: float, col: Color) -> MeshInstance3D:
+	roads.append([Vector2(a.x, a.z), Vector2(b.x, b.z), w * 0.5 + 0.4])
 	var m := MeshInstance3D.new()
 	var bm := BoxMesh.new()
 	bm.size = Vector3(w, 0.04, a.distance_to(b) + w)
 	m.mesh = bm
-	m.material_override = flat(col)
+	m.material_override = dirt(col)
 	parent.add_child(m)
 	m.look_at_from_position((a + b) / 2 + Vector3(0, 0.02, 0), b + Vector3(0, 0.02, 0), Vector3.UP)
 	return m
