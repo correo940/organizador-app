@@ -18,6 +18,7 @@ const HOSTS := preload("res://scripts/hosts.gd")
 const FOLK := preload("res://scripts/folk.gd")
 const TL := preload("res://scripts/townlife.gd")
 const FEST := preload("res://scripts/festivals.gd")
+const INC := preload("res://scripts/incidents.gd")
 
 const SAVE_PATH := "user://partida.json"
 const SECONDS_PER_DAY := 40.0
@@ -244,6 +245,7 @@ func next_day() -> void:
 	FOLK.day()
 	TL.day()
 	FEST.day()
+	INC.day()
 	SOCIAL.day()
 	QUESTS.check()
 	if data["spouse"] != null and data["children"].size() < 6 and p["age"] >= 16 and p["age"] < 48 and data["spouse"]["age"] < 46 and randf() < 0.06:

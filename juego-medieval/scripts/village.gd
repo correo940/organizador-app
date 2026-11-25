@@ -47,6 +47,7 @@ var lands_sig := ""
 var house_land := -2
 var town
 var wild
+var inc
 var built_tier := 0
 var bnd: Rect2
 var family: Array = []
@@ -98,6 +99,9 @@ func _ready() -> void:
 	wild = WILD.new()
 	wild.v = self
 	add_child(wild)
+	inc = GS.INC.new()
+	inc.v = self
+	add_child(inc)
 	obstacles.append_array(town.obstacles)
 	_build_hud()
 	_reset_villagers()
@@ -875,6 +879,9 @@ func _walk_to(a, target: Vector3, spd: float, delta: float) -> void:
 func _find_interaction() -> Dictionary:
 	var d = GS.data
 	var pp: Vector3 = player.position
+	var ii: Dictionary = inc.find_interaction(pp)
+	if not ii.is_empty():
+		return ii
 	var wi: Dictionary = wild.find_interaction(pp)
 	if not wi.is_empty():
 		return wi
@@ -985,6 +992,8 @@ func _interact() -> void:
 			_land_panel(inter["i"])
 		"barracks":
 			town.barracks_panel()
+		"inc_bucket", "inc_douse", "inc_thief", "inc_pig", "inc_fox":
+			inc.interact(inter)
 		"feast":
 			GS.FEST.join(self)
 		"ceremony":
@@ -1235,7 +1244,7 @@ func _hall_panel() -> void:
 				vv["gold"] -= t
 				vv["mood"] = maxi(0, int(vv["mood"]) - 5)
 				d["gold"] += t
-			d["gold"] += int(d["commons"]) / 4
+			d["gold"] += int(int(d["commons"]) / 4 * (0.7 if int(d.get("low_tax", 0)) == int(d["year"]) else 1.0))
 			d["taxed"] = GS.season_index()
 			GS.say("Cobras los impuestos del pueblo.")
 			_hall_panel(), can_tax])
@@ -1244,6 +1253,14 @@ func _hall_panel() -> void:
 	if int(d["title"]) >= 1:
 		opts.append(["Consejo de la corte", func(): GS.POL.council_panel(self)])
 		opts.append(["Obras públicas", func(): GS.TL.works_panel(self)])
+		if d.get("bailiff", false):
+			opts.append(["Despedir al alguacil", func():
+				d["bailiff"] = false
+				_hall_panel()])
+		else:
+			opts.append(["Contratar un alguacil (3 oro/día): ronda de noche y caza ladrones", func():
+				d["bailiff"] = true
+				_hall_panel()])
 		opts.append(["Gremios", func():
 			var go: Array = GS.TL.guild_options(self)
 			go.append(["Cerrar", _close_panel])

@@ -22,7 +22,7 @@ static func day() -> void:
 	if s in [2, 3]:
 		pool.append_array(["fiebre", "fiebre"])
 	if int(d["title"]) == 1:
-		pool.append_array(["pleito", "pleito", "ladron"])
+		pool.append_array(["pleito", "pleito", "ladron", "peticion", "peticion"])
 	else:
 		pool.append("robo")
 	d["last_event"] = int(d["total_days"])
@@ -31,7 +31,8 @@ static func day() -> void:
 
 static func trigger(id: String) -> void:
 	match id:
-		"fuego": _fire()
+		"fuego": GS.INC.start_fire()
+		"peticion": _petition()
 		"peregrinos": _pilgrims()
 		"ratas": _rats()
 		"mercader": _merchant()
@@ -348,4 +349,34 @@ static func _robbed() -> void:
 		["Poner una buena cerradura (5 oro)", func():
 			d["gold"] = maxi(0, int(d["gold"]) - 5)
 			GS.say("Con la cerradura nueva duermes más tranquilo.")],
+	])
+
+
+## Los vecinos presentan una petición al concejo; aceptarla cuesta, rechazarla los disgusta.
+static func _petition() -> void:
+	var d = GS.data
+	var who: String = d["villagers"].pick_random()["name"] if not d["villagers"].is_empty() else "Los vecinos"
+	var asks := [
+		["un pozo nuevo en el barrio de abajo", 30, "Se cava el pozo nuevo. El agua ya no queda tan lejos.", 10],
+		["que se bajen los impuestos este año", 0, "Prometes cobrar menos. Los vecinos respiran aliviados.", 15],
+		["arreglar el camino del molino", 20, "Se arregla el camino: los carros ya no se atascan.", 8],
+		["más vigilancia de noche", 25, "Se pagan rondas nocturnas durante un tiempo.", 8],
+		["que el señor pague la fiesta del barrio", 25, "La fiesta del barrio sale estupenda gracias a ti.", 12],
+	]
+	var a: Array = asks.pick_random()
+	_popup("Petición al concejo", "%s, en nombre de varios vecinos, pide %s%s." % [who, a[0], (" (cuesta %d de oro)" % a[1]) if int(a[1]) > 0 else ""], [
+		["Aceptar", func():
+			if int(d["gold"]) < int(a[1]):
+				GS.say("No hay oro en el arca para atender la petición.")
+				_mood_all(-4)
+				return
+			d["gold"] = int(d["gold"]) - int(a[1])
+			if int(a[1]) == 0:
+				d["low_tax"] = int(d["year"])
+			_mood_all(int(a[3]))
+			d["prestige"] += 3
+			GS.say(String(a[2]) + " (+3 prestigio)")],
+		["Rechazar", func():
+			_mood_all(-6)
+			GS.say("Rechazas la petición. Se oyen murmullos en la plaza.")],
 	])
