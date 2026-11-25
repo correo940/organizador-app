@@ -4,7 +4,7 @@ extends Node3D
 
 const M := preload("res://scripts/models.gd")
 const ACTOR := preload("res://scripts/actor.gd")
-const CORRAL := Vector3(43.5, 0, 23.5)
+const CORRAL := Vector3(36, 0, 16)
 const EDGE := Vector3(118, 0, 40)
 
 var v

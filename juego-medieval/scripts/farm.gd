@@ -3,12 +3,12 @@ extends Node3D
 
 const M := preload("res://scripts/models.gd")
 
-const CORRAL := Vector3(43.5, 0, 23.5)
+const CORRAL := Vector3(36, 0, 16)
 const CORRAL_HALF := Vector2(4.5, 3.0)
 const POND := Vector3(98, 0, 62)
 const POND_R := 7.0
-const MILL := Vector3(87, 0, 44)
-const OVEN := Vector3(66, 0, 29)
+const MILL := Vector3(98, 0, 46)
+const OVEN := Vector3(83, 0, 34)
 const COMMONS := Rect2(86.5, 48.5, 8, 5)
 const CROP_SCALE := {"Wheat": 1.4, "Carrot": 0.5, "Beet": 0.5, "Lettuce": 0.5, "Pumpkin": 0.55}
 const ANIMAL_MODEL := {
@@ -45,11 +45,11 @@ func _ready() -> void:
 		field_nodes.append(null)
 		field_sigs.append("")
 	for i in 8:
-		apples.append({"id": "manzano%d" % i, "p": Vector3(41 + (i % 4) * 3.2, 0, 64 + (i / 4) * 4.0)})
+		apples.append({"id": "manzano%d" % i, "p": Vector3(31 + (i % 4) * 3.4, 0, 61 + (i / 4) * 4.0)})
 	for i in 10:
-		berries.append({"id": "bayas%d" % i, "p": Vector3(r.randf_range(33, 36.5), 0, 8 + i * 3.8)})
+		berries.append({"id": "bayas%d" % i, "p": Vector3(14 + i * 4.0, 0, r.randf_range(7.5, 9.5))})
 	for i in 14:
-		mushrooms.append({"id": "setas%d" % i, "p": Vector3(r.randf_range(5, 30), 0, r.randf_range(5, 44)), "k": 1 + i % 3})
+		mushrooms.append({"id": "setas%d" % i, "p": Vector3(r.randf_range(5, 28), 0, r.randf_range(5, 24)), "k": 1 + i % 3})
 	for a in apples:
 		obstacles.append([Vector2(a["p"].x, a["p"].z), 0.7])
 	obstacles.append([Vector2(POND.x, POND.z), POND_R + 0.3])

@@ -4,8 +4,113 @@ extends Node3D
 const M := preload("res://scripts/models.gd")
 
 const PLAZA := Vector3(60, 0, 40)
-const SLOTS := [Vector3(42, 0, 40), Vector3(40, 0, 60), Vector3(40, 0, 7), Vector3(54, 0, 7), Vector3(66, 0, 7), Vector3(84, 0, 7), Vector3(66, 0, 72), Vector3(78, 0, 72)]
-const MINE := Vector3(22, 0, 50)
+## Solares para talleres: a ambos lados de la calle sur y al este de la plaza, mirando a la calle.
+const SLOTS := [Vector3(51.5, 0, 55.5), Vector3(68.5, 0, 55.5), Vector3(51.5, 0, 65.5), Vector3(68.5, 0, 65.5), Vector3(51.5, 0, 75.5), Vector3(68.5, 0, 75.5), Vector3(78, 0, 31), Vector3(78, 0, 49)]
+const MINE := Vector3(16, 0, 63)
+## Calles del pueblo (tramos rectos [a, b, ancho]); los vecinos caminan por ellas.
+const STREETS := [
+	[Vector2(19, 40), Vector2(60, 40), 5.0],    # calle mayor (oeste)
+	[Vector2(60, 40), Vector2(86, 40), 5.0],    # calle mayor (este)
+	[Vector2(86, 40), Vector2(106, 40), 3.5],   # camino del campamento
+	[Vector2(60, 40), Vector2(60, 22.5), 5.0],  # calle del concejo
+	[Vector2(60, 40), Vector2(60, 82), 5.0],    # calle sur
+	[Vector2(8, 82), Vector2(60, 82), 3.5],     # camino del barrio nuevo
+	[Vector2(60, 82), Vector2(112, 82), 3.5],
+	[Vector2(86, 40), Vector2(86, 12), 3.0],    # camino de los campos
+]
+
+
+## Punto más cercano de la red de calles y el tramo al que pertenece.
+static func street_proj(p: Vector3) -> Array:
+	var q := Vector2(p.x, p.z)
+	var best := Vector2.ZERO
+	var bi := 0
+	var bd := INF
+	for i in STREETS.size():
+		var c := Geometry2D.get_closest_point_to_segment(q, STREETS[i][0], STREETS[i][1])
+		var dd := c.distance_to(q)
+		if dd < bd:
+			bd = dd
+			best = c
+			bi = i
+	return [bi, Vector3(best.x, 0, best.y), bd]
+
+
+## Orientación para que un edificio en 'p' mire a la calle más cercana.
+static func face_street(p: Vector3) -> float:
+	var c: Vector3 = street_proj(p)[1]
+	return atan2(c.x - p.x, c.z - p.z)
+
+
+## Delante de la puerta: a 'dist' metros del centro del edificio, hacia la calle.
+static func front(p: Vector3, dist: float) -> Vector3:
+	var a := face_street(p)
+	return p + Vector3(sin(a), 0, cos(a)) * dist
+
+
+static func on_street(q: Vector2, margin: float) -> bool:
+	for st in STREETS:
+		if Geometry2D.get_closest_point_to_segment(q, st[0], st[1]).distance_to(q) < st[2] * 0.5 + margin:
+			return true
+	return false
+
+
+## Camino por las calles de 'a' a 'b': puntos a seguir (Dijkstra sobre los extremos de los tramos).
+static func route(a: Vector3, b: Vector3) -> Array:
+	var pa: Array = street_proj(a)
+	var pb: Array = street_proj(b)
+	if a.distance_to(b) < 10.0 or (float(pa[2]) > 25.0 and float(pb[2]) > 25.0):
+		return [b]
+	if pa[0] == pb[0]:
+		return [pa[1], pb[1], b]
+	var nodes := []
+	for st in STREETS:
+		for e in [st[0], st[1]]:
+			if not nodes.any(func(n): return n.distance_to(e) < 0.5):
+				nodes.append(e)
+	var idx := func(e: Vector2) -> int:
+		for k in nodes.size():
+			if nodes[k].distance_to(e) < 0.5:
+				return k
+		return -1
+	var dist := []
+	var prev := []
+	for k in nodes.size():
+		dist.append(INF)
+		prev.append(-1)
+	var sa: Array = STREETS[pa[0]]
+	var qa := Vector2(pa[1].x, pa[1].z)
+	dist[idx.call(sa[0])] = qa.distance_to(sa[0])
+	dist[idx.call(sa[1])] = qa.distance_to(sa[1])
+	var done := {}
+	while true:
+		var u := -1
+		for k in nodes.size():
+			if not done.has(k) and dist[k] < INF and (u < 0 or dist[k] < dist[u]):
+				u = k
+		if u < 0:
+			break
+		done[u] = true
+		for st in STREETS:
+			var o := -1
+			if st[0].distance_to(nodes[u]) < 0.5:
+				o = idx.call(st[1])
+			elif st[1].distance_to(nodes[u]) < 0.5:
+				o = idx.call(st[0])
+			if o >= 0 and dist[u] + nodes[u].distance_to(nodes[o]) < dist[o]:
+				dist[o] = dist[u] + nodes[u].distance_to(nodes[o])
+				prev[o] = u
+	var sb: Array = STREETS[pb[0]]
+	var qb := Vector2(pb[1].x, pb[1].z)
+	var e0: int = idx.call(sb[0])
+	var e1: int = idx.call(sb[1])
+	var end := e0 if dist[e0] + qb.distance_to(sb[0]) < dist[e1] + qb.distance_to(sb[1]) else e1
+	var chain := []
+	var k := end
+	while k >= 0:
+		chain.push_front(Vector3(nodes[k].x, 0, nodes[k].y))
+		k = prev[k]
+	return [pa[1]] + chain + [pb[1], b]
 ## Modelo principal y adornos de cada edificio: [ruta, tamaño o escala, posición local].
 const LOOK := {
 	"herreria": [["village/Blacksmith.glb", 1.7]],
@@ -14,14 +119,14 @@ const LOOK := {
 	"queseria": [["village/House_2.glb", 1.5], ["village/Barrel.glb", 1.4, Vector3(3, 0, 2.6)], ["village/Barrel.glb", 1.4, Vector3(3.7, 0, 3.3)]],
 	"cerveceria": [["village/Inn.glb", 1.4], ["village/Barrel.glb", 1.5, Vector3(4, 0, 3.2)], ["village/Barrel.glb", 1.5, Vector3(4.7, 0, 2.4)]],
 	"establo": [["village/Stable.glb", 1.8], ["village/Hay.glb", 1.4, Vector3(-3.5, 0, 2.5)]],
-	"granero": [["rts/Storage_FirstAge_Level2.glb", -8.0]],
-	"capilla": [["rts/Temple_FirstAge_Level2.glb", -10.0]],
+	"granero": [["rts/Storage_FirstAge_Level2.glb", -7.0]],
+	"capilla": [["rts/Temple_FirstAge_Level2.glb", -9.0]],
 	"molino": [["village/Mill.glb", 1.6]],
 	"cantera": [["nature/Rock_3.glb", 4.0], ["nature/Rock_5.glb", 3.0, Vector3(3.5, 0, 1.5)], ["village/Crate.glb", 1.4, Vector3(-3, 0, 2.6)]],
 	"escuela": [["village/House_2.glb", 1.5], ["village/Bench_1.glb", 1.4, Vector3(3, 0, 2.8)], ["village/Bench_1.glb", 1.4, Vector3(-3, 0, 2.8)]],
 	"hospital": [["village/House_4.glb", 1.6], ["village/Cauldron.glb", 1.4, Vector3(3.2, 0, 2.6)], ["village/Bench_1.glb", 1.4, Vector3(-3, 0, 2.8)]],
-	"universidad": [["rts/Temple_FirstAge_Level3.glb", -10.0]],
-	"puerto": [["rts/Market_FirstAge_Level2.glb", -9.0], ["village/Barrel.glb", 1.4, Vector3(4, 0, 3)], ["village/Crate.glb", 1.4, Vector3(-4, 0, 3)]],
+	"universidad": [["rts/Temple_FirstAge_Level3.glb", -9.0]],
+	"puerto": [["rts/Market_FirstAge_Level2.glb", -8.5], ["village/Barrel.glb", 1.4, Vector3(4, 0, 3)], ["village/Crate.glb", 1.4, Vector3(-4, 0, 3)]],
 	"castillo": [["castle/LargeTower.glb", 2.4], ["castle/TallWall.glb", 2.4, Vector3(3.6, 0, 0.4)], ["castle/TallWall.glb", 2.4, Vector3(-3.6, 0, 0.4)]],
 }
 
@@ -38,12 +143,12 @@ func _ready() -> void:
 	for p in SLOTS:
 		nodes.append(null)
 		sigs.append("")
-		obstacles.append([Vector2(p.x, p.z), 3.0])
+		obstacles.append([Vector2(p.x, p.z), 4.2])
 	obstacles.append([Vector2(MINE.x, MINE.z), 3.0])
 
 
 func _face(p: Vector3) -> float:
-	return atan2(PLAZA.x - p.x, PLAZA.z - p.z)
+	return face_street(p)
 
 
 func _process(delta: float) -> void:
@@ -94,6 +199,14 @@ func _rebuild(i: int, id: String) -> void:
 			post.position = o + Vector3(0, 0.5, 0)
 			root.add_child(post)
 		M.put(root, "village/Package_1.glb", Vector3(1, 0, 1), 0.4, 1.2)
+		var patch := MeshInstance3D.new()
+		var pm := BoxMesh.new()
+		pm.size = Vector3(7.5, 0.04, 7.5)
+		patch.mesh = pm
+		patch.material_override = M.dirt(Color(0.46, 0.38, 0.27))
+		patch.position = Vector3(0, 0.02, 0)
+		root.add_child(patch)
+		signboard(root, Vector3(3.4, 0, 4.6), "Solar libre")
 	elif id == "colmenar":
 		label = GS.BUILDINGS[id]["name"]
 		for k in 6:
@@ -115,14 +228,44 @@ func _rebuild(i: int, id: String) -> void:
 	else:
 		label = GS.BUILDINGS[id]["name"]
 		for part in LOOK[id]:
-			var pos: Vector3 = part[2] if part.size() > 2 else Vector3.ZERO
-			var pn = _put_sized(root, part[0], pos, 0.0, part[1])
+			var pos: Vector3 = (part[2] if part.size() > 2 else Vector3.ZERO) * 1.2
+			var pn = _put_sized(root, part[0], pos, 0.0, part[1] * (1.2 if part[1] > 0 else 1.0))
 			if id == "castillo" and pn != null:
 				M.stone(pn, Color(0.52, 0.5, 0.46))
+	if id != "":
+		signboard(root, Vector3(3.4, 0, 5.4), label)
 	var l := M.label3d(label, 42)
 	l.position = Vector3(0, 2.2 if id == "" or id == "colmenar" else 7.5, 0)
 	l.modulate = Color(1, 0.9, 0.6)
+	l.visibility_range_end = 28.0
 	root.add_child(l)
+
+
+## Letrero de madera junto a la calle, con el nombre del oficio a la vista.
+static func signboard(parent: Node3D, pos: Vector3, text: String) -> void:
+	var E := preload("res://scripts/engines.gd")
+	var n := Node3D.new()
+	n.position = pos
+	parent.add_child(n)
+	var wood := Color(0.36, 0.24, 0.13)
+	E._box(n, Vector3(0.14, 2.6, 0.14), Vector3(0, 1.3, 0), wood)
+	E._box(n, Vector3(1.0, 0.1, 0.1), Vector3(-0.45, 2.5, 0), wood)
+	E._box(n, Vector3(1.5, 0.62, 0.07), Vector3(-0.7, 2.05, 0), Color(0.55, 0.4, 0.22))
+	var t := Label3D.new()
+	t.text = text
+	t.font_size = 46
+	t.pixel_size = 0.0055
+	t.outline_size = 0
+	t.modulate = Color(0.16, 0.1, 0.04)
+	t.double_sided = false
+	t.width = 250.0
+	t.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	t.position = Vector3(-0.7, 2.05, 0.045)
+	n.add_child(t)
+	var t2 := t.duplicate()
+	t2.position.z = -0.045
+	t2.rotation.y = PI
+	n.add_child(t2)
 
 
 func _rebuild_mine() -> void:

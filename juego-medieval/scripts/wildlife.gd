@@ -5,8 +5,8 @@ extends Node3D
 const M := preload("res://scripts/models.gd")
 const ACTOR := preload("res://scripts/actor.gd")
 const FOREST := Rect2(5, 5, 26, 40)
-const CORRAL := Vector3(43.5, 0, 23.5)
-const CAMP := Vector3(17, 0, 24)
+const CORRAL := Vector3(36, 0, 16)
+const CAMP := Vector3(11, 0, 15)
 const PREY := ["gallina", "oveja", "cerdo", "vaca"]
 
 var v

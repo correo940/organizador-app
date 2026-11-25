@@ -14,8 +14,8 @@ const TOWN := preload("res://scripts/town.gd")
 const WILD := preload("res://scripts/wildlife.gd")
 
 const PLAZA := Vector3(60, 0, 40)
-const PLOT := Vector3(52, 0, 31)
-const MARKET := Vector3(69, 0, 46)
+const PLOT := Vector3(13, 0, 40)
+const MARKET := Vector3(62, 0, 46)
 const HALL := Vector3(60, 0, 19)
 const CAMP := Vector3(111, 0, 41)
 const RUN_SPEED := 4.2
@@ -83,7 +83,7 @@ func _ready() -> void:
 		trees.append({"p": p, "k": i % 3, "i": r.randi_range(1, 5), "s": r.randf_range(2.5, 3.5), "r": r.randf() * TAU})
 	for i in 22:
 		rocks.append({"p": Vector3(r.randf_range(8, 32), 0, r.randf_range(55, 70)), "i": r.randi_range(1, 7), "s": r.randf_range(1.3, 2.4), "r": r.randf() * TAU})
-	trees = trees.filter(func(t): return t["p"].distance_to(WILD.CAMP) > 6.0 and BLD.SLOTS.all(func(sl): return t["p"].distance_to(sl) > 7.0) and t["p"].distance_to(BLD.MINE) > 6.0 and SIM.LANDS.all(func(l): return Vector2(t["p"].x, t["p"].z).distance_to(l) > 9.0) and TOWN.clear_rects(built_tier).all(func(r): return not r.has_point(Vector2(t["p"].x, t["p"].z))))
+	trees = trees.filter(func(t): return _free_ground(t["p"], 2.5) and t["p"].distance_to(WILD.CAMP) > 6.0 and BLD.SLOTS.all(func(sl): return t["p"].distance_to(sl) > 7.0) and t["p"].distance_to(BLD.MINE) > 6.0 and SIM.LANDS.all(func(l): return Vector2(t["p"].x, t["p"].z).distance_to(l) > 9.0) and TOWN.clear_rects(built_tier).all(func(r): return not r.has_point(Vector2(t["p"].x, t["p"].z))))
 	_build_static()
 	farm = FARM.new()
 	farm.v = self
@@ -105,7 +105,7 @@ func _ready() -> void:
 	obstacles.append_array(town.obstacles)
 	var keep := func(q: Vector2) -> bool:
 		var p3 := Vector3(q.x, 0, q.y)
-		return p3.distance_to(PLAZA) > 12.0 and p3.distance_to(WILD.CAMP) > 6.0 and p3.distance_to(BLD.MINE) > 6.0 \
+		return _free_ground(p3, 0.5) and p3.distance_to(PLAZA) > 12.0 and p3.distance_to(WILD.CAMP) > 6.0 and p3.distance_to(BLD.MINE) > 6.0 \
 			and BLD.SLOTS.all(func(sl): return p3.distance_to(sl) > 6.0) and SIM.LANDS.all(func(l): return q.distance_to(l) > 8.0) \
 			and TOWN.clear_rects(built_tier).all(func(rc): return not rc.has_point(q)) and obstacles.all(func(o): return q.distance_to(o[0]) > float(o[1]) + 1.0)
 	M.grass(self, Vector3(60, 0, 40), 75, 60000, keep)
@@ -125,20 +125,26 @@ func _ready() -> void:
 
 func _build_static() -> void:
 	var dirt := Color(0.42, 0.34, 0.24)
+	# Plaza empedrada (cuadrada) y calles de tierra.
 	var plaza := MeshInstance3D.new()
-	var cm := CylinderMesh.new()
-	cm.top_radius = 10
-	cm.bottom_radius = 10
-	cm.height = 0.05
-	plaza.mesh = cm
-	plaza.material_override = M.dirt(dirt)
-	plaza.position = PLAZA + Vector3(0, 0.01, 0)
+	var pb := BoxMesh.new()
+	pb.size = Vector3(20, 0.06, 20)
+	plaza.mesh = pb
+	plaza.material_override = M.paving()
+	plaza.position = PLAZA + Vector3(0, 0.03, 0)
 	add_child(plaza)
-	for t in [HALL, CAMP, Vector3(95, 0, 24), Vector3(30, 0, 26), Vector3(28, 0, 60), PLOT, Vector3(60, 0, 80), Vector3(38, 0, 50), Vector3(82, 0, 52), Vector3(83, 0, 28), Vector3(45, 0, 16.5), Vector3(76, 0, 15), Vector3(49, 0, 59), Vector3(69, 0, 59)]:
-		M.road(self, PLAZA, t, 3.2, dirt)
-	M.road(self, Vector3(60, 0, 80), Vector3(60, 0, 93), 3.2, dirt)
-	M.road(self, Vector3(8, 0, 82), Vector3(110, 0, 82), 3.2, dirt)
+	for st in BLD.STREETS:
+		M.road(self, Vector3(st[0].x, 0, st[0].y), Vector3(st[1].x, 0, st[1].y), st[2], dirt)
+	M.road(self, Vector3(60, 0, 82), Vector3(60, 0, 93), 3.2, dirt)
 	M.put(self, "village/Well.glb", PLAZA, 0, 1.6)
+	# Bancos y faroles en las esquinas de la plaza.
+	for c in [Vector3(-8, 0, -8), Vector3(8, 0, -8), Vector3(-8, 0, 8), Vector3(8, 0, 8)]:
+		M.put(self, "village/Bench_1.glb", PLAZA + c * 0.85, atan2(-c.x, -c.z), 2.2)
+		_lamp(PLAZA + c + Vector3(signf(c.x) * 1.2, 0, 0))
+	for x in [29.0, 39.0, 74.0]:
+		_lamp(Vector3(x, 0, 36.7))
+	for z in [60.5, 70.5]:
+		_lamp(Vector3(63.3, 0, z))
 	lands_node = Node3D.new()
 	add_child(lands_node)
 	obstacles.append([Vector2(PLAZA.x, PLAZA.z), 1.6])
@@ -146,9 +152,12 @@ func _build_static() -> void:
 	var kinds := ["village/House_1.glb", "village/House_2.glb", "village/House_3.glb", "village/House_4.glb", "village/Blacksmith.glb", "village/House_2.glb", "village/Stable.glb", "village/House_3.glb"]
 	for i in GS.HOMES.size():
 		var h: Vector3 = Vector3(GS.HOMES[i].x, 0, GS.HOMES[i].y) * 0.05
-		M.put(self, kinds[i], h, _face_plaza(h), 1.7)
-		obstacles.append([Vector2(h.x, h.z), 3.2])
-	M.put(self, "village/Bell_Tower.glb", HALL, _face_plaza(HALL), 2.0)
+		var rot := BLD.face_street(h)
+		M.put(self, kinds[i], h, rot, 2.3)
+		obstacles.append([Vector2(h.x, h.z), 3.8])
+		_yard(h, rot, i)
+	M.put(self, "village/Bell_Tower.glb", HALL, _face_plaza(HALL), 2.6)
+	BLD.signboard(self, HALL + Vector3(3.2, 0, 4.2), "Concejo")
 	var banner := M.put(self, "castle/Banner.glb", HALL + Vector3(4, 0, 3), 0, 1.6)
 	M.recolor(banner, Color(0.15, 0.3, 0.7))
 	obstacles.append([Vector2(HALL.x, HALL.z), 4.0])
@@ -168,13 +177,59 @@ func _build_static() -> void:
 		obstacles.append([Vector2(CAMP.x + cos(a) * 6, CAMP.z + sin(a) * 6), 1.6])
 	camp_fire = M.put(self, "village/Bonfire_Lit.glb", CAMP + Vector3(0, 0, 0), 0, 1.5)
 	camp_banner = M.put(self, "castle/Banner.glb", CAMP + Vector3(2.5, 0, -2.5), 0, 1.6)
-	M.put(self, "animals/Horse.glb", Vector3(85, 0, 33), 2.0, 0.42)
+	M.put(self, "animals/Horse.glb", Vector3(72.5, 0, 44.5), 2.0, 0.42)
 	M.castle(self, Vector3(60, 0, -45), 4.0)
 	for i in 9:
 		var rk := M.put(self, "nature/Rock_%d.glb" % (i % 7 + 1), Vector3(-60 + i * 30, -6, -110 - (i % 3) * 20), randf() * TAU, randf_range(28, 38))
 		M.recolor(rk, Color(0.42, 0.44, 0.4))
 	nature_node = Node3D.new()
 	add_child(nature_node)
+
+
+## Farol de calle: poste con una luz cálida que se enciende al anochecer.
+var lamps: Array = []
+func _lamp(p: Vector3) -> void:
+	ENG._box(self, Vector3(0.14, 2.8, 0.14), p + Vector3(0, 1.4, 0), Color(0.3, 0.2, 0.11))
+	ENG._box(self, Vector3(0.26, 0.3, 0.26), p + Vector3(0, 2.95, 0), Color(0.9, 0.62, 0.3))
+	var l := OmniLight3D.new()
+	l.position = p + Vector3(0, 2.9, 0)
+	l.light_color = Color(1.0, 0.7, 0.35)
+	l.omni_range = 9.0
+	l.light_energy = 0.0
+	add_child(l)
+	lamps.append(l)
+	obstacles.append([Vector2(p.x, p.z), 0.4])
+
+
+## Huerto vallado detrás de cada casa (con alguna hortaliza) y leña junto a la pared.
+func _yard(h: Vector3, rot: float, i: int) -> void:
+	var fwd := Vector3(sin(rot), 0, cos(rot))
+	var side := Vector3(fwd.z, 0, -fwd.x)
+	var back := h - fwd * 6.5
+	for k in 5:
+		M.put(self, "village/Fence.glb", back - fwd * 2.5 + side * (-3.4 + k * 1.7), rot, 2.2)
+	for sd in [-1, 1]:
+		for k in 2:
+			M.put(self, "village/Fence.glb", back + side * 4.2 * sd + fwd * (1.0 - k * 1.7), rot + PI / 2, 2.2)
+	var crop: String = ["crops/Carrot_3.glb", "crops/Lettuce_3.glb", "crops/Beet_3.glb", "crops/Pumpkin_3.glb"][i % 4]
+	for k in 6:
+		M.put(self, crop, back + side * (-2.4 + (k % 3) * 2.4) + fwd * (-1.4 + (k / 3) * 1.8), randf() * TAU, 0.55)
+	M.put(self, "village/Barrel.glb", h + fwd * 2.2 + side * 2.6, randf(), 1.4)
+	if i % 2 == 0:
+		M.put(self, "village/Crate.glb", h + fwd * 2.0 - side * 2.6, randf(), 1.3)
+
+
+## ¿Queda libre este suelo (ni calle, ni casa, ni solar, ni la parcela, ni el corral)?
+func _free_ground(p: Vector3, margin: float) -> bool:
+	if BLD.on_street(Vector2(p.x, p.z), margin):
+		return false
+	for h in GS.HOMES:
+		if Vector2(p.x, p.z).distance_to(h * 0.05) < 7.5 + margin:
+			return false
+	for sl in BLD.SLOTS:
+		if p.distance_to(sl) < 6.0 + margin:
+			return false
+	return p.distance_to(PLOT) > 9.0 + margin and p.distance_to(HALL) > 6.0 + margin and p.distance_to(FARM.CORRAL) > 6.0 + margin and p.distance_to(FARM.OVEN) > 2.5 + margin and p.distance_to(FARM.MILL) > 4.5 + margin
 
 
 func _face_plaza(p: Vector3) -> float:
@@ -198,7 +253,7 @@ func _build_nature(s: int) -> void:
 			obstacles.append([Vector2(rk["p"].x, rk["p"].z), 0.9 * rk["s"] / 1.5])
 	for i in 40:
 		var p := Vector3(randf_range(2, 118), 0, randf_range(2, 78))
-		if p.distance_to(PLAZA) > 14 and p.distance_to(FARM.POND) > 12 and not Rect2(86, 9, 26, 33).has_point(Vector2(p.x, p.z)) and p.distance_to(FARM.CORRAL) > 7 and BLD.SLOTS.all(func(sl): return p.distance_to(sl) > 6.0) and p.z < 78:
+		if _free_ground(p, 1.5) and p.distance_to(PLAZA) > 14 and p.distance_to(FARM.POND) > 12 and not Rect2(86, 9, 26, 33).has_point(Vector2(p.x, p.z)) and p.distance_to(FARM.CORRAL) > 7 and BLD.SLOTS.all(func(sl): return p.distance_to(sl) > 6.0) and p.z < 78:
 			M.put(nature_node, "nature/%s_%d.glb" % ["Bush_Snow" if s == 3 else "Bush", 1 + i % 2], p, randf() * TAU, randf_range(1.2, 2.0))
 	_season_decor(s)
 	M.set_season_ground(env["grad"], s)
@@ -220,7 +275,7 @@ func _season_decor(s: int) -> void:
 	var r := RandomNumberGenerator.new()
 	r.seed = 4242 + s
 	var ok := func(p: Vector3) -> bool:
-		return p.distance_to(PLAZA) > 9 and p.distance_to(FARM.POND) > 11 and not Rect2(86, 9, 26, 33).has_point(Vector2(p.x, p.z)) and BLD.SLOTS.all(func(sl): return p.distance_to(sl) > 6.0) and p.z < 78
+		return _free_ground(p, 1.0) and p.distance_to(PLAZA) > 9 and p.distance_to(FARM.POND) > 11 and not Rect2(86, 9, 26, 33).has_point(Vector2(p.x, p.z)) and BLD.SLOTS.all(func(sl): return p.distance_to(sl) > 6.0) and p.z < 78
 	match s:
 		0:
 			var cols := [Color(0.95, 0.85, 0.2), Color(0.9, 0.3, 0.5), Color(0.95, 0.95, 0.95), Color(0.6, 0.4, 0.9)]
@@ -293,7 +348,7 @@ func _rebuild_house() -> void:
 	house_level = int(GS.data["house_level"])
 	house_land = int(GS.data.get("player_land", -1))
 	var hp := house_pos()
-	var rot := _face_plaza(hp) if house_land < 0 else PI
+	var rot := BLD.face_street(hp) if house_land < 0 else PI
 	match house_level:
 		0:
 			for o in [Vector3(-3, 0, -3), Vector3(3, 0, -3), Vector3(-3, 0, 3), Vector3(3, 0, 3)]:
@@ -379,6 +434,7 @@ func _reset_villagers() -> void:
 	vtarget.clear()
 	vlabels.clear()
 	vwork.clear()
+	routes.clear()
 	var i := 0
 	for v in GS.data["villagers"]:
 		var parts: Array
@@ -392,9 +448,10 @@ func _reset_villagers() -> void:
 				opts["faction"] = "bandido"
 		var a := _actor(parts, opts)
 		var home := _door(v)
-		a.position = home + Vector3(randf_range(-4, 4), 0, randf_range(-4, 4))
+		a.position = home + Vector3(randf_range(-1.5, 1.5), 0, randf_range(-1.5, 1.5))
 		var l := M.label3d("%s\n%s%s" % [GS.full_name(v), SIM.job_name(v), " · anciano" if GS.FOLK.is_elder(v) else ""], 32)
 		l.position = Vector3(0, 2.25, 0)
+		l.visibility_range_end = 9.0
 		a.add_child(l)
 		villagers.append(a)
 		vtarget.append(a.position)
@@ -418,7 +475,7 @@ func _reset_villagers() -> void:
 
 func _door(v: Dictionary) -> Vector3:
 	var h := Vector3(v["hx"], 0, v["hy"]) * 0.05
-	return h + (PLAZA - h).normalized() * 4.0
+	return BLD.front(h, 4.6)
 
 
 func _update_player_model() -> void:
@@ -493,14 +550,14 @@ func _front_of_house() -> Vector3:
 	var hp := house_pos()
 	if int(GS.data.get("player_land", -1)) >= 0:
 		return hp + Vector3(0, 0, -6)
-	return hp + (PLAZA - hp).normalized() * 6.0
+	return BLD.front(hp, 7.0)
 
 
 ## Lugar de trabajo de cada aldeano según su oficio.
 func _work_spot(v: Dictionary, i: int) -> Vector3:
 	match v["job"]:
 		"leñador":
-			return Vector3(33.5, 0, 10 + (i * 7) % 34)
+			return Vector3(24 + (i * 5) % 12, 0, 8 + (i * 7) % 14)
 		"cantero":
 			return Vector3(14 + (i * 5) % 16, 0, 54)
 		"agricultor":
@@ -509,7 +566,7 @@ func _work_spot(v: Dictionary, i: int) -> Vector3:
 			var a := float(i) * 1.3
 			return FARM.POND + Vector3(cos(a), 0, sin(a)) * (FARM.POND_R + 1.4)
 		"cazador":
-			return Vector3(10 + (i * 9) % 18, 0, 12 + (i * 13) % 28)
+			return Vector3(6 + (i * 9) % 14, 0, 6 + (i * 13) % 20)
 		"pastor":
 			return FARM.CORRAL + Vector3(-2 + (i % 3) * 2, 0, FARM.CORRAL_HALF.y + 1.3)
 		"minero":
@@ -737,6 +794,10 @@ func _process(delta: float) -> void:
 	for i in villagers.size():
 		vlabels[i].visible = villagers[i].position.distance_to(player.position) < 9
 	M.set_daytime(env, d["time"])
+	var dark := 1.6 if float(d["time"]) < 0.24 or float(d["time"]) > 0.8 else 0.0
+	if lamps.size() > 0 and lamps[0].light_energy != dark:
+		for lp in lamps:
+			lp.light_energy = dark
 	if snowfall:
 		snowfall.position = player.position + Vector3(0, 14, 0)
 	_ambience(d, night)
@@ -917,7 +978,7 @@ func _move_npcs(delta: float) -> void:
 
 func _ceremony_spot() -> Vector3:
 	var cp := _building_pos("capilla")
-	return cp + Vector3(0, 0, 7) if cp != Vector3.INF else PLAZA + Vector3(-11, 0, -11)
+	return BLD.front(cp, 7.0) if cp != Vector3.INF else PLAZA + Vector3(-6, 0, -6)
 
 
 func _building_pos(id: String) -> Vector3:
@@ -940,13 +1001,26 @@ func _routine_spot(i: int, t: float) -> Variant:
 	if int(d["day"]) % 7 == 0 and t > 0.32 and t < 0.45:
 		for k in d["buildings"]:
 			if d["buildings"][k] == "capilla":
-				return BLD.SLOTS[int(k)] + Vector3(cos(ang), 0, sin(ang)) * (3.0 + i % 3) + Vector3(0, 0, 6)
+				return BLD.front(BLD.SLOTS[int(k)], 7.0) + Vector3(cos(ang), 0, sin(ang)) * (1.5 + i % 3)
 	if t > 0.74 and t < 0.84 and i % 2 == 0:
 		return PLAZA + Vector3(cos(ang), 0, sin(ang)) * (3.0 + (i % 4) * 0.8)
 	return null
 
 
+## Camina siguiendo las calles: se calcula la ruta al cambiar de destino.
+var routes := {}
 func _walk_to(a, target: Vector3, spd: float, delta: float) -> void:
+	var r = routes.get(a)
+	if r == null or r["t"].distance_to(target) > 0.5:
+		r = {"t": target, "pts": BLD.route(a.position, target)}
+		routes[a] = r
+	var pts: Array = r["pts"]
+	while pts.size() > 1 and Vector2(a.position.x - pts[0].x, a.position.z - pts[0].z).length() < 0.6:
+		pts.pop_front()
+	_step_to(a, pts[0] if not pts.is_empty() else target, spd, delta)
+
+
+func _step_to(a, target: Vector3, spd: float, delta: float) -> void:
 	var to: Vector3 = target - a.position
 	to.y = 0
 	if to.length() < 0.3:

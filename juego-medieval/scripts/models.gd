@@ -490,6 +490,22 @@ static func dirt(col: Color) -> StandardMaterial3D:
 
 
 static var roads: Array = []  # tramos de camino de la escena: [a, b, radio] (la hierba no crece encima)
+## Empedrado de la plaza: la piedra del muro, clara y en losas grandes.
+static var _paving: StandardMaterial3D
+static func paving() -> StandardMaterial3D:
+	if _paving == null:
+		_paving = StandardMaterial3D.new()
+		_paving.albedo_texture = load("res://assets/tex/muro_color.jpg")
+		_paving.albedo_color = Color(1.15, 1.1, 1.05)
+		_paving.normal_enabled = true
+		_paving.normal_texture = load("res://assets/tex/muro_normal.png")
+		_paving.roughness_texture = load("res://assets/tex/muro_rough.jpg")
+		_paving.uv1_triplanar = true
+		_paving.uv1_world_triplanar = true
+		_paving.uv1_scale = Vector3(0.22, 0.22, 0.22)
+	return _paving
+
+
 static func road(parent: Node, a: Vector3, b: Vector3, w: float, col: Color) -> MeshInstance3D:
 	roads.append([Vector2(a.x, a.z), Vector2(b.x, b.z), w * 0.5 + 0.4])
 	var m := MeshInstance3D.new()

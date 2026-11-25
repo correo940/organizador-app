@@ -39,7 +39,9 @@ const MALE_NAMES := ["Rodrigo", "Sancho", "Alonso", "Fernando", "Gonzalo", "Dieg
 const FEMALE_NAMES := ["Urraca", "Jimena", "Elvira", "Sancha", "Teresa", "Leonor", "Berenguela", "Mencía", "Aldonza", "Constanza", "Toda", "Mayor", "Inés", "Blanca", "Oria", "Elo", "Goto", "Munia", "Onneca", "Velasquita", "Gontrodo", "Estefanía", "Eva", "Marina", "Juliana", "María", "Catalina", "Isabel", "Beatriz", "Juana", "Lucía", "Águeda", "Benita", "Elena", "Florencia", "Guiomar", "Leocadia", "Olalla", "Sol", "Violante", "Columba", "Romana", "Marta", "Ana"]
 const SURNAMES := ["Ruiz", "Pérez", "Sánchez", "Fernández", "Díaz", "Muñoz", "Álvarez", "Gómez", "Martínez", "López", "Ordóñez", "Velázquez", "Íñiguez", "Garcés", "Bermúdez", "Núñez", "Téllez", "Ramírez", "Osorio", "Fáñez", "Gutiérrez", "Rodríguez", "Vermúdez", "Sáez", "Laínez", "Domínguez", "Esteban", "Gil", "Vela", "Peláez"]
 const ENEMIES := ["los bandidos del bosque", "el señor de Valdeoscuro", "los invasores del norte", "un barón rebelde", "los saqueadores del río"]
-const HOMES := [Vector2(760, 620), Vector2(760, 1000), Vector2(980, 1180), Vector2(1380, 1180), Vector2(1640, 1040), Vector2(1660, 560), Vector2(900, 330), Vector2(1520, 300)]
+## Casas de los vecinos (en 1/20 de metro): en fila a ambos lados de la calle mayor y junto al concejo.
+const HOMES := [Vector2(880, 620), Vector2(880, 980), Vector2(680, 620), Vector2(680, 980), Vector2(480, 620), Vector2(480, 980), Vector2(1000, 420), Vector2(1400, 420)]
+const OLD_HOMES := [Vector2(760, 620), Vector2(760, 1000), Vector2(980, 1180), Vector2(1380, 1180), Vector2(1640, 1040), Vector2(1660, 560), Vector2(900, 330), Vector2(1520, 300)]
 
 ## Objetos de inventario: id -> [nombre, precio, raciones de comida (0 = no se come)]
 const ITEMS := {
@@ -578,6 +580,12 @@ func load_game(s := -1) -> bool:
 ## Crea (o migra desde partidas antiguas) inventario, parcelas y animales.
 func ensure_economy() -> void:
 	WORLD.ensure()
+	# Partidas de antes del pueblo con calles: los vecinos se mudan a las casas nuevas.
+	for v in data.get("villagers", []):
+		var k := OLD_HOMES.find(Vector2(v["hx"], v["hy"]))
+		if k >= 0:
+			v["hx"] = HOMES[k].x
+			v["hy"] = HOMES[k].y
 	if not data.has("inv"):
 		data["inv"] = {"pan": 4, "zanahoria": 6}
 		if data.has("food"):
