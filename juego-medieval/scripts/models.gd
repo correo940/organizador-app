@@ -919,13 +919,6 @@ static func workshop(parent: Node, id: String, pos: Vector3, rot: float, s := 1.
 			l.light_energy = 1.2
 			l.position = Vector3(4.6, 1.4, -1.0)
 			n.add_child(l)
-			var sg := Sprite3D.new()
-			sg.texture = load("res://assets/ui/cartel_herreria.png")
-			sg.pixel_size = 0.0045
-			sg.position = Vector3(-1.6, 3.0, 3.05)
-			sg.shaded = true
-			sg.double_sided = true
-			n.add_child(sg)
 			_bx(n, Vector3(0.7, 0.45, 0.35), Vector3(4.3, 0.75, 1.0), dark)
 			_bx(n, Vector3(0.35, 0.5, 0.3), Vector3(4.3, 0.25, 1.0), _beam)
 		"telar", "curtiduria", "queseria":
@@ -956,7 +949,31 @@ static func workshop(parent: Node, id: String, pos: Vector3, rot: float, s := 1.
 		"universidad":
 			medieval_house(n, Vector3(-1.2, 0, -0.5), 0.0, 2, 1, 1.15)
 			tower(n, Vector3(3.6, 0, -1.5), 9.0)
+	# Cartel colgante pintado del oficio, junto a la puerta.
+	if SIGNS.has(id):
+		hang_sign(n, "res://assets/ui/cartel_%s.png" % SIGNS[id][0], SIGNS[id][1])
 	return n
+
+
+const SIGNS := {
+	"herreria": ["herreria", Vector3(-2.0, 3.1, 3.3)],
+	"telar": ["telar", Vector3(-2.0, 3.1, 3.3)],
+	"queseria": ["queseria", Vector3(-2.0, 3.1, 3.3)],
+	"cerveceria": ["cerveceria", Vector3(-2.0, 2.7, 3.3)],
+	"establo": ["establo", Vector3(-2.6, 2.8, 4.1)],
+}
+
+
+static func hang_sign(n: Node3D, tex: String, pos: Vector3) -> void:
+	var sg := Sprite3D.new()
+	sg.texture = load(tex)
+	sg.pixel_size = 0.0045
+	# Sale de la pared en perpendicular (el soporte contra la fachada), visible desde la calle.
+	sg.position = pos
+	sg.rotation.y = -PI / 2
+	sg.shaded = true
+	sg.double_sided = true
+	n.add_child(sg)
 
 
 static func hut(parent: Node, pos: Vector3, rot: float, s := 1.0) -> Node3D:

@@ -147,6 +147,8 @@ static func build(parent: Node, i: int, v: Dictionary) -> Node3D:
 				M._bx(n, Vector3(0.9, 0.05, 0.35), Vector3(-1.0 + k, 1.6, -1.0), M._beam)
 				_goods_shelf(n, job, Vector3(-1.0 + k, 1.63, -1.0))
 			preload("res://scripts/buildings.gd").signboard(n, Vector3(1.9, 0, 1.2), String(GOODS.get(job, ["mercado"])[0]).capitalize())
+			if job == "panadero":
+				M.hang_sign(n, "res://assets/ui/cartel_pan.png", Vector3(-1.6, 3.4, 1.15))
 	var l := M.label3d("%s · %s" % [v["name"], GOODS.get(job, ["mercado"])[0]], 30)
 	l.position = Vector3(0, 3.3, 0)
 	l.visibility_range_end = 14.0
