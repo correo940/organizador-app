@@ -80,6 +80,25 @@ static func parchment_theme() -> Theme:
 	return _theme
 
 
+## Ilustración para un aviso según su título ("" si no tiene).
+static func event_picture(title: String) -> String:
+	var l := title.to_lower()
+	for k in [["boda", "boda"], ["fuego", "incendio"], ["incendio", "incendio"], ["muere", "funeral"], ["fin del linaje", "funeral"], ["ha caído", "funeral"], ["asesinato", "funeral"], ["funeral", "funeral"], ["invierno", "invierno"], ["hambruna", "invierno"], ["cosecha", "cosecha"], ["victoria", "victoria"], ["larga vida", "victoria"], ["se rinde", "victoria"], ["campeón", "victoria"]]:
+		if l.contains(k[0]):
+			return "res://assets/ui/evento_%s.jpg" % k[1]
+	return ""
+
+
+## Bloque de imagen para paneles.
+static func picture(path: String) -> TextureRect:
+	var tr := TextureRect.new()
+	tr.texture = load(path)
+	tr.custom_minimum_size = Vector2(540, 260)
+	tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	return tr
+
+
 static func bar_style() -> StyleBoxFlat:
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = Color(0.1, 0.07, 0.04, 0.8)

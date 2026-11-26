@@ -827,14 +827,9 @@ func _open_panel(title: String, text: String, options: Array) -> void:
 	t.add_theme_font_size_override("font_size", 26)
 	t.add_theme_color_override("font_color", Art.TITLE)
 	box.add_child(t)
-	var pic := _event_picture(title + " " + text)
+	var pic := Art.event_picture(title)
 	if pic != "":
-		var tr := TextureRect.new()
-		tr.texture = load(pic)
-		tr.custom_minimum_size = Vector2(540, 260)
-		tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-		box.add_child(tr)
+		box.add_child(Art.picture(pic))
 	var b := Label.new()
 	b.text = text
 	b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -854,14 +849,6 @@ func _open_panel(title: String, text: String, options: Array) -> void:
 	panel.visible = true
 	if first:
 		first.grab_focus.call_deferred()
-
-
-## Ilustración para los avisos que la tienen (de momento, las bodas).
-func _event_picture(s: String) -> String:
-	var l := s.to_lower()
-	if l.contains("boda") or l.contains("os casáis") or l.contains("casamiento"):
-		return "res://assets/ui/evento_boda.jpg"
-	return ""
 
 
 ## Panel con contenido libre (mercado).

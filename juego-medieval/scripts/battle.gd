@@ -61,6 +61,7 @@ var hp_bar: ProgressBar
 var flash: ColorRect
 var result_panel: PanelContainer
 var result_label: Label
+var result_pic: TextureRect
 
 
 func _stats(kind: String) -> Dictionary:
@@ -426,13 +427,16 @@ func _build_hud() -> void:
 	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	layer.add_child(center)
 	result_panel = PanelContainer.new()
-	result_panel.add_theme_stylebox_override("panel", Art.panel_style())
+	result_panel.theme = Art.parchment_theme()
 	result_panel.visible = false
 	center.add_child(result_panel)
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 12)
 	result_panel.add_child(box)
 	res_box = box
+	result_pic = Art.picture("res://assets/ui/evento_victoria.jpg")
+	result_pic.visible = false
+	box.add_child(result_pic)
 	result_label = Label.new()
 	result_label.add_theme_font_size_override("font_size", 20)
 	result_label.custom_minimum_size.x = 480
@@ -1367,11 +1371,13 @@ func _end(victory: bool) -> void:
 	GS.next_day()
 	GS.save_game()
 	result_label.text = text
+	result_pic.visible = victory
 	result_panel.visible = true
 
 
 ## Final de un ataque a un pueblo: si ganas, eliges qué hacer con él.
 func _end_siege(victory: bool, losses: int) -> void:
+	result_pic.visible = victory
 	var d = GS.data
 	var id: int = siege.get("town", -1)
 	d.erase("battle")

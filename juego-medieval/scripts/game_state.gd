@@ -324,6 +324,10 @@ func next_season() -> void:
 	if data.get("game_over", false):
 		return
 	say("Comienza %s del año %d." % [["la primavera", "el verano", "el otoño", "el invierno"][int(data["season"])], int(data["year"])])
+	if int(data["season"]) == 2:
+		popups.append({"title": "Tiempo de cosecha", "text": "Llega el otoño: los campos están dorados y todo el pueblo sale a segar. Recoge tus parcelas antes de que llegue la helada.", "button": "A trabajar"})
+	elif int(data["season"]) == 3:
+		popups.append({"title": "Llega el invierno", "text": "La nieve cubre el pueblo. Los campos descansan, los caminos son lentos y hará falta leña y comida guardada para aguantar hasta la primavera.", "button": "Continuar"})
 	if data["summons"] == null and not data.get("king", false) and data["player"]["age"] >= 16 and data["player"]["age"] <= 60 and randf() < 0.45:
 		data["summons"] = {"deadline": int(data["total_days"]) + 4, "enemy": ENEMIES.pick_random()}
 		if int(data["title"]) == 1:

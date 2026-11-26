@@ -82,6 +82,9 @@ func _open_panel(title: String, text: String, options: Array) -> void:
 	t.add_theme_font_size_override("font_size", 26)
 	t.add_theme_color_override("font_color", Art.TITLE)
 	box.add_child(t)
+	var pic := Art.event_picture(title)
+	if pic != "":
+		box.add_child(Art.picture(pic))
 	var b := Label.new()
 	b.text = text
 	b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
