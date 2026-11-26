@@ -60,9 +60,10 @@ func _ready() -> void:
 		_fit(get_child(get_child_count() - 1), 11.0)
 		obstacles.append([Vector2(BARRACKS.x, BARRACKS.z), 5.5])
 		_label(BARRACKS + Vector3(0, 9, 0), "Cuartel")
-		for k in 3:
-			var p := Vector3(70 + k * 4.0, 0, 52)
-			M.put(self, "village/MarketStand_%d.glb" % (1 + k % 2), p, PI, 1.7)
+		# La villa amplía el mercado: dos puestos más en la esquina noreste de la plaza.
+		for k in 2:
+			var p := Vector3(63.4 + k * 2.7, 0, 32.6)
+			M.put(self, "village/MarketStand_1.glb", p, 0.0, 1.7)
 			obstacles.append([Vector2(p.x, p.z), 1.0])
 		if tier == 1:
 			_palisade(bounds(1).grow(-0.5))

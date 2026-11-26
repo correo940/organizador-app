@@ -17,7 +17,7 @@ const HUD_FACE := preload("res://assets/ui/retrato_hombre.png")
 
 const PLAZA := Vector3(60, 0, 40)
 const PLOT := Vector3(13, 0, 40)
-const MARKET := Vector3(62, 0, 46)
+const MARKET := Vector3(65.6, 0, 47.3)
 const HALL := Vector3(60, 0, 19)
 const CAMP := Vector3(111, 0, 41)
 const RUN_SPEED := 4.2
@@ -149,8 +149,9 @@ func _build_static() -> void:
 	M.road(self, Vector3(60, 0, 82), Vector3(60, 0, 93), 3.2, dirt)
 	M.put(self, "village/Well.glb", PLAZA, 0, 1.6)
 	# Bancos y faroles en las esquinas de la plaza.
-	for c in [Vector3(-8, 0, -8), Vector3(8, 0, -8), Vector3(-8, 0, 8), Vector3(8, 0, 8)]:
-		M.put(self, "village/Bench_1.glb", PLAZA + c * 0.85, atan2(-c.x, -c.z), 2.2)
+	for c in [Vector3(-8, 0, -8), Vector3(8, 0, -8), Vector3(-8, 0, 8)]:
+		if c.x < 0:
+			M.put(self, "village/Bench_1.glb", PLAZA + c * 0.85, atan2(-c.x, -c.z), 2.2)
 		_lamp(PLAZA + c + Vector3(signf(c.x) * 1.2, 0, 0))
 	for x in [29.0, 39.0, 74.0]:
 		_lamp(Vector3(x, 0, 36.7))
@@ -170,16 +171,16 @@ func _build_static() -> void:
 	var banner := M.put(self, "castle/Banner.glb", HALL + Vector3(4, 0, 3), 0, 1.6)
 	M.recolor(banner, Color(0.15, 0.3, 0.7))
 	obstacles.append([Vector2(HALL.x, HALL.z), 4.0])
-	M.put(self, "village/MarketStand_1.glb", MARKET + Vector3(-2.5, 0, 0), _face_plaza(MARKET), 1.7)
-	M.put(self, "village/MarketStand_2.glb", MARKET + Vector3(0.5, 0, 0.5), _face_plaza(MARKET), 1.7)
-	M.put(self, "village/MarketStand_1.glb", MARKET + Vector3(3.5, 0, 0), _face_plaza(MARKET), 1.7)
-	M.put(self, "village/Cart.glb", MARKET + Vector3(5.5, 0, 3), 0.6, 1.5)
-	for o in [Vector3(-4, 0, 2), Vector3(-4.6, 0, 2.8), Vector3(2, 0, 2.6)]:
-		M.put(self, "village/Barrel.glb", MARKET + o, randf(), 1.5)
-	M.put(self, "village/Crate.glb", MARKET + Vector3(-1.5, 0, 2.6), 0.3, 1.5)
-	M.put(self, "village/Bags.glb", MARKET + Vector3(4.5, 0, 1.5), 0.3, 1.5)
-	for o in [-2.5, 0.5, 3.5]:
-		obstacles.append([Vector2(MARKET.x + o, MARKET.z), 1.0])
+	# Mercado: fila de puestos en la esquina sureste de la plaza, abiertos hacia ella, con la mercancía detrás.
+	for k in 3:
+		var sp := MARKET + Vector3(-2.7 + k * 2.7, 0, 0)
+		M.put(self, "village/MarketStand_1.glb", sp, PI, 1.7)
+		obstacles.append([Vector2(sp.x, sp.z), 1.0])
+	for o in [Vector3(-3.6, 0, 1.6), Vector3(-2.9, 0, 1.9), Vector3(0.6, 0, 1.7)]:
+		M.put(self, "village/Barrel.glb", MARKET + o, randf(), 1.4)
+	M.put(self, "village/Crate.glb", MARKET + Vector3(-1.2, 0, 1.8), 0.3, 1.4)
+	M.put(self, "village/Bags.glb", MARKET + Vector3(2.4, 0, 1.8), 0.3, 1.4)
+	M.put(self, "village/Cart.glb", MARKET + Vector3(5.0, 0, -1.2), 0.0, 1.5)
 	for i in 6:
 		var a := float(i) / 6.0 * TAU + 0.4
 		M.tent(self, CAMP + Vector3(cos(a) * 6, 0, sin(a) * 6), -a, Color(0.82, 0.76, 0.6))
