@@ -632,6 +632,17 @@ static func _timber_side(n: Node3D, w: float, dp: float, y0: float, h: float, oz
 ## Casa medieval hecha a mano. level 1: entramado de una planta con desván; level 2: planta baja de
 ## piedra y piso de entramado volado. variant cambia tejado (paja / tablilla) y detalles.
 static func medieval_house(parent: Node, pos: Vector3, rot: float, level: int, variant: int, s := 1.0, props := true) -> Node3D:
+	# Casas del MegaKit de Quaternius: entramado (1 planta) o casa alta de piedra y entramado (2 plantas).
+	var MK := preload("res://scripts/mkhouse.gd")
+	var hn: Node3D = MK.house(parent, pos, rot, 3, 3 if level <= 1 else [3, 4][variant % 2], 1 if level <= 1 else 2, variant)
+	hn.scale = Vector3.ONE * s * 0.9
+	if props:
+		_mats()
+		_props(hn, 6.0, 6.0, variant)
+	return hn
+
+
+static func medieval_house_old(parent: Node, pos: Vector3, rot: float, level: int, variant: int, s := 1.0, props := true) -> Node3D:
 	_mats()
 	var n := Node3D.new()
 	n.position = pos
