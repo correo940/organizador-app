@@ -14,8 +14,10 @@ var box: VBoxContainer
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	var bg := ColorRect.new()
-	bg.color = Color(0.12, 0.08, 0.05)
+	var bg := TextureRect.new()
+	bg.texture = load("res://assets/ui/fondo_menu.jpg")
+	bg.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	bg.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(bg)
 
@@ -23,18 +25,18 @@ func _ready() -> void:
 	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(center)
 	var panel := PanelContainer.new()
-	panel.add_theme_stylebox_override("panel", Art.panel_style())
+	panel.theme = Art.parchment_theme()
 	center.add_child(panel)
 	box = VBoxContainer.new()
-	box.add_theme_constant_override("separation", 10)
+	box.add_theme_constant_override("separation", 4)
 	box.custom_minimum_size = Vector2(460, 0)
 	panel.add_child(box)
 
 	var title := Label.new()
 	title.text = "SANGRE Y LINAJE"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_font_size_override("font_size", 44)
-	title.add_theme_color_override("font_color", Color(0.9, 0.75, 0.4))
+	title.add_theme_font_size_override("font_size", 38)
+	title.add_theme_color_override("font_color", Art.TITLE)
 	box.add_child(title)
 	var sub := Label.new()
 	sub.text = "De campesino a señor de la guerra"
@@ -66,7 +68,7 @@ func _ready() -> void:
 	var sdesc := Label.new()
 	sdesc.text = GS.LEG.SCENARIOS[0]["desc"]
 	sdesc.add_theme_font_size_override("font_size", 13)
-	sdesc.add_theme_color_override("font_color", Color(0.8, 0.75, 0.65))
+	sdesc.add_theme_color_override("font_color", Color(0.36, 0.24, 0.12))
 	sdesc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	box.add_child(sdesc)
 	scen_opt.item_selected.connect(func(i): sdesc.text = GS.LEG.SCENARIOS[i]["desc"])
@@ -117,7 +119,7 @@ func _load_panel() -> void:
 	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	layer.add_child(center)
 	var panel := PanelContainer.new()
-	panel.add_theme_stylebox_override("panel", Art.panel_style())
+	panel.theme = Art.parchment_theme()
 	center.add_child(panel)
 	var b := VBoxContainer.new()
 	b.add_theme_constant_override("separation", 8)
@@ -125,7 +127,7 @@ func _load_panel() -> void:
 	var t := Label.new()
 	t.text = "Cargar partida"
 	t.add_theme_font_size_override("font_size", 26)
-	t.add_theme_color_override("font_color", Color(0.9, 0.75, 0.4))
+	t.add_theme_color_override("font_color", Art.TITLE)
 	b.add_child(t)
 	for s in [1, 2, 3, 0]:
 		var info: String = GS.slot_info(s)

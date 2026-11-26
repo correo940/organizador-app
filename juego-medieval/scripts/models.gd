@@ -919,6 +919,13 @@ static func workshop(parent: Node, id: String, pos: Vector3, rot: float, s := 1.
 			l.light_energy = 1.2
 			l.position = Vector3(4.6, 1.4, -1.0)
 			n.add_child(l)
+			var sg := Sprite3D.new()
+			sg.texture = load("res://assets/ui/cartel_herreria.png")
+			sg.pixel_size = 0.0045
+			sg.position = Vector3(-1.6, 3.0, 3.05)
+			sg.shaded = true
+			sg.double_sided = true
+			n.add_child(sg)
 			_bx(n, Vector3(0.7, 0.45, 0.35), Vector3(4.3, 0.75, 1.0), dark)
 			_bx(n, Vector3(0.35, 0.5, 0.3), Vector3(4.3, 0.25, 1.0), _beam)
 		"telar", "curtiduria", "queseria":

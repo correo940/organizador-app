@@ -60,7 +60,7 @@ func _build_hud() -> void:
 	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	layer.add_child(center)
 	panel = PanelContainer.new()
-	panel.add_theme_stylebox_override("panel", Art.panel_style())
+	panel.theme = Art.parchment_theme()
 	panel.visible = false
 	center.add_child(panel)
 	box = VBoxContainer.new()
@@ -80,7 +80,7 @@ func _open_panel(title: String, text: String, options: Array) -> void:
 	var t := Label.new()
 	t.text = title
 	t.add_theme_font_size_override("font_size", 26)
-	t.add_theme_color_override("font_color", Color(0.9, 0.75, 0.4))
+	t.add_theme_color_override("font_color", Art.TITLE)
 	box.add_child(t)
 	var b := Label.new()
 	b.text = text
@@ -120,7 +120,7 @@ func _open_custom(title: String, content: Control) -> void:
 	var t := Label.new()
 	t.text = title
 	t.add_theme_font_size_override("font_size", 26)
-	t.add_theme_color_override("font_color", Color(0.9, 0.75, 0.4))
+	t.add_theme_color_override("font_color", Art.TITLE)
 	box.add_child(t)
 	box.add_child(content)
 	var close := Button.new()

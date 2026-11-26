@@ -754,7 +754,7 @@ func _build_hud() -> void:
 	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	layer.add_child(center)
 	panel = PanelContainer.new()
-	panel.add_theme_stylebox_override("panel", Art.panel_style())
+	panel.theme = Art.parchment_theme()
 	panel.visible = false
 	center.add_child(panel)
 	box = VBoxContainer.new()
@@ -820,8 +820,16 @@ func _open_panel(title: String, text: String, options: Array) -> void:
 	var t := Label.new()
 	t.text = title
 	t.add_theme_font_size_override("font_size", 26)
-	t.add_theme_color_override("font_color", Color(0.9, 0.75, 0.4))
+	t.add_theme_color_override("font_color", Art.TITLE)
 	box.add_child(t)
+	var pic := _event_picture(title + " " + text)
+	if pic != "":
+		var tr := TextureRect.new()
+		tr.texture = load(pic)
+		tr.custom_minimum_size = Vector2(540, 260)
+		tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+		box.add_child(tr)
 	var b := Label.new()
 	b.text = text
 	b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -843,6 +851,14 @@ func _open_panel(title: String, text: String, options: Array) -> void:
 		first.grab_focus.call_deferred()
 
 
+## Ilustración para los avisos que la tienen (de momento, las bodas).
+func _event_picture(s: String) -> String:
+	var l := s.to_lower()
+	if l.contains("boda") or l.contains("os casáis") or l.contains("casamiento"):
+		return "res://assets/ui/evento_boda.jpg"
+	return ""
+
+
 ## Panel con contenido libre (mercado).
 func _open_custom(title: String, content: Control) -> void:
 	for c in box.get_children():
@@ -850,7 +866,7 @@ func _open_custom(title: String, content: Control) -> void:
 	var t := Label.new()
 	t.text = title
 	t.add_theme_font_size_override("font_size", 26)
-	t.add_theme_color_override("font_color", Color(0.9, 0.75, 0.4))
+	t.add_theme_color_override("font_color", Art.TITLE)
 	box.add_child(t)
 	box.add_child(content)
 	var close := Button.new()

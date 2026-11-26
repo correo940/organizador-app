@@ -33,7 +33,8 @@ class Portrait extends Control:
 			if face != null:
 				draw_texture_rect(face, Rect2(c - Vector2(hole, hole), Vector2(hole, hole) * 2), false)
 			else:
-				_shield(c, hole * 0.95)
+				var sh: Texture2D = load("res://assets/ui/escudo_castillo.png")
+				draw_texture_rect(sh, Rect2(c - Vector2(hole, hole) * 0.85, Vector2(hole, hole) * 1.7), false)
 			draw_texture_rect(frame, Rect2(c - Vector2(full, full), Vector2(full, full) * 2), false)
 			return
 		_shield(c, full - 2)
@@ -93,7 +94,7 @@ class Minimap extends Control:
 		var FARM := preload("res://scripts/farm.gd")
 		var c := Vector2(size.x / 2, size.y / 2)
 		var full := minf(size.x, size.y) / 2
-		var r := full * 0.575 if frame != null else full - 4
+		var r := full * 0.51 if frame != null else full - 4
 		var o := Vector2(v.player.position.x, v.player.position.z)
 		draw_circle(c, r + 6, Color(0.08, 0.06, 0.04))
 		draw_circle(c, r, Color(0.36, 0.42, 0.22))
