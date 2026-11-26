@@ -100,6 +100,13 @@ func _rebuild_towns() -> void:
 			var c: Array = reg["lords"][int(t["lord"])]["color"]
 			col = Color(c[0], c[1], c[2])
 		M.recolor(M.put(towns_node, "castle/Banner.glb", p + Vector3(3, 0, 3), 0.0, 3.0), col)
+		if t["owner"] == "señor":
+			var sh := Sprite3D.new()
+			sh.texture = load(preload("res://scripts/art.gd").shield(int(t["lord"])))
+			sh.pixel_size = 0.016
+			sh.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+			sh.position = p + Vector3(3, 9.5, 3)
+			towns_node.add_child(sh)
 		var txt := "%s · %s\n%s · %d hab.%s" % [t["name"], R.tier_name(tier), R.owner_text(t), R.pop_of(t), " · ¡inundado!" if t.get("flooded", false) else ""]
 		if not t.get("home", false):
 			txt += " · %d soldados" % (int(t["garrison"]) if t["owner"] == "jugador" else int(t["troops"]))

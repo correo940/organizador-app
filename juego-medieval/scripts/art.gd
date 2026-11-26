@@ -95,7 +95,7 @@ static func face_of(p: Dictionary, noble := false, royal := false) -> String:
 	var age := int(p.get("age", 30))
 	var k: String
 	if age < 15:
-		k = ("nino" if hash(String(p.get("name", ""))) % 2 == 0 else "nino2") if male else "mujer"
+		k = ("nino" if hash(String(p.get("name", ""))) % 2 == 0 else "nino2") if male else "nina"
 	elif royal:
 		k = "rey" if male else "reina"
 	elif age >= 58:
@@ -105,6 +105,11 @@ static func face_of(p: Dictionary, noble := false, royal := false) -> String:
 	else:
 		k = "hombre" if male else "mujer"
 	return "res://assets/ui/retrato_%s.png" % k
+
+
+## Escudo de armas de cada señor de la región.
+static func shield(i: int) -> String:
+	return "res://assets/ui/escudo_%d.png" % (posmod(i, 5))
 
 
 ## Fila de retratos con nombre debajo (familia, corte...).

@@ -4,6 +4,7 @@ extends RefCounted
 
 const R := preload("res://scripts/region_sim.gd")
 const N := preload("res://scripts/nobles.gd")
+const Art := preload("res://scripts/art.gd")
 const CHESS := ["Ataque frontal", "Defensa cerrada", "Gambito"]
 
 
@@ -149,6 +150,7 @@ static func court(v, i: int, town_id: int) -> void:
 		lines.append("")
 		lines.append(err)
 	opts.append(["Cerrar", v._close_panel])
+	v.panel_extra = Art.portrait_row([[Art.shield(i), "Armas de su casa"], [Art.face_of(l, true, String(l.get("title", "")) == "Rey"), N.full(l)]])
 	v._open_panel("Corte de %s" % N.full(l), "\n".join(lines), opts)
 
 
@@ -241,4 +243,8 @@ static func diplomacy(v) -> void:
 	lines.append("")
 	lines.append(GS.WORLD.ranking_text())
 	opts.append(["Cerrar", v._close_panel])
+	var people := []
+	for i in reg["lords"].size():
+		people.append([Art.shield(i), String(reg["lords"][i]["first"]) if reg["lords"][i].has("first") else N.name_of(i)])
+	v.panel_extra = Art.portrait_row(people)
 	v._open_panel("Diplomacia de la región", "\n".join(lines), opts)

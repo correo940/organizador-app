@@ -11,6 +11,7 @@ var lbl_prompt: Label
 var lbl_log: Label
 var panel: PanelContainer
 var box: VBoxContainer
+var panel_extra: Control = null  # algo que mostrar bajo el título del próximo panel (escudos, caras)
 
 
 func _build_hud() -> void:
@@ -82,6 +83,9 @@ func _open_panel(title: String, text: String, options: Array) -> void:
 	t.add_theme_font_size_override("font_size", 26)
 	t.add_theme_color_override("font_color", Art.TITLE)
 	box.add_child(t)
+	if panel_extra != null:
+		box.add_child(panel_extra)
+		panel_extra = null
 	var pic := Art.event_picture(title)
 	if pic != "":
 		box.add_child(Art.picture(pic))
