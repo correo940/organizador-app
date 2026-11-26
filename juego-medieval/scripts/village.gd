@@ -13,7 +13,6 @@ const TRADE := preload("res://scripts/trade_ui.gd")
 const TOWN := preload("res://scripts/town.gd")
 const WILD := preload("res://scripts/wildlife.gd")
 const HUD := preload("res://scripts/hud.gd")
-const HUD_FACE := preload("res://assets/ui/retrato_hombre.png")
 
 const PLAZA := Vector3(60, 0, 40)
 const PLOT := Vector3(13, 0, 40)
@@ -766,6 +765,23 @@ func _build_hud() -> void:
 	panel.add_child(box)
 
 
+## Retrato según quién eres: campesino o campesina, señor o dama, rey, o anciano.
+var _faces := {}
+func _portrait(p: Dictionary, d: Dictionary) -> Texture2D:
+	var k: String
+	if d.get("king", false):
+		k = "rey" if p["male"] else "dama"
+	elif int(p["age"]) >= 58 and p["male"]:
+		k = "anciano"
+	elif int(d["title"]) >= 1 or int(d["tier"]) >= 1:
+		k = "senor" if p["male"] else "dama"
+	else:
+		k = "hombre" if p["male"] else "mujer"
+	if not _faces.has(k):
+		_faces[k] = load("res://assets/ui/retrato_%s.png" % k)
+	return _faces[k]
+
+
 func _update_hud() -> void:
 	var d = GS.data
 	var p = d["player"]
@@ -774,7 +790,7 @@ func _update_hud() -> void:
 		rank = "Rey de la región" if p["male"] else "Reina de la región"
 	lbl_name.text = "%s %s · %s, %d años" % [p["name"], d["dynasty"], rank, int(p["age"])]
 	hud_portrait.initial = String(d["dynasty"]).replace("de ", "").replace("del ", "").substr(0, 1).to_upper()
-	hud_portrait.face = HUD_FACE if p["male"] else null
+	hud_portrait.face = _portrait(p, d)
 	hud_portrait.queue_redraw()
 	bar_health.label = "Salud %d" % int(p["health"])
 	bar_health.value = float(p["health"]) / 100.0
