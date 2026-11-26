@@ -60,15 +60,20 @@ class Bar extends Control:
 	var label := ""
 	var value := 1.0
 	var col := Color(0.75, 0.12, 0.1)
+	var icon: Texture2D = null
 
 	func _draw() -> void:
-		draw_rect(Rect2(Vector2.ZERO, size), Color(0.05, 0.04, 0.03, 0.9))
-		draw_rect(Rect2(Vector2(2, 2), Vector2((size.x - 4) * clampf(value, 0, 1), size.y - 4)), col)
-		draw_rect(Rect2(Vector2(2, 2), Vector2((size.x - 4) * clampf(value, 0, 1), (size.y - 4) * 0.4)), Color(1, 1, 1, 0.15))
-		draw_rect(Rect2(Vector2.ZERO, size), GOLD, false, 1.5)
+		var x0 := size.y * 1.1 if icon != null else 0.0
+		var r := Rect2(Vector2(x0, 0), Vector2(size.x - x0, size.y))
+		draw_rect(r, Color(0.05, 0.04, 0.03, 0.9))
+		draw_rect(Rect2(r.position + Vector2(2, 2), Vector2((r.size.x - 4) * clampf(value, 0, 1), r.size.y - 4)), col)
+		draw_rect(Rect2(r.position + Vector2(2, 2), Vector2((r.size.x - 4) * clampf(value, 0, 1), (r.size.y - 4) * 0.4)), Color(1, 1, 1, 0.15))
+		draw_rect(r, GOLD, false, 1.5)
+		if icon != null:
+			draw_texture_rect(icon, Rect2(Vector2(-2, -3), Vector2(size.y + 6, size.y + 6)), false)
 		var f := ThemeDB.fallback_font
-		draw_string_outline(f, Vector2(8, size.y * 0.72), label, HORIZONTAL_ALIGNMENT_LEFT, -1, 15, 4, Color.BLACK)
-		draw_string(f, Vector2(8, size.y * 0.72), label, HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color.WHITE)
+		draw_string_outline(f, Vector2(x0 + 8, size.y * 0.72), label, HORIZONTAL_ALIGNMENT_LEFT, -1, 15, 4, Color.BLACK)
+		draw_string(f, Vector2(x0 + 8, size.y * 0.72), label, HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color.WHITE)
 
 
 ## Minimapa redondo centrado en el jugador (norte arriba) y reloj de sol y luna.
@@ -157,8 +162,10 @@ class Minimap extends Control:
 ## Ranura de la barra inferior: icono (texto), cantidad y tecla.
 static func slot(label: String, key: String, icon: String = "") -> PanelContainer:
 	var p := PanelContainer.new()
-	var sb := frame_style(6)
-	sb.set_content_margin_all(4)
+	var sb := StyleBoxTexture.new()
+	sb.texture = load("res://assets/ui/ranura.png")
+	sb.set_texture_margin_all(22)
+	sb.set_content_margin_all(13)
 	p.add_theme_stylebox_override("panel", sb)
 	p.custom_minimum_size = Vector2(86, 58)
 	var vb := VBoxContainer.new()

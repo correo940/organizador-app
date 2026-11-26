@@ -668,10 +668,12 @@ func _build_hud() -> void:
 	lbl_name.add_theme_constant_override("outline_size", 5)
 	col.add_child(lbl_name)
 	bar_health = HUD.Bar.new()
+	bar_health.icon = load("res://assets/ui/icono_salud.png")
 	bar_health.custom_minimum_size = Vector2(250, 22)
 	col.add_child(bar_health)
 	bar_food = HUD.Bar.new()
 	bar_food.col = Color(0.8, 0.62, 0.12)
+	bar_food.icon = load("res://assets/ui/icono_comida.png")
 	bar_food.custom_minimum_size = Vector2(250, 22)
 	col.add_child(bar_food)
 	lbl_res = Label.new()
@@ -690,11 +692,19 @@ func _build_hud() -> void:
 	var place := PanelContainer.new()
 	place.add_theme_stylebox_override("panel", HUD.frame_style(10))
 	tr.add_child(place)
+	var ph := HBoxContainer.new()
+	place.add_child(ph)
+	var pic := TextureRect.new()
+	pic.texture = load("res://assets/ui/icono_habitantes.png")
+	pic.custom_minimum_size = Vector2(40, 40)
+	pic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	pic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	ph.add_child(pic)
 	lbl_place = Label.new()
 	lbl_place.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	lbl_place.add_theme_font_size_override("font_size", 15)
 	lbl_place.add_theme_color_override("font_color", HUD.GOLD)
-	place.add_child(lbl_place)
+	ph.add_child(lbl_place)
 	minimap = HUD.Minimap.new()
 	minimap.v = self
 	minimap.custom_minimum_size = Vector2(260, 260)
@@ -715,7 +725,7 @@ func _build_hud() -> void:
 	bar.offset_bottom = -10
 	bar.add_theme_constant_override("separation", 6)
 	layer.add_child(bar)
-	for sdef in [["oro", "Oro"], ["madera", "Madera"], ["piedra", "Piedra"], ["hierro", "Hierro"], ["comida", "Comida"], ["prestigio", "Prestigio"]]:
+	for sdef in [["oro", "Oro"], ["madera", "Madera"], ["piedra", "Piedra"], ["hierro", "Hierro"], ["comida", "Comida"], ["soldados", "Soldados"], ["prestigio", "Prestigio"]]:
 		var sl := HUD.slot("", sdef[1], "res://assets/ui/icono_%s.png" % sdef[0])
 		bar.add_child(sl)
 		hud_slots[sdef[0]] = sl.find_child("L", true, false)
@@ -730,7 +740,7 @@ func _build_hud() -> void:
 	logp.add_theme_stylebox_override("panel", Art.bar_style())
 	logp.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	logp.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
-	logp.offset_bottom = -80
+	logp.offset_bottom = -100
 	logp.offset_left = 8
 	layer.add_child(logp)
 	lbl_log = Label.new()
@@ -803,6 +813,7 @@ func _update_hud() -> void:
 	hud_slots["comida"].text = str(GS.food_total())
 	hud_slots["prestigio"].text = str(int(d["prestige"]))
 	hud_slots["hierro"].text = str(GS.inv("hierro"))
+	hud_slots["soldados"].text = str(GS.ARMY.total())
 	hud_slots["t"].text = "Tiempo x%d" % int(GS.speed)
 	var lines := ["MISIONES"]
 	if d["summons"] != null:

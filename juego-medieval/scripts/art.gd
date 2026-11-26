@@ -125,6 +125,18 @@ static func portrait_row(people: Array) -> HBoxContainer:
 		tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		vb.add_child(tr)
+		if String(pe[0]).contains("retrato_"):
+			# Marco tallado alrededor de cada cara.
+			var fr := TextureRect.new()
+			fr.texture = load("res://assets/ui/marco_cara.png")
+			fr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			fr.stretch_mode = TextureRect.STRETCH_SCALE
+			fr.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+			fr.offset_left = -9
+			fr.offset_top = -9
+			fr.offset_right = 9
+			fr.offset_bottom = 9
+			tr.add_child(fr)
 		var l := Label.new()
 		l.text = pe[1]
 		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
