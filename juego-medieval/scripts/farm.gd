@@ -71,7 +71,7 @@ func _ready() -> void:
 	obstacles.append([Vector2(MILL.x, MILL.z), 3.0])
 	obstacles.append([Vector2(OVEN.x, OVEN.z), 1.6])
 	_build_static()
-	for i in 6:
+	for i in 12:
 		_spawn_deer({}, r)
 
 
@@ -433,7 +433,7 @@ func annex_panel(i: int) -> void:
 func _spawn_deer(dd: Dictionary, r = null) -> void:
 	var stag := randf() < 0.35
 	var n := _animated("animals/%s.glb" % ("Stag" if stag else "Deer"), 1.9 if stag else 1.7, "AnimalArmature|Idle")
-	n.position = Vector3(randf_range(3, 24), 0, randf_range(3, 20))
+	n.position = Vector3(randf_range(-48, -10), 0, randf_range(-40, 120))
 	if dd.is_empty():
 		deer.append({"n": n, "stag": stag, "state": "idle", "t": n.position, "timer": 0.0, "dead": false})
 	else:
@@ -463,8 +463,8 @@ func _update_deer(delta: float) -> void:
 			d["timer"] -= delta
 			var dir := away.normalized()
 			n.position += dir * 6.4 * delta
-			n.position.x = clampf(n.position.x, 2, 118)
-			n.position.z = clampf(n.position.z, 2, 78)
+			n.position.x = clampf(n.position.x, -54, 215)
+			n.position.z = clampf(n.position.z, -64, 165)
 			n.rotation.y = atan2(dir.x, dir.z)
 			_play(n, "AnimalArmature|Gallop")
 			if d["timer"] <= 0:
@@ -475,7 +475,7 @@ func _update_deer(delta: float) -> void:
 		if to.length() < 0.3:
 			_play(n, "AnimalArmature|Eating")
 			if randf() < 0.003:
-				d["t"] = Vector3(clampf(n.position.x + randf_range(-8, 8), 3, 24), 0, clampf(n.position.z + randf_range(-8, 8), 3, 22))
+				d["t"] = Vector3(clampf(n.position.x + randf_range(-8, 8), -50, -8), 0, clampf(n.position.z + randf_range(-8, 8), -45, 125))
 		else:
 			n.position += to.normalized() * minf(to.length(), 1.2 * delta)
 			n.rotation.y = atan2(to.x, to.z)

@@ -19,6 +19,14 @@ const PLOT := Vector3(13, 0, 40)
 const MARKET := Vector3(65.6, 0, 47.3)
 const HALL := Vector3(60, 0, 19)
 const CAMP := Vector3(111, 0, 41)
+## Tierras del pueblo: bosque al oeste y al norte, lago al sur con embarcadero, barca e islote.
+const LAKE_C := Vector3(90, 0, 140)
+const LAKE_R := Vector2(48, 26)
+const ISLAND := Vector3(110, 0, 146)
+const ISLAND_R := 7.0
+const DOCK := Vector3(78, 0, 109)
+const DOCK_END := Vector3(78, 0, 121)
+const WORLD := Rect2(-55, -65, 270, 235)
 const RUN_SPEED := 4.2
 const SPRINT_SPEED := 7.0
 const GREETINGS := ["Buenos días. Dicen que este invierno será duro.", "¿Has visto los lobos cerca del bosque?", "El rey sube los impuestos otra vez...", "Mi abuelo luchó en la frontera, ¿sabes?", "El pan del mercado está más caro cada día.", "Si necesitas ayuda con la cosecha, avísame."]
@@ -90,9 +98,25 @@ func _ready() -> void:
 		var a := r.randf() * TAU
 		var p := Vector3(60 + cos(a) * r.randf_range(75, 110), 0, 40 + sin(a) * r.randf_range(55, 90))
 		trees.append({"p": p, "k": i % 3, "i": r.randi_range(1, 5), "s": r.randf_range(2.5, 3.5), "r": r.randf() * TAU})
+	# Gran bosque al oeste (caza y leña) y monte bajo al norte.
+	var fz := FastNoiseLite.new()
+	fz.seed = 5
+	fz.frequency = 0.04
+	var nf := 0
+	while nf < 230:
+		var p := Vector3(r.randf_range(-52, -6), 0, r.randf_range(-60, 132))
+		if fz.get_noise_2d(p.x, p.z) > -0.25:
+			trees.append({"p": p, "k": [0, 1, 1][nf % 3], "i": r.randi_range(1, 5), "s": r.randf_range(2.6, 3.8), "r": r.randf() * TAU})
+			nf += 1
+	for i in 70:
+		var p := Vector3(r.randf_range(0, 150), 0, r.randf_range(-60, -42))
+		trees.append({"p": p, "k": i % 3, "i": r.randi_range(1, 5), "s": r.randf_range(2.6, 3.6), "r": r.randf() * TAU})
+	for i in 14:
+		var a := r.randf() * TAU
+		trees.append({"p": ISLAND + Vector3(cos(a), 0, sin(a)) * r.randf_range(1.5, ISLAND_R - 1.5), "k": i % 3, "i": r.randi_range(1, 5), "s": r.randf_range(2.0, 2.8), "r": r.randf() * TAU})
 	for i in 22:
 		rocks.append({"p": Vector3(r.randf_range(8, 32), 0, r.randf_range(55, 70)), "i": r.randi_range(1, 7), "s": r.randf_range(1.3, 2.4), "r": r.randf() * TAU})
-	trees = trees.filter(func(t): return _free_ground(t["p"], 2.5) and t["p"].distance_to(WILD.CAMP) > 6.0 and BLD.SLOTS.all(func(sl): return t["p"].distance_to(sl) > 7.0) and t["p"].distance_to(BLD.MINE) > 6.0 and SIM.LANDS.all(func(l): return Vector2(t["p"].x, t["p"].z).distance_to(l) > 9.0) and TOWN.clear_rects(built_tier).all(func(r): return not r.has_point(Vector2(t["p"].x, t["p"].z))))
+	trees = trees.filter(func(t): return (_on_island(t["p"]) or not _in_lake(t["p"], 4.0)) and t["p"].distance_to(DOCK) > 6.0 and _free_ground(t["p"], 2.5) and t["p"].distance_to(WILD.CAMP) > 6.0 and BLD.SLOTS.all(func(sl): return t["p"].distance_to(sl) > 7.0) and t["p"].distance_to(BLD.MINE) > 6.0 and SIM.LANDS.all(func(l): return Vector2(t["p"].x, t["p"].z).distance_to(l) > 9.0) and TOWN.clear_rects(built_tier).all(func(r): return not r.has_point(Vector2(t["p"].x, t["p"].z))))
 	_build_static()
 	farm = FARM.new()
 	farm.v = self
@@ -121,12 +145,15 @@ func _ready() -> void:
 	_build_hud()
 	_reset_villagers()
 	cam = CAM.new()
-	cam.dist = 8.0
-	cam.pitch = -0.45
+	cam.rts = true
+	cam.dist = 34.0
+	cam.yaw = -0.785
+	cam.limits = WORLD
 	add_child(cam)
 	_update_player_model()
 	cam.target = player
-	cam.global_position = player.global_position + Vector3(0, 1.6, 0)
+	cam.focus = player.position
+	cam.global_position = player.global_position
 	GS.notify.connect(func(_t): _refresh_log())
 	_refresh_log()
 	SFX.music("aldea")
@@ -182,6 +209,7 @@ func _build_static() -> void:
 		M.recolor(rk, Color(0.42, 0.44, 0.4))
 	nature_node = Node3D.new()
 	add_child(nature_node)
+	_build_lake()
 	# Piedras sueltas por el campo y colinas suaves en el horizonte.
 	var rr := RandomNumberGenerator.new()
 	rr.seed = 99
@@ -201,6 +229,60 @@ func _build_static() -> void:
 		h.scale = Vector3(1.0, rr.randf_range(0.18, 0.35), 1.0)
 		h.position = Vector3(80 + cos(a) * rr.randf_range(210, 250), -2.0, 40 + sin(a) * rr.randf_range(190, 230))
 		add_child(h)
+
+
+## Lago con orilla de arena, embarcadero, barca e islote; camino desde el pueblo.
+func _build_lake() -> void:
+	var shore := MeshInstance3D.new()
+	var sm := CylinderMesh.new()
+	sm.top_radius = 1.0
+	sm.bottom_radius = 1.0
+	sm.height = 0.04
+	sm.radial_segments = 64
+	shore.mesh = sm
+	shore.scale = Vector3(LAKE_R.x + 3.0, 1, LAKE_R.y + 3.0)
+	shore.position = LAKE_C + Vector3(0, 0.02, 0)
+	shore.material_override = M.dirt(Color(0.62, 0.55, 0.38))
+	add_child(shore)
+	var water := MeshInstance3D.new()
+	var wm := CylinderMesh.new()
+	wm.top_radius = 1.0
+	wm.bottom_radius = 1.0
+	wm.height = 0.05
+	wm.radial_segments = 64
+	water.mesh = wm
+	water.scale = Vector3(LAKE_R.x, 1, LAKE_R.y)
+	water.position = LAKE_C + Vector3(0, 0.08, 0)
+	water.material_override = M.water_material()
+	add_child(water)
+	var isl := MeshInstance3D.new()
+	var im := CylinderMesh.new()
+	im.top_radius = ISLAND_R
+	im.bottom_radius = ISLAND_R + 1.2
+	im.height = 0.4
+	isl.mesh = im
+	isl.position = ISLAND + Vector3(0, 0.05, 0)
+	isl.material_override = M.flat(Color(0.36, 0.44, 0.2))
+	add_child(isl)
+	for k in 5:
+		var a := k * TAU / 5.0 + 0.4
+		M.put(self, "nature/Rock_Moss_%d.glb" % (1 + k), ISLAND + Vector3(cos(a), 0, sin(a)) * (ISLAND_R - 0.5), randf() * TAU, 0.9)
+	# Embarcadero de tablones sobre postes.
+	M.road(self, Vector3(60, 0, 82), DOCK, 3.0, Color(0.42, 0.34, 0.24))
+	var dk := Node3D.new()
+	add_child(dk)
+	M._mats()
+	M._bx(dk, Vector3(2.2, 0.15, DOCK_END.z - DOCK.z), (DOCK + DOCK_END) / 2 + Vector3(0, 0.35, 0), M._plank)
+	for z in range(int(DOCK.z) + 2, int(DOCK_END.z) + 1, 3):
+		for sd in [-1, 1]:
+			M._bx(dk, Vector3(0.2, 1.0, 0.2), Vector3(DOCK.x + sd * 1.0, 0.1, z), M._beam)
+	boat_node = GS.REALM.boat(self, Color(0.9, 0.85, 0.7))
+	boat_node.scale = Vector3.ONE * 0.55
+	boat_node.position = DOCK_END + Vector3(1.6, 0, 1.0)
+	var lb := M.label3d("Lago · islote al fondo", 40)
+	lb.position = LAKE_C + Vector3(0, 4, -LAKE_R.y)
+	lb.visibility_range_end = 60.0
+	add_child(lb)
 
 
 ## Farol de calle: poste con una luz cálida que se enciende al anochecer.
@@ -717,6 +799,16 @@ func _build_hud() -> void:
 	lbl_info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	lbl_info.custom_minimum_size.x = 300
 	info.add_child(lbl_info)
+	var keys := Label.new()
+	keys.text = "Clic izq.: ir / usar · Clic der.: ir · WASD o borde: mover vista · Q/R: girar · Rueda: zoom · Espacio: centrar en ti"
+	keys.add_theme_font_size_override("font_size", 13)
+	keys.add_theme_color_override("font_outline_color", Color.BLACK)
+	keys.add_theme_constant_override("outline_size", 4)
+	keys.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
+	keys.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	keys.offset_top = 128
+	keys.offset_left = -330
+	layer.add_child(keys)
 	# Abajo en el centro: ranuras con recursos y teclas.
 	var bar := HBoxContainer.new()
 	bar.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM)
@@ -833,6 +925,8 @@ func _update_hud() -> void:
 		lines.append("Sin tareas pendientes. Prosperidad %d" % int(d["prosperity"]))
 	lbl_info.text = "\n".join(lines)
 	lbl_prompt.text = "" if panel.visible or inter.is_empty() else "[E] " + inter["label"]
+	if not panel.visible and not hover.is_empty() and hover.get("label", "") != inter.get("label", ""):
+		lbl_prompt.text = "Clic: " + hover["label"]
 	lbl_prompt.visible = lbl_prompt.text != ""
 
 
@@ -943,11 +1037,20 @@ func _process(delta: float) -> void:
 		_move_player(delta)
 		GS.advance(delta)
 		inter = _find_interaction()
-		if Input.is_key_pressed(KEY_E) and inter.get("type", "") in ["tree", "rock"]:
+		if not order.is_empty() and order["type"] != "" and inter.get("type", "") == order["type"] and not order.get("gather", false):
+			if order["type"] in ["tree", "rock", "fish", "mine"]:
+				order["gather"] = true
+			else:
+				order = {}
+				_interact()
+		var auto: bool = order.get("gather", false)
+		var gm = cam.ground_at(get_viewport().get_mouse_position())
+		hover = _find_interaction(gm) if gm != null else {}
+		if (Input.is_key_pressed(KEY_E) or auto) and inter.get("type", "") in ["tree", "rock"]:
 			_gather(inter["type"])
-		elif Input.is_key_pressed(KEY_E) and inter.get("type", "") == "fish":
+		elif (Input.is_key_pressed(KEY_E) or auto) and inter.get("type", "") == "fish":
 			farm.fish()
-		elif Input.is_key_pressed(KEY_E) and inter.get("type", "") == "mine" and GS.data["mine"]:
+		elif (Input.is_key_pressed(KEY_E) or auto) and inter.get("type", "") == "mine" and GS.data["mine"]:
 			bld.mine_tick()
 		_move_npcs(delta)
 	else:
@@ -1064,16 +1167,89 @@ func _ambience(d: Dictionary, night: bool) -> void:
 		SFX.play("campana", -6.0)
 
 
+## Orden actual del jugador: ir a un punto y, al llegar, hacer lo que había allí.
+var order := {}
+var hover := {}
+var sailing := false
+var boat_node: Node3D
+var marker: Node3D
+
+
+func _mark(p: Vector3) -> void:
+	if marker == null:
+		marker = Node3D.new()
+		add_child(marker)
+		var m := MeshInstance3D.new()
+		var tm := TorusMesh.new()
+		tm.inner_radius = 0.45
+		tm.outer_radius = 0.6
+		m.mesh = tm
+		var mat := StandardMaterial3D.new()
+		mat.albedo_color = Color(1.0, 0.85, 0.3)
+		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		m.material_override = mat
+		marker.add_child(m)
+	marker.position = p + Vector3(0, 0.08, 0)
+	marker.scale = Vector3.ONE * 1.6
+	marker.visible = true
+	var tw := create_tween()
+	tw.tween_property(marker, "scale", Vector3.ONE * 0.6, 0.35)
+	tw.tween_callback(func(): marker.visible = false)
+
+
+static func _in_lake(p: Vector3, margin := 0.0) -> bool:
+	var q := Vector2((p.x - LAKE_C.x) / (LAKE_R.x + margin), (p.z - LAKE_C.z) / (LAKE_R.y + margin))
+	return q.length() < 1.0
+
+
+static func _on_island(p: Vector3) -> bool:
+	return Vector2(p.x - ISLAND.x, p.z - ISLAND.z).length() < ISLAND_R
+
+
 func _move_player(delta: float) -> void:
-	var dir: Vector3 = cam.move_dir()
+	var dir := Vector3.ZERO
+	if not order.is_empty():
+		if order.has("i") and order["type"] == "villager" and int(order["i"]) < villagers.size():
+			order["p"] = villagers[int(order["i"])].position
+		var to: Vector3 = order["p"] - player.position
+		to.y = 0
+		order["t"] = float(order["t"]) + delta
+		if to.length() < 0.4 or float(order["t"]) > 40.0 or order.get("gather", false):
+			if order["type"] == "" or float(order["t"]) > 40.0:
+				order = {}
+		else:
+			dir = to.normalized()
 	if dir == Vector3.ZERO:
 		if not player.is_playing_once():
 			player.play("Idle")
 		return
+	if sailing:
+		var np: Vector3 = player.position + dir * 5.0 * delta
+		var q := Vector2((np.x - LAKE_C.x) / (LAKE_R.x - 1.5), (np.z - LAKE_C.z) / (LAKE_R.y - 1.5))
+		if q.length() >= 1.0 or Vector2(np.x - ISLAND.x, np.z - ISLAND.z).length() < ISLAND_R + 0.8:
+			order = {}
+			return
+		player.position = np
+		boat_node.position = Vector3(np.x, 0, np.z)
+		boat_node.rotation.y = lerp_angle(boat_node.rotation.y, atan2(dir.x, dir.z), minf(1.0, delta * 4.0))
+		player.rotation.y = boat_node.rotation.y
+		player.play("Idle")
+		return
 	var sprint := Input.is_key_pressed(KEY_SHIFT)
 	var p: Vector3 = player.position + dir * (SPRINT_SPEED if sprint else RUN_SPEED) * (1.8 if _riding() else GS.CHAR.speed_mult()) * delta
-	p.x = clampf(p.x, bnd.position.x, bnd.end.x)
-	p.z = clampf(p.z, bnd.position.y, bnd.end.y)
+	p.x = clampf(p.x, WORLD.position.x, WORLD.end.x)
+	p.z = clampf(p.z, WORLD.position.y, WORLD.end.y)
+	# En el islote no se sale al agua; en tierra firme, la orilla del lago frena.
+	if _on_island(player.position):
+		var off := Vector2(p.x - ISLAND.x, p.z - ISLAND.z)
+		if off.length() > ISLAND_R - 0.8:
+			off = off.normalized() * (ISLAND_R - 0.8)
+			p.x = ISLAND.x + off.x
+			p.z = ISLAND.z + off.y
+	elif _in_lake(p, 0.5) and absf(p.x - DOCK.x) > 1.0:
+		var q := Vector2((p.x - LAKE_C.x) / (LAKE_R.x + 0.5), (p.z - LAKE_C.z) / (LAKE_R.y + 0.5)).normalized()
+		p.x = LAKE_C.x + q.x * (LAKE_R.x + 0.5)
+		p.z = LAKE_C.z + q.y * (LAKE_R.y + 0.5)
 	var hp := house_pos()
 	var obs := obstacles + ([[Vector2(hp.x, hp.z), 3.6 if house_level < 4 else 6.0]] if house_level > 0 else [])
 	for li in GS.data["lands"].size():
@@ -1199,9 +1375,19 @@ func _step_to(a, target: Vector3, spd: float, delta: float) -> void:
 	a.play("Walk")
 
 
-func _find_interaction() -> Dictionary:
+func _find_interaction(pp: Vector3 = Vector3.INF) -> Dictionary:
 	var d = GS.data
-	var pp: Vector3 = player.position
+	if pp == Vector3.INF:
+		pp = player.position
+	# La barca y el lago.
+	if sailing:
+		if pp.distance_to(DOCK_END) < 4.0:
+			return {"type": "boat_off", "label": "Bajar al embarcadero"}
+		if pp.distance_to(ISLAND) < ISLAND_R + 3.0:
+			return {"type": "boat_off", "label": "Desembarcar en el islote"}
+		return {"type": "fish", "label": "Pescar desde la barca (mantén E)"}
+	if boat_node and pp.distance_to(boat_node.position) < 3.5:
+		return {"type": "boat_on", "label": "Subir a la barca y navegar"}
 	var ii: Dictionary = inc.find_interaction(pp)
 	if not ii.is_empty():
 		return ii
@@ -1249,7 +1435,23 @@ func _find_interaction() -> Dictionary:
 
 
 func _unhandled_input(ev: InputEvent) -> void:
+	# Clic izquierdo: ir a un sitio o a hacer algo (talar, hablar, comprar...). Clic derecho: solo ir.
+	if ev is InputEventMouseButton and ev.pressed and ev.button_index in [MOUSE_BUTTON_LEFT, MOUSE_BUTTON_RIGHT]:
+		if panel.visible or GS.data.get("game_over", false):
+			return
+		var g = cam.ground_at(ev.position)
+		if g == null:
+			return
+		var it: Dictionary = _find_interaction(g) if ev.button_index == MOUSE_BUTTON_LEFT else {}
+		order = {"p": g, "type": it.get("type", ""), "t": 0.0}
+		if it.has("i"):
+			order["i"] = it["i"]
+		_mark(g)
+		return
 	if not (ev is InputEventKey and ev.pressed and not ev.echo):
+		return
+	if ev.keycode == KEY_SPACE:
+		cam.follow = true
 		return
 	match ev.keycode:
 		KEY_E:
@@ -1299,6 +1501,23 @@ func _interact() -> void:
 	match inter.get("type", ""):
 		"tree", "rock":
 			_gather(inter["type"])
+		"boat_on":
+			sailing = true
+			order = {}
+			player.position = boat_node.position + Vector3(0, 0.45, 0)
+			_float("Navegando: haz clic en el agua para remar", Color(0.7, 0.9, 1.0))
+		"boat_off":
+			sailing = false
+			order = {}
+			if player.position.distance_to(DOCK_END) < 5.0:
+				boat_node.position = DOCK_END + Vector3(1.6, 0, 1.0)
+				player.position = DOCK_END - Vector3(0, 0, 2.0)
+			else:
+				var dir: Vector3 = player.position - ISLAND
+				dir.y = 0
+				boat_node.position = ISLAND + dir.normalized() * (ISLAND_R + 1.2)
+				player.position = ISLAND + dir.normalized() * (ISLAND_R - 1.6)
+			player.position.y = 0.0
 		"villager":
 			var v = villagers[inter["i"]]
 			v.rotation.y = atan2(player.position.x - v.position.x, player.position.z - v.position.z)

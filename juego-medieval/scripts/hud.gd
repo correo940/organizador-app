@@ -79,7 +79,7 @@ class Bar extends Control:
 ## Minimapa redondo centrado en el jugador (norte arriba) y reloj de sol y luna.
 class Minimap extends Control:
 	var v  # la aldea
-	var scale_px := 1.6
+	var scale_px := 0.75
 	var frame: Texture2D = load("res://assets/ui/marco_mapa.png")
 	var t_acc := 0.0
 
@@ -100,7 +100,8 @@ class Minimap extends Control:
 		var c := Vector2(size.x / 2, size.y / 2)
 		var full := minf(size.x, size.y) / 2
 		var r := full * 0.51 if frame != null else full - 4
-		var o := Vector2(v.player.position.x, v.player.position.z)
+		var fo: Vector3 = v.cam.focus if v.cam.rts else v.player.position
+		var o := Vector2(fo.x, fo.z)
 		draw_circle(c, r + 6, Color(0.08, 0.06, 0.04))
 		draw_circle(c, r, Color(0.36, 0.42, 0.22))
 		var inside := func(p: Vector2) -> bool: return p.distance_to(c) < r - 2
@@ -109,6 +110,27 @@ class Minimap extends Control:
 			var a := _w2m(rc.position, c, o)
 			if inside.call(a + rc.size * scale_px / 2):
 				draw_rect(Rect2(a, rc.size * scale_px), Color(0.45, 0.33, 0.18))
+		# Bosque, lago e islote.
+		var lc := _w2m(Vector2(v.LAKE_C.x, v.LAKE_C.z), c, o)
+		var pts := PackedVector2Array()
+		for k in 32:
+			var a := k * TAU / 32.0
+			var q := lc + Vector2(cos(a) * v.LAKE_R.x, sin(a) * v.LAKE_R.y) * scale_px
+			if inside.call(q):
+				pts.append(q)
+		if pts.size() > 2:
+			draw_colored_polygon(Geometry2D.convex_hull(pts), Color(0.25, 0.45, 0.65))
+		var ic := _w2m(Vector2(v.ISLAND.x, v.ISLAND.z), c, o)
+		if inside.call(ic):
+			draw_circle(ic, v.ISLAND_R * scale_px, Color(0.36, 0.44, 0.2))
+		for k in range(0, v.trees.size(), 3):
+			var tp := _w2m(Vector2(v.trees[k]["p"].x, v.trees[k]["p"].z), c, o)
+			if inside.call(tp):
+				draw_circle(tp, 1.6, Color(0.2, 0.32, 0.14))
+		if v.boat_node:
+			var bp := _w2m(Vector2(v.boat_node.position.x, v.boat_node.position.z), c, o)
+			if inside.call(bp):
+				draw_circle(bp, 2.5, Color(0.9, 0.85, 0.7))
 		var pp := _w2m(Vector2(FARM.POND.x, FARM.POND.z), c, o)
 		if inside.call(pp):
 			draw_circle(pp, FARM.POND_R * scale_px, Color(0.25, 0.45, 0.65))
@@ -143,7 +165,9 @@ class Minimap extends Control:
 		var rot: float = v.player.rotation.y
 		var fwd := Vector2(sin(rot), cos(rot))
 		var side := Vector2(fwd.y, -fwd.x)
-		draw_colored_polygon(PackedVector2Array([c + fwd * 9, c - fwd * 5 + side * 6, c - fwd * 2, c - fwd * 5 - side * 6]), Color(0.95, 0.2, 0.15))
+		var pc := _w2m(Vector2(v.player.position.x, v.player.position.z), c, o)
+		if inside.call(pc):
+			draw_colored_polygon(PackedVector2Array([pc + fwd * 9, pc - fwd * 5 + side * 6, pc - fwd * 2, pc - fwd * 5 - side * 6]), Color(0.95, 0.2, 0.15))
 		if frame != null:
 			draw_texture_rect(frame, Rect2(c - Vector2(full, full), Vector2(full, full) * 2), false)
 		else:
