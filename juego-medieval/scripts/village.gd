@@ -716,8 +716,8 @@ func _build_hud() -> void:
 	bar.offset_bottom = -10
 	bar.add_theme_constant_override("separation", 6)
 	layer.add_child(bar)
-	for sdef in [["oro", "Oro"], ["madera", "Madera"], ["piedra", "Piedra"], ["comida", "Comida"], ["prestigio", "Prestigio"]]:
-		var sl := HUD.slot("", sdef[1], "res://assets/ui/icono_oro.png" if sdef[0] == "oro" else "")
+	for sdef in [["oro", "Oro"], ["madera", "Madera"], ["piedra", "Piedra"], ["hierro", "Hierro"], ["comida", "Comida"], ["prestigio", "Prestigio"]]:
+		var sl := HUD.slot("", sdef[1], "res://assets/ui/icono_%s.png" % sdef[0])
 		bar.add_child(sl)
 		hud_slots[sdef[0]] = sl.find_child("L", true, false)
 	for kdef in [["E", "Usar"], ["I", "Inventario"], ["M", "Mapa"], ["H", "Caballo"], ["T", "Tiempo"]]:
@@ -790,6 +790,7 @@ func _update_hud() -> void:
 	hud_slots["piedra"].text = str(int(d["stone"]))
 	hud_slots["comida"].text = str(GS.food_total())
 	hud_slots["prestigio"].text = str(int(d["prestige"]))
+	hud_slots["hierro"].text = str(GS.inv("hierro"))
 	hud_slots["t"].text = "Tiempo x%d" % int(GS.speed)
 	var lines := ["MISIONES"]
 	if d["summons"] != null:
