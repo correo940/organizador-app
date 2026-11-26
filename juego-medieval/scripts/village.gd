@@ -765,20 +765,16 @@ func _build_hud() -> void:
 	panel.add_child(box)
 
 
-## Retrato según quién eres: campesino o campesina, señor o dama, rey, o anciano.
+## Retrato según quién eres: campesino o campesina, señor o dama, rey o reina, o anciano.
 var _faces := {}
+func _portrait_path(p: Dictionary, d: Dictionary) -> String:
+	return Art.face_of(p, int(d["title"]) >= 1 or int(d["tier"]) >= 1, d.get("king", false))
+
+
 func _portrait(p: Dictionary, d: Dictionary) -> Texture2D:
-	var k: String
-	if d.get("king", false):
-		k = "rey" if p["male"] else "dama"
-	elif int(p["age"]) >= 58 and p["male"]:
-		k = "anciano"
-	elif int(d["title"]) >= 1 or int(d["tier"]) >= 1:
-		k = "senor" if p["male"] else "dama"
-	else:
-		k = "hombre" if p["male"] else "mujer"
+	var k := _portrait_path(p, d)
 	if not _faces.has(k):
-		_faces[k] = load("res://assets/ui/retrato_%s.png" % k)
+		_faces[k] = load(k)
 	return _faces[k]
 
 
@@ -846,6 +842,17 @@ func _open_panel(title: String, text: String, options: Array) -> void:
 	var pic := Art.event_picture(title)
 	if pic != "":
 		box.add_child(Art.picture(pic))
+	elif title == "El obispo":
+		box.add_child(Art.portrait_row([["res://assets/ui/retrato_obispo.png", "El obispo"]]))
+	elif title == "Familia":
+		var d = GS.data
+		var noble: bool = int(d["title"]) >= 1 or int(d["tier"]) >= 1
+		var people := [[_portrait_path(d["player"], d), d["player"]["name"]]]
+		if d["spouse"] != null:
+			people.append([Art.face_of(d["spouse"], noble, d.get("king", false)), d["spouse"]["name"]])
+		for c in d["children"].slice(0, 5):
+			people.append([Art.face_of(c, noble), "%s (%d)" % [c["name"], int(c["age"])]])
+		box.add_child(Art.portrait_row(people))
 	var b := Label.new()
 	b.text = text
 	b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART

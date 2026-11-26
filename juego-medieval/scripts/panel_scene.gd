@@ -85,6 +85,8 @@ func _open_panel(title: String, text: String, options: Array) -> void:
 	var pic := Art.event_picture(title)
 	if pic != "":
 		box.add_child(Art.picture(pic))
+	elif title == "El obispo":
+		box.add_child(Art.portrait_row([["res://assets/ui/retrato_obispo.png", "El obispo"]]))
 	var b := Label.new()
 	b.text = text
 	b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART

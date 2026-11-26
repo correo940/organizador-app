@@ -89,6 +89,46 @@ static func event_picture(title: String) -> String:
 	return ""
 
 
+## Retrato pintado de una persona según sexo, edad y rango ("" si no hay).
+static func face_of(p: Dictionary, noble := false, royal := false) -> String:
+	var male: bool = p.get("male", true)
+	var age := int(p.get("age", 30))
+	var k: String
+	if age < 15:
+		k = ("nino" if hash(String(p.get("name", ""))) % 2 == 0 else "nino2") if male else "mujer"
+	elif royal:
+		k = "rey" if male else "reina"
+	elif age >= 58:
+		k = "anciano" if male else "anciana"
+	elif noble:
+		k = "senor" if male else "dama"
+	else:
+		k = "hombre" if male else "mujer"
+	return "res://assets/ui/retrato_%s.png" % k
+
+
+## Fila de retratos con nombre debajo (familia, corte...).
+static func portrait_row(people: Array) -> HBoxContainer:
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 12)
+	for pe in people:
+		var vb := VBoxContainer.new()
+		var tr := TextureRect.new()
+		tr.texture = load(pe[0])
+		tr.custom_minimum_size = Vector2(84, 84)
+		tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		vb.add_child(tr)
+		var l := Label.new()
+		l.text = pe[1]
+		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		l.add_theme_font_size_override("font_size", 13)
+		vb.add_child(l)
+		row.add_child(vb)
+	return row
+
+
 ## Bloque de imagen para paneles.
 static func picture(path: String) -> TextureRect:
 	var tr := TextureRect.new()
