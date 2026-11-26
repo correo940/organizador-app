@@ -1441,11 +1441,20 @@ func _chronicle_panel() -> void:
 	var l := Label.new()
 	l.text = "\n".join(lines)
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	l.custom_minimum_size.x = 640
+	l.custom_minimum_size.x = 520
 	var sc := ScrollContainer.new()
-	sc.custom_minimum_size = Vector2(680, 420)
+	sc.custom_minimum_size = Vector2(540, 440)
 	sc.add_child(l)
-	_open_custom("Crónica del linaje", sc)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 14)
+	var tree := TextureRect.new()
+	tree.texture = load("res://assets/ui/arbol.jpg")
+	tree.custom_minimum_size = Vector2(245, 440)
+	tree.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	tree.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	row.add_child(tree)
+	row.add_child(sc)
+	_open_custom("Crónica del linaje", row)
 
 
 func _educate(c: Dictionary) -> void:
