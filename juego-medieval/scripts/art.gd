@@ -83,7 +83,7 @@ static func parchment_theme() -> Theme:
 ## Ilustración para un aviso según su título ("" si no tiene).
 static func event_picture(title: String) -> String:
 	var l := title.to_lower()
-	for k in [["fin del linaje", "fin"], ["larga vida al rey", "coronacion"], ["corona", "coronacion"], ["boda", "boda"], ["fuego", "incendio"], ["incendio", "incendio"], ["muere", "funeral"], ["fin del linaje", "funeral"], ["ha caído", "funeral"], ["asesinato", "funeral"], ["funeral", "funeral"], ["invierno", "invierno"], ["hambruna", "invierno"], ["cosecha", "cosecha"], ["victoria", "victoria"], ["larga vida", "victoria"], ["se rinde", "victoria"], ["campeón", "victoria"]]:
+	for k in [["peste", "peste"], ["saqueo", "saqueo"], ["caravana asaltada", "saqueo"], ["nacido", "nacimiento"], ["nacimiento", "nacimiento"], ["llamada del rey", "llamada"], ["a las armas", "llamada"], ["feria", "mercado"], ["mercado", "mercado"], ["mercader", "mercado"], ["fin del linaje", "fin"], ["larga vida al rey", "coronacion"], ["corona", "coronacion"], ["boda", "boda"], ["fuego", "incendio"], ["incendio", "incendio"], ["muere", "funeral"], ["fin del linaje", "funeral"], ["ha caído", "funeral"], ["asesinato", "funeral"], ["funeral", "funeral"], ["invierno", "invierno"], ["hambruna", "invierno"], ["cosecha", "cosecha"], ["victoria", "victoria"], ["larga vida", "victoria"], ["se rinde", "victoria"], ["campeón", "victoria"]]:
 		if l.contains(k[0]):
 			return "res://assets/ui/evento_%s.jpg" % k[1]
 	return ""

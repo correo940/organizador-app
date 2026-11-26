@@ -274,6 +274,7 @@ func next_day() -> void:
 		data["children"].append({"name": cname, "male": m, "age": 0, "trait": TRAITS.keys().pick_random()})
 		data["prestige"] += 5
 		say("¡Ha nacido tu %s %s! (+5 prestigio)" % ["hijo" if m else "hija", cname])
+		popups.append({"title": "¡Ha nacido %s!" % cname, "text": "Tu familia crece: ha nacido tu %s %s. Todo el pueblo viene a felicitaros. (+5 prestigio)" % ["hijo" if m else "hija", cname], "button": "Qué alegría"})
 		chronicle("Nace %s, %s de %s." % [cname, "hijo" if m else "hija", p["name"]])
 	if data["summons"] != null and data["total_days"] > data["summons"]["deadline"]:
 		data["summons"] = null
@@ -330,6 +331,7 @@ func next_season() -> void:
 		popups.append({"title": "Llega el invierno", "text": "La nieve cubre el pueblo. Los campos descansan, los caminos son lentos y hará falta leña y comida guardada para aguantar hasta la primavera.", "button": "Continuar"})
 	if data["summons"] == null and not data.get("king", false) and data["player"]["age"] >= 16 and data["player"]["age"] <= 60 and randf() < 0.45:
 		data["summons"] = {"deadline": int(data["total_days"]) + 4, "enemy": ENEMIES.pick_random()}
+		popups.append({"title": "Llamada del rey", "text": "Un mensajero del rey llega a la plaza: hay guerra contra %s. Tienes 4 días para presentarte en el campamento del este con tus hombres." % data["summons"]["enemy"], "button": "A las armas"})
 		if int(data["title"]) == 1:
 			say("¡El rey ordena que lleves la milicia del pueblo contra %s! Ve al campamento del este (4 días)." % data["summons"]["enemy"])
 		else:
