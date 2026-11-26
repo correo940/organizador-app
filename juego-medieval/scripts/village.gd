@@ -78,6 +78,7 @@ var box: VBoxContainer
 
 func _ready() -> void:
 	built_tier = int(GS.data["tier"])
+	GS.STALLS.ensure()
 	bnd = TOWN.bounds(built_tier)
 	env = M.make_env(self, Vector3(80, 0, 40), 500)
 	var r := RandomNumberGenerator.new()
@@ -150,8 +151,6 @@ func _build_static() -> void:
 	M.put(self, "village/Well.glb", PLAZA, 0, 1.6)
 	# Bancos y faroles en las esquinas de la plaza.
 	for c in [Vector3(-8, 0, -8), Vector3(8, 0, -8), Vector3(-8, 0, 8)]:
-		if c.x < 0:
-			M.put(self, "village/Bench_1.glb", PLAZA + c * 0.85, atan2(-c.x, -c.z), 2.2)
 		_lamp(PLAZA + c + Vector3(signf(c.x) * 1.2, 0, 0))
 	for x in [29.0, 39.0, 74.0]:
 		_lamp(Vector3(x, 0, 36.7))
@@ -171,16 +170,6 @@ func _build_static() -> void:
 	var banner := M.put(self, "castle/Banner.glb", HALL + Vector3(4, 0, 3), 0, 1.6)
 	M.recolor(banner, Color(0.15, 0.3, 0.7))
 	obstacles.append([Vector2(HALL.x, HALL.z), 4.0])
-	# Mercado: fila de puestos en la esquina sureste de la plaza, abiertos hacia ella, con la mercancía detrás.
-	for k in 3:
-		var sp := MARKET + Vector3(-2.7 + k * 2.7, 0, 0)
-		M.put(self, "village/MarketStand_1.glb", sp, PI, 1.7)
-		obstacles.append([Vector2(sp.x, sp.z), 1.0])
-	for o in [Vector3(-3.6, 0, 1.6), Vector3(-2.9, 0, 1.9), Vector3(0.6, 0, 1.7)]:
-		M.put(self, "village/Barrel.glb", MARKET + o, randf(), 1.4)
-	M.put(self, "village/Crate.glb", MARKET + Vector3(-1.2, 0, 1.8), 0.3, 1.4)
-	M.put(self, "village/Bags.glb", MARKET + Vector3(2.4, 0, 1.8), 0.3, 1.4)
-	M.put(self, "village/Cart.glb", MARKET + Vector3(5.0, 0, -1.2), 0.0, 1.5)
 	for i in 6:
 		var a := float(i) / 6.0 * TAU + 0.4
 		M.tent(self, CAMP + Vector3(cos(a) * 6, 0, sin(a) * 6), -a, Color(0.82, 0.76, 0.6))
@@ -228,6 +217,20 @@ func _lamp(p: Vector3) -> void:
 	add_child(l)
 	lamps.append(l)
 	obstacles.append([Vector2(p.x, p.z), 0.4])
+
+
+## Puestos de la plaza: cada vecino que vende tiene el suyo (manta, puesto o tienda).
+var stalls_node: Node3D
+var stalls_sig := ""
+func _rebuild_stalls() -> void:
+	if stalls_node:
+		stalls_node.queue_free()
+	stalls_node = Node3D.new()
+	add_child(stalls_node)
+	for v in GS.STALLS.sellers():
+		GS.STALLS.build(stalls_node, int(v["stall_slot"]), v)
+	if season == 3:
+		M.set_snow(stalls_node, true)
 
 
 ## Casas de los vecinos según lo que ha prosperado cada familia: cabaña, entramado o piedra.
@@ -898,6 +901,10 @@ func _process(delta: float) -> void:
 		_rebuild_house()
 	if _villager_sig() != vsig:
 		_reset_villagers()
+	var ss := GS.STALLS.sig()
+	if ss != stalls_sig:
+		stalls_sig = ss
+		_rebuild_stalls()
 	var hl := _homes_levels()
 	if str(hl) != homes_sig:
 		homes_sig = str(hl)
@@ -1138,6 +1145,9 @@ func _routine_spot(i: int, t: float) -> Variant:
 		for k in d["buildings"]:
 			if d["buildings"][k] == "capilla":
 				return BLD.front(BLD.SLOTS[int(k)], 7.0) + Vector3(cos(ang), 0, sin(ang)) * (1.5 + i % 3)
+	var vv: Dictionary = d["villagers"][i] if i < d["villagers"].size() else {}
+	if int(vv.get("stall", 0)) > 0 and t > 0.3 and t < 0.62:
+		return GS.STALLS.behind(int(vv["stall_slot"]), int(vv["stall"]))
 	if t > 0.74 and t < 0.84 and i % 2 == 0:
 		return PLAZA + Vector3(cos(ang), 0, sin(ang)) * (3.0 + (i % 4) * 0.8)
 	return null
@@ -1190,8 +1200,10 @@ func _find_interaction() -> Dictionary:
 			return {"type": "land", "i": li, "label": "Comprar terreno (%d oro)" % SIM.land_price(li) if l["owner"] == "" else "Tu terreno"}
 	if pp.distance_to(house_pos()) < (6.5 if house_level < 4 else 9.0):
 		return {"type": "house", "label": "Tu parcela" if int(d["house_level"]) == 0 else "Tu casa"}
-	if pp.distance_to(MARKET) < 5.5:
-		return {"type": "market", "label": "Mercado"}
+	for v in GS.STALLS.sellers():
+		var si := int(v["stall_slot"])
+		if pp.distance_to(GS.STALLS.front(si)) < 2.0 or pp.distance_to(GS.STALLS.slot_pos(si)) < 2.2:
+			return {"type": "market", "label": "Comprar en el puesto de %s (%s)" % [v["name"], GS.STALLS.GOODS.get(v["job"], ["mercado"])[0]]}
 	if pp.distance_to(HALL) < 7.0:
 		return {"type": "hall", "label": "Casa del Concejo"}
 	if pp.distance_to(CAMP) < 8.0:

@@ -21,6 +21,7 @@ const FEST := preload("res://scripts/festivals.gd")
 const INC := preload("res://scripts/incidents.gd")
 const LEG := preload("res://scripts/legacy.gd")
 const REALM := preload("res://scripts/realm.gd")
+const STALLS := preload("res://scripts/stalls.gd")
 
 const SAVE_PATH := "user://partida.json"
 const SECONDS_PER_DAY := 150.0
@@ -319,6 +320,7 @@ func next_season() -> void:
 	REALM.season()
 	REALM.climate_season()
 	evolve_homes()
+	STALLS.season()
 	if data.get("game_over", false):
 		return
 	say("Comienza %s del año %d." % [["la primavera", "el verano", "el otoño", "el invierno"][int(data["season"])], int(data["year"])])
