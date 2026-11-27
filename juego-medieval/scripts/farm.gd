@@ -683,10 +683,13 @@ func market_panel() -> void:
 	SFX.play("monedas", -6.0)
 	var d = GS.data
 	var grid := GridContainer.new()
-	grid.columns = 5
+	grid.columns = 6
 	grid.add_theme_constant_override("h_separation", 12)
 	grid.add_theme_constant_override("v_separation", 4)
-	for h in ["Producto", "Tienes", "Vender", "", "Comprar"]:
+	var SIM := preload("res://scripts/village_sim.gd")
+	var ms: Dictionary = SIM.mstock()
+	var dm: Dictionary = d["demand"]
+	for h in ["Producto", "Tienes", "En el pueblo", "Vender", "", "Comprar"]:
 		var l := Label.new()
 		l.text = h
 		l.add_theme_color_override("font_color", Color(0.5, 0.1, 0.05))
@@ -694,25 +697,41 @@ func market_panel() -> void:
 		grid.add_child(l)
 	for k in GS.ITEMS:
 		var it: Array = GS.ITEMS[k]
-		var sell: int = int(round(it[1] * GS.CHAR.sell_mult() * GS.TL.sell_mult()))
-		var buy := int(ceil(it[1] * 1.6 * GS.TL.buy_mult()))
+		var mm: float = SIM.market_mult(k)
+		var wanted := int(dm.get(k, 0)) > 0
+		var sell: int = maxi(1, int(round(it[1] * mm * (1.4 if wanted else 1.0) * GS.CHAR.sell_mult() * GS.TL.sell_mult())))
+		var stock := int(ms.get(k, 0))
+		var buy := int(ceil(it[1] * 1.5 * mm * GS.TL.buy_mult() * (1.0 if stock > 0 else 1.6)))
 		var name_l := Label.new()
-		name_l.text = "%s%s" % [it[0], " (%d rac.)" % it[2] if it[2] > 0 else ""]
+		name_l.text = "%s%s%s" % [it[0], " (%d rac.)" % it[2] if it[2] > 0 else "", " ★" if wanted else ""]
+		if wanted:
+			name_l.add_theme_color_override("font_color", Color(0.15, 0.4, 0.1))
 		grid.add_child(name_l)
 		var have := Label.new()
 		have.text = str(GS.inv(k))
 		grid.add_child(have)
+		var st := Label.new()
+		st.text = "%d %s" % [stock, "↑ caro" if mm > 1.3 else ("↓ barato" if mm < 0.75 else "")]
+		grid.add_child(st)
 		grid.add_child(_btn("Vender 1 (+%d)" % sell, func():
 			GS.take(k, 1)
 			d["gold"] += sell
+			ms[k] = int(ms.get(k, 0)) + 1
+			if dm.has(k):
+				dm[k] = int(dm[k]) - 1
 			market_panel(), GS.inv(k) >= 1))
 		grid.add_child(_btn("Vender 5 (+%d)" % (sell * 5), func():
 			GS.take(k, 5)
 			d["gold"] += sell * 5
+			ms[k] = int(ms.get(k, 0)) + 5
+			if dm.has(k):
+				dm[k] = int(dm[k]) - 5
 			market_panel(), GS.inv(k) >= 5))
-		grid.add_child(_btn("Comprar 1 (-%d)" % buy, func():
+		grid.add_child(_btn("Comprar 1 (-%d)%s" % [buy, "" if stock > 0 else " de fuera"], func():
 			d["gold"] -= buy
 			GS.add(k, 1)
+			if stock > 0:
+				ms[k] = stock - 1
 			market_panel(), d["gold"] >= buy))
 	for res in [["wood", "Madera", 1], ["stone", "Piedra", 1]]:
 		var l := Label.new()
@@ -721,6 +740,7 @@ func market_panel() -> void:
 		var have := Label.new()
 		have.text = str(int(d[res[0]]))
 		grid.add_child(have)
+		grid.add_child(Control.new())
 		grid.add_child(_btn("Vender 10 (+%d)" % (res[2] * 7), func():
 			d[res[0]] -= 10
 			d["gold"] += res[2] * 7
@@ -731,10 +751,20 @@ func market_panel() -> void:
 			d["gold"] -= res[2] * 14
 			market_panel(), d["gold"] >= res[2] * 14))
 	var scroll := ScrollContainer.new()
-	scroll.custom_minimum_size = Vector2(640, 360)
+	scroll.custom_minimum_size = Vector2(760, 320)
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	scroll.add_child(grid)
 	var extra := VBoxContainer.new()
+	var wl := []
+	for k in dm:
+		if int(dm[k]) > 0 and GS.ITEMS.has(k):
+			wl.append("%s (%d)" % [String(GS.ITEMS[k][0]).to_lower(), int(dm[k])])
+	var info := Label.new()
+	info.text = "Los vecinos del pueblo buscan: " + (", ".join(wl) + " — pagan más (★)." if not wl.is_empty() else "nada en especial ahora.") + "\nLo que vendes se queda en el pueblo: si hay mucho, baja de precio; si escasea, sube."
+	info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	info.custom_minimum_size.x = 700
+	info.add_theme_font_size_override("font_size", 14)
+	extra.add_child(info)
 	extra.add_child(scroll)
 	var w := int(d["weapon"])
 	var a := int(d["armor"])

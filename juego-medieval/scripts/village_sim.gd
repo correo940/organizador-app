@@ -28,6 +28,26 @@ static func job_name(v: Dictionary) -> String:
 	return JOBS[v["job"]]["m" if v["male"] else "f"]
 
 
+## Mercado del pueblo: existencias compartidas y demanda de los oficios.
+static func mstock() -> Dictionary:
+	var d = GS.data
+	if not d.has("mstock"):
+		d["mstock"] = {"trigo": 10, "pan": 6, "zanahoria": 8, "lana": 3, "hierro": 2, "herramientas": 1}
+	if not d.has("demand"):
+		d["demand"] = {}
+	return d["mstock"]
+
+
+## Multiplicador de precio: escaso = caro, abundante = barato.
+static func market_mult(k: String) -> float:
+	var target := 10.0 if edible(k) else 6.0
+	var s := float(mstock().get(k, 0))
+	var m := sqrt(target / (s + 2.0))
+	if int(GS.data.get("demand", {}).get(k, 0)) > 0:
+		m *= 1.3
+	return clampf(m, 0.5, 2.5)
+
+
 static func price(k: String) -> int:
 	if k == "madera" or k == "piedra":
 		return 1
@@ -154,6 +174,21 @@ static func _acquire(v: Dictionary, k: String, n: int) -> void:
 		v["gold"] -= q * price(k)
 		s["gold"] += q * price(k)
 		n -= q
+	# Después, lo que haya en el mercado del pueblo (lo que tú y otros habéis vendido).
+	var ms: Dictionary = mstock()
+	var have := int(ms.get(k, 0))
+	if have > 0 and n > 0:
+		var pm := maxi(1, int(round(price(k) * market_mult(k))))
+		var q3: int = mini(mini(have, n), int(v["gold"]) / pm)
+		if q3 > 0:
+			ms[k] = have - q3
+			vadd(v, k, q3)
+			v["gold"] -= q3 * pm
+			n -= q3
+	if n > 0 and k != "herramientas":
+		# Falta en el pueblo: se apunta como demanda (pagarán bien a quien lo traiga).
+		var dm: Dictionary = GS.data["demand"]
+		dm[k] = mini(30, int(dm.get(k, 0)) + n)
 	# Lo que falte, a un mercader de fuera más caro.
 	var p := int(ceil(price(k) * 1.4))
 	var q2: int = mini(n, int(v["gold"]) / maxi(p, 1))
@@ -174,6 +209,14 @@ static func _eat(v: Dictionary, need: int) -> bool:
 static func day() -> void:
 	var d = GS.data
 	var vil: Array = d["villagers"]
+	# Los mercaderes de paso se llevan parte de lo que sobra y la demanda se va olvidando.
+	var ms := mstock()
+	for k in ms.keys():
+		ms[k] = int(int(ms[k]) * 0.85)
+	for k in d["demand"].keys():
+		d["demand"][k] = int(int(d["demand"][k]) * 0.7)
+		if int(d["demand"][k]) <= 0:
+			d["demand"].erase(k)
 	var winter := int(d["season"]) == 3
 	var produced := 0.0
 	var order := vil.duplicate()
@@ -227,6 +270,7 @@ static func day() -> void:
 			if extra > 0:
 				vadd(v, k, -extra)
 				v["gold"] += int(extra * price(k) * 0.8)
+				mstock()[k] = int(mstock().get(k, 0)) + extra
 		# Los que van sobrados se dan caprichos: el oro circula por el pueblo.
 		if int(v["gold"]) > 70:
 			var other = vil.pick_random()

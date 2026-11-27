@@ -69,31 +69,61 @@ static func smith() -> String:
 	return "un buhonero de paso (más caro: no hay herrero en el pueblo)"
 
 
+## Herramientas forjadas que hay en el pueblo (en casa del herrero o en el mercado).
+static func forged_stock() -> int:
+	var SIM := preload("res://scripts/village_sim.gd")
+	var n := int(SIM.mstock().get("herramientas", 0))
+	for vv in GS.data["villagers"]:
+		if vv["job"] == "herrero":
+			n += SIM.vinv(vv, "herramientas")
+	return n
+
+
+static func _take_forged() -> void:
+	var SIM := preload("res://scripts/village_sim.gd")
+	for vv in GS.data["villagers"]:
+		if vv["job"] == "herrero" and SIM.vinv(vv, "herramientas") > 0:
+			SIM.vadd(vv, "herramientas", -1)
+			return
+	var ms: Dictionary = SIM.mstock()
+	ms["herramientas"] = maxi(0, int(ms.get("herramientas", 0)) - 1)
+
+
 static func smith_panel(v) -> void:
 	ensure()
 	var d = GS.data
 	var who := smith()
+	var peddler := who.begins_with("un buhonero")
+	var village_smith := not peddler and who != "tu herrería"
+	var stock := forged_stock()
 	var opts := []
-	var text: String
-	if who == "":
-		text = "En el pueblo no hay herrero. Sin él no hay herramientas nuevas: construye una herrería o espera a que algún vecino aprenda el oficio."
-	else:
-		text = "Herramientas de %s. Cada herramienta se gasta con el uso y acaba rompiéndose.\nTu oro: %d" % [who, int(d["gold"])]
-		for t in SMITH_PRICE:
-			var pr: Array = SMITH_PRICE[t].duplicate()
-			if who.begins_with("un buhonero"):
-				pr[0] = int(pr[0] * 1.6)
-			var owned: bool = t in d["tools"]
-			opts.append(["%s — %d oro%s" % [GS.TOOLS[t].split(" (")[0], int(pr[0]), " (tienes una al %s)" % tool_state(t) if owned else ""], func():
-				d["gold"] = int(d["gold"]) - int(pr[0])
-				if not t in d["tools"]:
-					d["tools"].append(t)
-				d["wear"][t] = WEAR[t]
-				for vv in d["villagers"]:
-					if vv["job"] == "herrero":
-						vv["affection"] = mini(100, int(vv["affection"]) + 3)
-				SFX.play("monedas")
-				smith_panel(v), int(d["gold"]) >= int(pr[0])])
+	var text := "Herramientas de %s. Cada herramienta se gasta con el uso y acaba rompiéndose.\nTu oro: %d" % [who, int(d["gold"])]
+	if village_smith:
+		text += "\nEl herrero forja con hierro y madera del pueblo. Herramientas hechas: %d." % stock
+		if stock == 0:
+			text += "\n\nAhora no tiene nada forjado: le falta hierro. Vende hierro en el mercado (o contrata mineros) y en unos días tendrá herramientas."
+			d["demand"]["hierro"] = int(d["demand"].get("hierro", 0)) + 4
+	for t in SMITH_PRICE:
+		var pr: Array = SMITH_PRICE[t].duplicate()
+		if peddler:
+			pr[0] = int(pr[0] * 1.6)
+		elif village_smith and stock <= 1:
+			pr[0] = int(pr[0] * 1.3)
+		var owned: bool = t in d["tools"]
+		var can: bool = int(d["gold"]) >= int(pr[0]) and (not village_smith or stock > 0 or t == "caña")
+		opts.append(["%s — %d oro%s" % [GS.TOOLS[t].split(" (")[0], int(pr[0]), " (tienes una al %s)" % tool_state(t) if owned else ""], func():
+			d["gold"] = int(d["gold"]) - int(pr[0])
+			if not t in d["tools"]:
+				d["tools"].append(t)
+			d["wear"][t] = WEAR[t]
+			if village_smith and t != "caña":
+				_take_forged()
+			for vv in d["villagers"]:
+				if vv["job"] == "herrero":
+					vv["affection"] = mini(100, int(vv["affection"]) + 3)
+					vv["gold"] = int(vv["gold"]) + int(pr[0]) / 2
+			SFX.play("monedas")
+			smith_panel(v), can])
 	opts.append(["Cerrar", v._close_panel])
 	v._open_panel("El herrero", text, opts)
 
