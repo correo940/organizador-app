@@ -23,6 +23,7 @@ const LEG := preload("res://scripts/legacy.gd")
 const REALM := preload("res://scripts/realm.gd")
 const STALLS := preload("res://scripts/stalls.gd")
 const LIFE := preload("res://scripts/life.gd")
+const OFI := preload("res://scripts/oficios.gd")
 
 const SAVE_PATH := "user://partida.json"
 const SECONDS_PER_DAY := 150.0
@@ -239,8 +240,8 @@ func sleep() -> void:
 	data["time"] = 0.25
 	var p = data["player"]
 	p["health"] = minf(100.0, p["health"] + 10.0)
-	p["energy"] = 100.0
-	say("Descansas en casa hasta el amanecer. (Fuerza al máximo)")
+	p["energy"] = 100.0 if OFI.has("cama") else 70.0
+	say("Descansas en casa hasta el amanecer. (%s)" % ("Fuerza al máximo" if OFI.has("cama") else "Sin cama duermes mal: fuerza 70"))
 
 
 ## Fuerza: baja mientras estás despierto (mucho más de noche). Agotado, pierdes salud.
@@ -268,7 +269,7 @@ func next_day() -> void:
 	data["day"] += 1
 	data["talked"] = []
 	var p = data["player"]
-	if eat(family_size()):
+	if eat(int(ceil(family_size() * (0.85 if OFI.has("mesa") else 1.0)))):
 		p["health"] = minf(100.0, p["health"] + 4.0 + (2.0 if has_building("hospital") else 0.0))
 	else:
 		p["health"] -= 15.0
@@ -276,6 +277,7 @@ func next_day() -> void:
 	_steward_day()
 	_spouse_day()
 	LIFE.day()
+	OFI.day()
 	farm_day()
 	SIM.day()
 	ARMY.day()
@@ -768,6 +770,7 @@ func harvest(i: int) -> String:
 		return ""
 	var c = CROPS[f["crop"]]
 	var mult := 1.0 + (0.25 if has_building("granero") else 0.0) + (0.25 if "hoz" in data["tools"] else 0.0)
+	OFI.use_tool("hoz")
 	var n := int(round(randi_range(int(c["yield"][0]), int(c["yield"][1])) * mult))
 	add(f["crop"], n)
 	f["crop"] = ""
@@ -951,23 +954,21 @@ func res_add(k: String, n: int) -> void:
 			add(k, n)
 
 
-func can_pay(cost0: Dictionary, times := 1) -> bool:
-	var cost := price(cost0)
+func can_pay(cost: Dictionary, times := 1) -> bool:
 	for k in cost:
 		if res(k) < int(cost[k]) * times:
 			return false
 	return true
 
 
-func pay(cost0: Dictionary, times := 1) -> void:
-	var cost := price(cost0)
+func pay(cost: Dictionary, times := 1) -> void:
 	for k in cost:
 		res_add(k, -int(cost[k]) * times)
 
 
 func cost_text(cost: Dictionary) -> String:
 	var parts := []
-	var c := price(cost)
+	var c := cost
 	for k in c:
 		if int(c[k]) <= 0:
 			continue
@@ -999,9 +1000,9 @@ func construct(slot: int, id: String) -> String:
 		return "Ya tienes ese edificio."
 	if int(data["tier"]) < int(b.get("tier", 0)):
 		return "Tu pueblo aún es demasiado pequeño para eso."
-	if not can_pay(b["cost"]):
-		return "Te faltan materiales: " + cost_text(b["cost"])
-	pay(b["cost"])
+	if not can_pay(price(b["cost"])):
+		return "Te faltan materiales: " + cost_text(price(b["cost"]))
+	pay(price(b["cost"]))
 	data["buildings"][str(slot)] = id
 	SFX.play("talar")
 	var pres := 40 if id == "capilla" else 5

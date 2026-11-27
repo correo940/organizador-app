@@ -562,6 +562,7 @@ func fish() -> void:
 		v._float("Necesitas una caña de pescar (mercado)", Color(1, 0.6, 0.5))
 		return
 	fish_cd = 1.4
+	GS.OFI.use_tool("caña")
 	v.player.play_once("Interact")
 	if randf() < 0.35:
 		GS.add("pescado", 1)
@@ -755,6 +756,8 @@ func market_panel() -> void:
 			v._float("¡Tienes caballo! Pulsa H para montar o desmontar.", Color(1, 0.9, 0.6))
 			market_panel(), d["gold"] >= 150))
 	row.add_child(_btn("Armero…", func(): GS.CHAR.armory(v, market_panel)))
+	row.add_child(_btn("Herrero (herramientas)…", func(): GS.OFI.smith_panel(v)))
+	row.add_child(_btn("Muebles…", func(): GS.OFI.furniture_panel(v)))
 	if not d.get("falcon", false):
 		row.add_child(_btn("Halcón de caza (-100)", func():
 			d["gold"] -= 100

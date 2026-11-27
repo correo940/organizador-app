@@ -334,10 +334,16 @@ func interact(it: Dictionary) -> void:
 func mine_tick() -> void:
 	if cd > 0:
 		return
+	if not "pico" in GS.data["tools"]:
+		cd = 1.5
+		v.order = {}
+		v._float("Necesitas un pico (cómpralo al herrero)", Color(1, 0.6, 0.5))
+		return
 	cd = 1.0
 	v.player.play_once("Interact")
 	SFX.play("picar")
-	var pick: bool = "pico" in GS.data["tools"]
+	GS.OFI.use_tool("pico")
+	var pick: bool = true
 	GS.data["stone"] += 1
 	if randf() < (0.6 if pick else 0.3):
 		GS.add("hierro", 1)
@@ -352,11 +358,11 @@ func build_panel(i: int) -> void:
 		if GS.has_building(id):
 			continue
 		var b = GS.BUILDINGS[id]
-		opts.append(["%s (%s)" % [b["name"], GS.cost_text(b["cost"])], func():
+		opts.append(["%s (%s)" % [b["name"], GS.cost_text(GS.price(b["cost"]))], func():
 			var err: String = GS.construct(i, id)
 			if err != "":
 				v._float(err, Color(1, 0.5, 0.4))
-			v._close_panel(), GS.can_pay(b["cost"]) and int(GS.data["tier"]) >= int(b.get("tier", 0))])
+			v._close_panel(), GS.can_pay(GS.price(b["cost"])) and int(GS.data["tier"]) >= int(b.get("tier", 0))])
 	var lines := ["Elige qué construir en este solar. Cada edificio solo se puede tener una vez.", ""]
 	for id in GS.BUILDINGS:
 		if not GS.has_building(id):

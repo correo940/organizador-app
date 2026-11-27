@@ -176,6 +176,7 @@ func _build_static() -> void:
 		M.road(self, Vector3(st[0].x, 0, st[0].y), Vector3(st[1].x, 0, st[1].y), st[2], dirt)
 	M.road(self, Vector3(60, 0, 82), Vector3(60, 0, 93), 3.2, dirt)
 	M.put(self, "village/Well.glb", PLAZA, 0, 1.6)
+	BLD.signboard(self, PLAZA + Vector3(3.5, 0, -3.5), "Bando")
 	# Bancos y faroles en las esquinas de la plaza.
 	for c in [Vector3(-8, 0, -8), Vector3(8, 0, -8), Vector3(-8, 0, 8)]:
 		_lamp(PLAZA + c + Vector3(signf(c.x) * 1.2, 0, 0))
@@ -393,7 +394,7 @@ func _night_watch(d: Dictionary) -> void:
 				SFX.play("golpe")
 				GS.popups.append({"title": "¡Lobos en la oscuridad!", "text": "Un lobo sale de entre los árboles y te muerde antes de que puedas espantarlo. (-15 salud)", "button": "Huir a casa"})
 			1:
-				var lost := mini(int(d["gold"]), randi_range(5, 25))
+				var lost := mini(int(d["gold"]), randi_range(5, 25) / (2 if GS.OFI.has("arcon") else 1))
 				d["gold"] = int(d["gold"]) - lost
 				GS.popups.append({"title": "Ladrones nocturnos", "text": "Unas sombras te asaltan en un camino oscuro y te quitan %d de oro." % lost, "button": "Maldita sea"})
 			_:
@@ -545,10 +546,11 @@ func _season_decor(s: int) -> void:
 		snowfall = null
 	if s == 3:
 		snowfall = CPUParticles3D.new()
-		snowfall.amount = 700
+		snowfall.amount = 4000
 		snowfall.lifetime = 5.0
 		snowfall.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
-		snowfall.emission_box_extents = Vector3(25, 0.5, 25)
+		snowfall.emission_box_extents = Vector3(70, 0.5, 70)
+		snowfall.visibility_aabb = AABB(Vector3(-80, -40, -80), Vector3(160, 60, 160))
 		snowfall.direction = Vector3(0, -1, 0)
 		snowfall.spread = 25.0
 		snowfall.initial_velocity_min = 1.2
@@ -1145,7 +1147,7 @@ func _process(delta: float) -> void:
 			lp.light_energy = dark * float(lp.get_meta("k", 1.0))
 	_night_watch(d)
 	if snowfall:
-		snowfall.position = player.position + Vector3(0, 14, 0)
+		snowfall.position = cam.focus + Vector3(0, 24, 0)
 	_update_me_marker(delta)
 	_ambience(d, night)
 	_update_civic()
@@ -1549,6 +1551,8 @@ func _find_interaction(pp: Vector3 = Vector3.INF) -> Dictionary:
 		var si := int(v["stall_slot"])
 		if pp.distance_to(GS.STALLS.front(si)) < 2.0 or pp.distance_to(GS.STALLS.slot_pos(si)) < 2.2:
 			return {"type": "market", "label": "Comprar en el puesto de %s (%s)" % [v["name"], GS.STALLS.GOODS.get(v["job"], ["mercado"])[0]]}
+	if pp.distance_to(PLAZA + Vector3(3.5, 0, -3.5)) < 2.2:
+		return {"type": "bando", "label": "Bando: se busca gente para trabajar"}
 	if pp.distance_to(HALL) < 7.0:
 		return {"type": "hall", "label": "Casa del Concejo"}
 	if pp.distance_to(CAMP) < 8.0:
@@ -1666,6 +1670,8 @@ func _interact() -> void:
 			farm.market_panel()
 		"hall":
 			_hall_panel()
+		"bando":
+			GS.OFI.board(self)
 		"camp":
 			_camp_panel()
 		"":
@@ -1707,12 +1713,18 @@ func _gather(type: String) -> void:
 	match type:
 		"tree":
 			var w := 2 if "hacha" in d["tools"] else 1
+			GS.OFI.use_tool("hacha")
 			d["wood"] += w
 			cooldown = 0.9
 			_float("+%d madera" % w, Color(0.95, 0.75, 0.45))
 			SFX.play("talar")
 		"rock":
-			var st := 2 if "pico" in d["tools"] else 1
+			if not "pico" in d["tools"]:
+				order = {}
+				_float("Necesitas un pico (cómpralo al herrero)", Color(1, 0.6, 0.5))
+				return
+			GS.OFI.use_tool("pico")
+			var st := 2
 			d["stone"] += st
 			cooldown = 1.1
 			_float("+%d piedra" % st, Color(0.85, 0.85, 0.9))
@@ -1750,6 +1762,7 @@ func _house_panel() -> void:
 				d["player"]["health"] = float(d["player"]["health"]) - 8.0
 				GS.say("Pasas frío durmiendo al raso. (-8 salud)")
 			_close_panel()])
+	opts.append(["Muebles de la casa", func(): GS.OFI.furniture_panel(self)])
 	opts.append(["Ver familia", _family_panel])
 	opts.append(["Crónica y árbol del linaje", _chronicle_panel])
 	if d.get("steward", false):

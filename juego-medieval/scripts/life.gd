@@ -128,6 +128,8 @@ static func day() -> void:
 	# Invierno: hace falta leña para calentar la casa.
 	if int(d["season"]) == 3 and int(d["house_level"]) >= 1:
 		var need: int = 1 + GS.family_size() / 3
+		if GS.OFI.has("hogar"):
+			need = maxi(1, need / 2)
 		if int(d["wood"]) >= need:
 			d["wood"] = int(d["wood"]) - need
 		else:
@@ -154,14 +156,18 @@ static func _affect(vname: String, n: int) -> void:
 	for v in GS.data["villagers"]:
 		if v["name"] == vname:
 			v["affection"] = clampi(int(v["affection"]) + n, 0, 100)
+			# Solo se vuelve enemigo quien ha tenido motivos (le fallaste o le perjudicaste).
+			if n < 0 and int(v["affection"]) <= 15:
+				v["grudge"] = true
+			elif int(v["affection"]) >= 30:
+				v.erase("grudge")
 
 
 static func relation(v: Dictionary) -> String:
 	var a := int(v.get("affection", 0))
 	if a >= 70: return "amigo íntimo"
 	if a >= 45: return "amigo"
-	if a <= 10: return "enemigo"
-	if a <= 25: return "receloso"
+	if v.get("grudge", false): return "enemigo" if a <= 10 else "receloso"
 	return "conocido"
 
 
@@ -181,7 +187,7 @@ static func _neighbours() -> void:
 				_:
 					d["prestige"] = int(d["prestige"]) + 3
 					GS.say("%s habla bien de ti en la taberna. (+3 prestigio)" % v["name"])
-		elif a <= 10 and randf() < 0.03:
+		elif v.get("grudge", false) and a <= 15 and randf() < 0.03:
 			match randi() % 2:
 				0:
 					d["prestige"] = maxi(0, int(d["prestige"]) - 4)
