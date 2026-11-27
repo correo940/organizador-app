@@ -61,32 +61,23 @@ static func parchment_theme() -> Theme:
 	_theme.set_stylebox("focus", "LineEdit", le)
 	_theme.set_color("font_color", "LineEdit", INK)
 	_theme.set_color("caret_color", "LineEdit", INK)
-	var btex: Texture2D = load("res://assets/ui/boton.png")
-	for st in ["normal", "hover", "pressed", "focus", "disabled"]:
-		var b := StyleBoxTexture.new()
-		b.texture = btex
-		b.set_texture_margin_all(18)
-		b.content_margin_left = 26
-		b.content_margin_right = 26
-		b.content_margin_top = 6
-		b.content_margin_bottom = 6
-		b.modulate_color = {"normal": Color(1, 1, 1), "hover": Color(1.25, 1.18, 1.05), "pressed": Color(0.8, 0.75, 0.7), "focus": Color(1.15, 1.1, 1.0), "disabled": Color(0.55, 0.55, 0.55)}[st]
-		_theme.set_stylebox(st, "Button", b)
-	# Botón pequeño (mercados, tablas): madera lisa con borde dorado, sin adornos.
-	_theme.set_type_variation("Chip", "Button")
+	# Botones de madera oscura con ribete dorado: limpios y legibles sobre el pergamino.
 	for st in ["normal", "hover", "pressed", "focus", "disabled"]:
 		var c := StyleBoxFlat.new()
-		c.bg_color = {"normal": Color(0.32, 0.2, 0.11), "hover": Color(0.42, 0.27, 0.14), "pressed": Color(0.24, 0.15, 0.08), "focus": Color(0.36, 0.23, 0.12), "disabled": Color(0.45, 0.4, 0.33, 0.55)}[st]
-		c.border_color = Color(0.78, 0.6, 0.3) if st != "disabled" else Color(0.5, 0.45, 0.38, 0.6)
-		c.set_border_width_all(1)
-		c.set_corner_radius_all(4)
-		c.content_margin_left = 10
-		c.content_margin_right = 10
-		c.content_margin_top = 4
-		c.content_margin_bottom = 4
-		_theme.set_stylebox(st, "Chip", c)
-	_theme.set_font_size("font_size", "Chip", 15)
-	_theme.set_color("font_disabled_color", "Chip", Color(0.3, 0.25, 0.2))
+		c.bg_color = {"normal": Color(0.33, 0.2, 0.1), "hover": Color(0.45, 0.28, 0.13), "pressed": Color(0.24, 0.14, 0.07), "focus": Color(0.38, 0.23, 0.11), "disabled": Color(0.5, 0.44, 0.36, 0.5)}[st]
+		c.border_color = Color(0.85, 0.66, 0.32) if st != "disabled" else Color(0.55, 0.48, 0.4, 0.6)
+		c.set_border_width_all(2)
+		c.border_width_bottom = 3
+		c.set_corner_radius_all(6)
+		c.content_margin_left = 18
+		c.content_margin_right = 18
+		c.content_margin_top = 7
+		c.content_margin_bottom = 7
+		c.shadow_color = Color(0, 0, 0, 0.25)
+		c.shadow_size = 2
+		c.shadow_offset = Vector2(0, 2)
+		_theme.set_stylebox(st, "Button", c)
+	_theme.set_font_size("font_size", "Button", 17)
 	_theme.set_color("font_color", "Button", Color(0.96, 0.88, 0.68))
 	_theme.set_color("font_hover_color", "Button", Color(1, 0.95, 0.75))
 	_theme.set_color("font_focus_color", "Button", Color(1, 0.95, 0.75))
