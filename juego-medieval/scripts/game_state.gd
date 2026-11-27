@@ -224,7 +224,9 @@ func advance(delta: float) -> void:
 	if data.get("game_over", false):
 		return
 	var tt: float = data["time"]
-	data["time"] += delta * speed / SECONDS_PER_DAY * (NIGHT_FAST if tt < 0.22 or tt > 0.85 else 1.0)
+	var step: float = delta * speed / SECONDS_PER_DAY * (NIGHT_FAST if tt < 0.22 or tt > 0.85 else 1.0)
+	data["time"] += step
+	_tire(step, tt < 0.22 or tt > 0.85)
 	if data["time"] >= 1.0:
 		data["time"] -= 1.0
 		next_day()
@@ -236,7 +238,26 @@ func sleep() -> void:
 	data["time"] = 0.25
 	var p = data["player"]
 	p["health"] = minf(100.0, p["health"] + 10.0)
-	say("Descansas en casa hasta el amanecer.")
+	p["energy"] = 100.0
+	say("Descansas en casa hasta el amanecer. (Fuerza al máximo)")
+
+
+## Fuerza: baja mientras estás despierto (mucho más de noche). Agotado, pierdes salud.
+var _tired_warn := 0
+func _tire(step: float, night: bool) -> void:
+	var p = data["player"]
+	var e: float = float(p.get("energy", 100.0))
+	e = maxf(0.0, e - step * (150.0 if night else 55.0))
+	p["energy"] = e
+	if e < 25.0:
+		p["health"] = float(p["health"]) - step * (40.0 if e <= 0.0 else 15.0)
+		if p["health"] <= 0.0:
+			player_death("murió de agotamiento")
+			return
+	var lvl := 2 if e <= 0.0 else (1 if e < 25.0 else 0)
+	if lvl > _tired_warn:
+		say("Estás agotado: pierdes salud. ¡Necesitas dormir!" if lvl == 2 else "Te pesan los párpados: te queda poca fuerza. Deberías dormir.")
+	_tired_warn = lvl
 
 
 func next_day() -> void:
@@ -252,6 +273,7 @@ func next_day() -> void:
 		p["health"] -= 15.0
 		say("Tu familia pasa hambre. (-15 salud)")
 	_steward_day()
+	_spouse_day()
 	farm_day()
 	SIM.day()
 	ARMY.day()
@@ -418,7 +440,7 @@ func try_build_house() -> String:
 	var lvl := int(data["house_level"])
 	if lvl >= 5:
 		return "Tu casa ya es la mejor del pueblo."
-	var c = HOUSE_COSTS[lvl]
+	var c := price(HOUSE_COSTS[lvl])
 	if data["wood"] < c["wood"] or data["stone"] < c["stone"] or data["gold"] < c["gold"]:
 		return "Te faltan materiales."
 	data["wood"] -= c["wood"]
@@ -462,6 +484,38 @@ func claim_chief() -> String:
 # ---------------- Guardado ----------------
 
 ## Mayordomo: cosecha y vuelve a sembrar tus campos y vende lo que sobra. Cobra 4 de oro al día.
+func _spouse_day() -> void:
+	var sp = data.get("spouse", null)
+	if sp == null:
+		return
+	var winter := int(data["season"]) == 3
+	match String(sp.get("task", "casa")):
+		"casa":
+			data["player"]["health"] = minf(100.0, float(data["player"]["health"]) + 3.0)
+			add("pan", 1)
+		"huerto":
+			var n := 0
+			for i in data["fields"].size():
+				var f = data["fields"][i]
+				if f["owned"] and field_ready(f):
+					var crop: String = f["crop"]
+					harvest(i)
+					plant(i, crop)
+					n += 1
+				elif f["owned"] and f["crop"] == "" and not winter:
+					plant(i, "trigo")
+			if n > 0:
+				say("%s ha cosechado %d parcelas." % [sp["name"], n])
+		"mercado":
+			var g := randi_range(3, 8)
+			data["gold"] = int(data["gold"]) + g
+		"lena":
+			data["wood"] = int(data["wood"]) + (2 if winter else randi_range(4, 7))
+		"pesca":
+			if not winter:
+				add("pescado", randi_range(1, 3))
+
+
 func _steward_day() -> void:
 	if not data.get("steward", false):
 		return
@@ -844,7 +898,7 @@ func buy_annex(i: int) -> String:
 
 
 func build_annex(i: int, kind: String) -> String:
-	var c: Dictionary = ANNEX_TYPES[kind]["cost"]
+	var c: Dictionary = price(ANNEX_TYPES[kind]["cost"])
 	if int(data["wood"]) < c["wood"] or int(data["stone"]) < c["stone"] or int(data["gold"]) < c["gold"]:
 		return "Te faltan materiales."
 	data["wood"] = int(data["wood"]) - c["wood"]
@@ -894,24 +948,46 @@ func res_add(k: String, n: int) -> void:
 			add(k, n)
 
 
-func can_pay(cost: Dictionary, times := 1) -> bool:
+func can_pay(cost0: Dictionary, times := 1) -> bool:
+	var cost := price(cost0)
 	for k in cost:
 		if res(k) < int(cost[k]) * times:
 			return false
 	return true
 
 
-func pay(cost: Dictionary, times := 1) -> void:
+func pay(cost0: Dictionary, times := 1) -> void:
+	var cost := price(cost0)
 	for k in cost:
 		res_add(k, -int(cost[k]) * times)
 
 
 func cost_text(cost: Dictionary) -> String:
 	var parts := []
-	for k in cost:
-		var nm: String = k if not ITEMS.has(k) else String(ITEMS[k][0]).to_lower()
-		parts.append("%d %s" % [int(cost[k]), nm])
+	var c := price(cost)
+	for k in c:
+		if int(c[k]) <= 0:
+			continue
+		var nm: String = {"wood": "madera", "stone": "piedra", "gold": "oro"}.get(k, k if not ITEMS.has(k) else String(ITEMS[k][0]).to_lower())
+		parts.append("%d %s" % [int(c[k]), nm])
 	return ", ".join(parts)
+
+
+## Ritmo de la partida: las obras cuestan bastante más que al principio, para que progresar lleve tiempo.
+const PACE := 2.5
+## Tareas que puedes encargar a tu cónyuge: [nombre, efecto].
+const SPOUSE_TASKS := {
+	"casa": ["Cuidar la casa y los niños", "tu familia come un poco menos y tú y los niños ganáis salud cada día"],
+	"huerto": ["Cuidar tus parcelas", "cosecha y vuelve a sembrar tus parcelas cuando están listas"],
+	"mercado": ["Vender en la plaza", "vende lo que sobra en tu despensa y trae oro cada día"],
+	"lena": ["Recoger leña en el bosque", "trae madera cada día (en invierno, poca)"],
+	"pesca": ["Pescar en el lago", "trae pescado cada día (no en invierno)"],
+}
+func price(cost: Dictionary) -> Dictionary:
+	var out := {}
+	for k in cost:
+		out[k] = int(ceil(float(cost[k]) * (PACE if k in ["wood", "stone"] else PACE * 0.8)))
+	return out
 
 
 func construct(slot: int, id: String) -> String:

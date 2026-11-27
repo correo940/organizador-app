@@ -419,7 +419,7 @@ func annex_panel(i: int) -> void:
 	var opts := []
 	for k in GS.ANNEX_TYPES:
 		var a: Dictionary = GS.ANNEX_TYPES[k]
-		var c: Dictionary = a["cost"]
+		var c: Dictionary = GS.price(a["cost"])
 		var can: bool = int(d["wood"]) >= c["wood"] and int(d["stone"]) >= c["stone"] and int(d["gold"]) >= c["gold"]
 		opts.append(["%s: %s (%s)" % [a["name"], a["desc"], GS.cost_text(c)], func():
 			var e := GS.build_annex(i, k)

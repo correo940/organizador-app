@@ -73,6 +73,7 @@ var lbl_name: Label
 var lbl_place: Label
 var bar_health
 var bar_food
+var bar_energy
 var hud_portrait
 var minimap
 var hud_slots := {}
@@ -343,8 +344,84 @@ func _rebuild_homes(levels: Array) -> void:
 				M.medieval_house(homes_node, h, rot, 1, i, 1.0)
 			_:
 				M.medieval_house(homes_node, h, rot, 2, i, 1.0)
+	for i in GS.HOMES.size():
+		if int(levels[i]) > 0 or i % 2 == 0:
+			_window_lights(homes_node, Vector3(GS.HOMES[i].x, 0, GS.HOMES[i].y) * 0.05, 0.8)
 	if season == 3:
 		M.set_snow(homes_node, true)
+
+
+## Luz cálida de hogar en las ventanas (se enciende al anochecer como los faroles).
+func _window_lights(parent: Node3D, p: Vector3, k: float) -> void:
+	var l := OmniLight3D.new()
+	l.position = p + Vector3(0, 2.0, 0)
+	l.light_color = Color(1.0, 0.62, 0.28)
+	l.omni_range = 8.0
+	l.light_energy = 1.6 * k if float(GS.data["time"]) < 0.24 or float(GS.data["time"]) > 0.8 else 0.0
+	l.set_meta("k", k)
+	parent.add_child(l)
+	lamps.append(l)
+
+
+## Anochecer y peligros de la noche: aviso para volver a casa y sustos si sigues fuera.
+var dusk_day := -1
+var night_risk := 0.0
+func _night_watch(d: Dictionary) -> void:
+	var t: float = d["time"]
+	if t > 0.76 and t < 0.85 and dusk_day != int(d["total_days"]) and not panel.visible:
+		dusk_day = int(d["total_days"])
+		var has_house := int(d["house_level"]) >= 1
+		GS.popups.append({"title": "Está anocheciendo", "text": "El sol se pone y pronto será noche cerrada. De noche rondan lobos y ladrones, y sin dormir perderás fuerza y después salud.\n\nFuerza: %d/100" % int(d["player"].get("energy", 100.0)), "options": [
+			["Volver a casa a dormir" if has_house else "Ir a tu parcela", func(): _go_home(true)],
+			["Seguir fuera un rato más", func(): pass],
+		]})
+	var night := t < 0.22 or t > 0.85
+	if not night or panel.visible:
+		night_risk = 0.0
+		return
+	if player.position.distance_to(house_pos()) < 8.0:
+		return
+	# Cuanto más lejos de la plaza (y sus faroles), más peligro.
+	var far := clampf(player.position.distance_to(PLAZA) / 60.0, 0.2, 1.5)
+	night_risk += get_process_delta_time() * GS.speed * 0.012 * far
+	if randf() < night_risk * 0.02:
+		night_risk = 0.0
+		var p = d["player"]
+		match randi() % 3:
+			0:
+				p["health"] = float(p["health"]) - 15.0
+				SFX.play("golpe")
+				GS.popups.append({"title": "¡Lobos en la oscuridad!", "text": "Un lobo sale de entre los árboles y te muerde antes de que puedas espantarlo. (-15 salud)", "button": "Huir a casa"})
+			1:
+				var lost := mini(int(d["gold"]), randi_range(5, 25))
+				d["gold"] = int(d["gold"]) - lost
+				GS.popups.append({"title": "Ladrones nocturnos", "text": "Unas sombras te asaltan en un camino oscuro y te quitan %d de oro." % lost, "button": "Maldita sea"})
+			_:
+				p["health"] = float(p["health"]) - 6.0
+				_float("Tropiezas en la oscuridad (-6 salud)", Color(1, 0.6, 0.5))
+
+
+func _go_home(sleep: bool) -> void:
+	_close_panel()
+	order = {"p": BLD.front(house_pos(), 4.0) if int(GS.data.get("player_land", -1)) < 0 else house_pos() + Vector3(0, 0, -5), "type": "house" if sleep else "", "t": 0.0}
+	cam.follow = true
+
+
+## Dónde trabaja tu cónyuge según la tarea que le has pedido.
+func _spouse_spot(task: String) -> Vector3:
+	match task:
+		"huerto":
+			var rs: Array = FARM.field_rects()
+			for i in rs.size():
+				if GS.data["fields"][i]["owned"]:
+					return Vector3(rs[i].get_center().x, 0, rs[i].get_center().y)
+		"mercado":
+			return PLAZA + Vector3(6, 0, 6)
+		"lena":
+			return Vector3(-8, 0, 40)
+		"pesca":
+			return DOCK + Vector3(0, 0, 3)
+	return _front_of_house()
 
 
 ## Huerto vallado detrás de cada casa (con alguna hortaliza) y leña junto a la pared.
@@ -518,6 +595,7 @@ func _rebuild_house() -> void:
 			M.castle(house_node, hp + Vector3(0, 0, 3.5), 1.6)
 			M.put(house_node, "village/Inn.glb", hp + Vector3(0, 0, -2), rot, 1.7)
 			M.recolor(M.put(house_node, "castle/Banner.glb", hp + Vector3(-7, 0, -4), 0, 1.8), Color(0.6, 0.1, 0.1))
+	_window_lights(house_node, hp, 1.3)
 	var lbl := M.label3d("Tu parcela" if house_level == 0 else "Casa %s" % GS.data["dynasty"], 40)
 	lbl.position = hp + Vector3(0, 7.0 if house_level > 0 else 2.5, 0)
 	lbl.modulate = Color(1, 0.9, 0.6)
@@ -690,7 +768,7 @@ func _update_family() -> void:
 		if m != d["spouse"]:
 			a.scale = Vector3.ONE * clampf(0.5 + age * 0.032, 0.5, 1.0)
 		a.position = _front_of_house() + Vector3(randf_range(-3, 3), 0, randf_range(-3, 3))
-		family.append({"a": a, "t": a.position})
+		family.append({"a": a, "t": a.position, "spouse": m == d["spouse"]})
 		k += 1
 
 
@@ -758,6 +836,11 @@ func _build_hud() -> void:
 	bar_food.icon = load("res://assets/ui/icono_comida.png")
 	bar_food.custom_minimum_size = Vector2(250, 22)
 	col.add_child(bar_food)
+	bar_energy = HUD.Bar.new()
+	bar_energy.col = Color(0.25, 0.5, 0.8)
+	bar_energy.icon = load("res://assets/ui/icono_soldados.png")
+	bar_energy.custom_minimum_size = Vector2(250, 22)
+	col.add_child(bar_energy)
 	lbl_res = Label.new()
 	lbl_res.add_theme_font_size_override("font_size", 13)
 	lbl_res.add_theme_color_override("font_outline_color", Color.BLACK)
@@ -897,6 +980,11 @@ func _update_hud() -> void:
 	bar_food.label = "Despensa: %d raciones" % GS.food_total()
 	bar_food.value = float(GS.food_total()) / float(mouths * 15)
 	bar_food.queue_redraw()
+	var en: float = float(p.get("energy", 100.0))
+	bar_energy.label = "Fuerza %d%s" % [int(en), " · ¡agotado!" if en < 25.0 else ""]
+	bar_energy.value = en / 100.0
+	bar_energy.col = Color(0.25, 0.5, 0.8) if en >= 25.0 else Color(0.8, 0.35, 0.15)
+	bar_energy.queue_redraw()
 	lbl_res.text = "Casa: %s · %s · Hijos: %d · Generación %d" % [GS.HOUSE_NAMES[int(d["house_level"])], ("Casado con " if p["male"] else "Casada con ") + String(d["spouse"]["name"]) if d["spouse"] != null else ("Soltero" if p["male"] else "Soltera"), d["children"].size(), int(d["generation"])]
 	lbl_place.text = "%s · %d habitantes\n%s, día %d · Año %d · %02d:00" % [SIM.town_title(), SIM.total_pop(), GS.SEASONS[int(d["season"])], int(d["day"]), int(d["year"]), int(d["time"] * 24.0)]
 	hud_slots["oro"].text = str(int(d["gold"]))
@@ -1050,8 +1138,10 @@ func _process(delta: float) -> void:
 	M.set_daytime(env, d["time"])
 	var dark := 1.6 if float(d["time"]) < 0.24 or float(d["time"]) > 0.8 else 0.0
 	if lamps.size() > 0 and lamps[0].light_energy != dark:
+		lamps = lamps.filter(func(lp): return is_instance_valid(lp))
 		for lp in lamps:
-			lp.light_energy = dark
+			lp.light_energy = dark * float(lp.get_meta("k", 1.0))
+	_night_watch(d)
 	if snowfall:
 		snowfall.position = player.position + Vector3(0, 14, 0)
 	_update_me_marker(delta)
@@ -1351,9 +1441,15 @@ func _move_npcs(delta: float) -> void:
 				k["t"] = k["home"] + Vector3(randf_range(-4, 4), 0, randf_range(-4, 4))
 		_walk_to(k["a"], k["t"], 1.2, delta)
 	for f in family:
-		if f["a"].position.distance_to(f["t"]) < 0.3 and randf() < 0.004:
-			f["t"] = _front_of_house() + Vector3(randf_range(-3.5, 3.5), 0, randf_range(-3.5, 3.5))
-		_walk_to(f["a"], f["t"], 1.1, delta)
+		var spot := _front_of_house()
+		var day_work: bool = f.get("spouse", false) and GS.data["time"] > 0.28 and GS.data["time"] < 0.78
+		if day_work:
+			spot = _spouse_spot(String(GS.data["spouse"].get("task", "casa")))
+		if f["a"].position.distance_to(f["t"]) < 0.3 and randf() < 0.004 or f["t"].distance_to(spot) > 9.0:
+			f["t"] = spot + Vector3(randf_range(-2.5, 2.5), 0, randf_range(-2.5, 2.5))
+		_walk_to(f["a"], f["t"], 1.4 if day_work else 1.1, delta)
+		if day_work and f["a"].position.distance_to(f["t"]) < 0.4 and randf() < 0.01:
+			f["a"].play_once("Interact")
 
 
 func _ceremony_spot() -> Vector3:
@@ -1593,6 +1689,14 @@ func _interact() -> void:
 func _gather(type: String) -> void:
 	if cooldown > 0:
 		return
+	# Trabajar cansa: cada golpe gasta fuerza; agotado no puedes seguir.
+	var pl = GS.data["player"]
+	if float(pl.get("energy", 100.0)) < 8.0:
+		cooldown = 1.5
+		order = {}
+		_float("Estás agotado: necesitas dormir", Color(1, 0.6, 0.5))
+		return
+	pl["energy"] = float(pl.get("energy", 100.0)) - 1.2
 	if inter.has("p"):
 		var to: Vector3 = inter["p"] - player.position
 		player.rotation.y = atan2(to.x, to.z)
@@ -1602,13 +1706,13 @@ func _gather(type: String) -> void:
 		"tree":
 			var w := 2 if "hacha" in d["tools"] else 1
 			d["wood"] += w
-			cooldown = 0.45
+			cooldown = 0.9
 			_float("+%d madera" % w, Color(0.95, 0.75, 0.45))
 			SFX.play("talar")
 		"rock":
 			var st := 2 if "pico" in d["tools"] else 1
 			d["stone"] += st
-			cooldown = 0.6
+			cooldown = 1.1
 			_float("+%d piedra" % st, Color(0.85, 0.85, 0.9))
 			SFX.play("picar")
 
@@ -1623,7 +1727,7 @@ func _house_panel() -> void:
 	if lvl >= 3 and int(d["player_land"]) < 0:
 		text += "\n\nPara ampliar más tu casa necesitas un terreno grande. Se abren al sur del pueblo cuando prospera."
 	if lvl < 5:
-		var c = GS.HOUSE_COSTS[lvl]
+		var c := GS.price(GS.HOUSE_COSTS[lvl])
 		opts.append(["%s %s (%d madera, %d piedra, %d oro)" % ["Construir" if lvl == 0 else "Mejorar a", GS.HOUSE_NAMES[lvl + 1], c["wood"], c["stone"], c["gold"]], func():
 			var err: String = GS.try_build_house()
 			if err != "":
@@ -1633,8 +1737,16 @@ func _house_panel() -> void:
 		opts.append(["Entrar en tu casa", func():
 			GS.save_game()
 			main.start_house()])
-		opts.append(["Dormir hasta el amanecer", func():
+		opts.append(["Dormir hasta el amanecer (fuerza %d → 100)" % int(d["player"].get("energy", 100.0)), func():
 			GS.sleep()
+			_close_panel()])
+	else:
+		opts.append(["Dormir al raso hasta el amanecer (recuperas poca fuerza)", func():
+			GS.sleep()
+			d["player"]["energy"] = 55.0
+			if randf() < 0.3:
+				d["player"]["health"] = float(d["player"]["health"]) - 8.0
+				GS.say("Pasas frío durmiendo al raso. (-8 salud)")
 			_close_panel()])
 	opts.append(["Ver familia", _family_panel])
 	opts.append(["Crónica y árbol del linaje", _chronicle_panel])
@@ -1656,17 +1768,35 @@ func _house_panel() -> void:
 	_open_panel("Tu casa", text, opts)
 
 
+func _spouse_panel() -> void:
+	var sp = GS.data["spouse"]
+	var opts := []
+	for k in GS.SPOUSE_TASKS:
+		var tk: Array = GS.SPOUSE_TASKS[k]
+		opts.append(["%s%s" % [tk[0], " ✓" if sp.get("task", "casa") == k else ""], func():
+			sp["task"] = k
+			GS.say("%s se encargará de: %s." % [sp["name"], String(tk[0]).to_lower()])
+			_family_panel()])
+	var lines := ["¿Qué quieres que haga %s cada día?" % sp["name"], ""]
+	for k in GS.SPOUSE_TASKS:
+		lines.append("%s: %s" % GS.SPOUSE_TASKS[k])
+	opts.append(["Volver", _family_panel])
+	_open_panel("Tareas de %s" % sp["name"], "\n".join(lines), opts)
+
+
 func _family_panel() -> void:
 	GS.tip("familia", "la familia", "Tus hijos heredan cuando mueres: sin hijos, el linaje se acaba. Edúcalos desde los 6 años y, de mayores, nómbralos capitanes o gobernadores. Cada uno tiene un rasgo que le hace mejor en algo.")
 	var d = GS.data
 	var p = d["player"]
 	var lines := ["Linaje %s · Generación %d" % [d["dynasty"], int(d["generation"])], "", "%s (%d años) — cabeza de familia · %s" % [p["name"], int(p["age"]), GS.TRAITS[GS.trait_of(p)]]]
 	if d["spouse"] != null:
-		lines.append("%s (%d años) — cónyuge" % [d["spouse"]["name"], int(d["spouse"]["age"])])
+		lines.append("%s (%d años) — cónyuge · %s" % [d["spouse"]["name"], int(d["spouse"]["age"]), GS.SPOUSE_TASKS[d["spouse"].get("task", "casa")][0]])
 	var heir_age := -1
 	for c in d["children"]:
 		heir_age = maxi(heir_age, int(c["age"]))
 	var opts := []
+	if d["spouse"] != null:
+		opts.append(["Encargar una tarea a %s" % d["spouse"]["name"], _spouse_panel])
 	for c in d["children"]:
 		var tag := " — heredero" if int(c["age"]) == heir_age else ""
 		var role := ""
