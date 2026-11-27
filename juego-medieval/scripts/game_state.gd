@@ -22,6 +22,7 @@ const INC := preload("res://scripts/incidents.gd")
 const LEG := preload("res://scripts/legacy.gd")
 const REALM := preload("res://scripts/realm.gd")
 const STALLS := preload("res://scripts/stalls.gd")
+const LIFE := preload("res://scripts/life.gd")
 
 const SAVE_PATH := "user://partida.json"
 const SECONDS_PER_DAY := 150.0
@@ -274,6 +275,7 @@ func next_day() -> void:
 		say("Tu familia pasa hambre. (-15 salud)")
 	_steward_day()
 	_spouse_day()
+	LIFE.day()
 	farm_day()
 	SIM.day()
 	ARMY.day()
@@ -344,6 +346,7 @@ func next_season() -> void:
 	REALM.climate_season()
 	evolve_homes()
 	STALLS.season()
+	LIFE.season()
 	if data.get("game_over", false):
 		return
 	say("Comienza %s del año %d." % [["la primavera", "el verano", "el otoño", "el invierno"][int(data["season"])], int(data["year"])])
@@ -472,8 +475,8 @@ func marry(i: int) -> String:
 
 
 func claim_chief() -> String:
-	if int(data["prestige"]) < CHIEF_PRESTIGE or int(data["house_level"]) < 2:
-		return "Necesitas %d de prestigio y una Casa de piedra." % CHIEF_PRESTIGE
+	if not LIFE.chief_ok():
+		return "Aún no cumples lo que pide el concejo."
 	data["title"] = 1
 	chronicle("%s es elegido jefe de %s." % [data["player"]["name"], data["town"]])
 	data["prestige"] += 30

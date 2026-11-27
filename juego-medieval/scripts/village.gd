@@ -1001,6 +1001,8 @@ func _update_hud() -> void:
 		lines.append("¡LLAMADA DEL REY!")
 		lines.append("Contra %s" % d["summons"]["enemy"])
 		lines.append("Quedan %d días · Campamento al este" % maxi(left, 0))
+	for ct in GS.LIFE.contracts_text().slice(0, 3):
+		lines.append(ct)
 	var ft: String = GS.SOCIAL.favor_text()
 	if ft != "":
 		lines.append(ft)
@@ -1900,7 +1902,7 @@ func _villager_panel(i: int) -> void:
 	var d = GS.data
 	var v = d["villagers"][i]
 	var talked: bool = v["name"] in d["talked"]
-	var text := "%s, %d años%s. %s.\nAfecto: %d / 100 · Carácter: %s · Le gusta: %s\n%s" % [GS.full_name(v), int(v["age"]), " (anciano)" if GS.FOLK.is_elder(v) else "", SIM.job_name(v), int(v["affection"]), GS.FOLK.PERS[GS.FOLK.pers(v)], String(GS.ITEMS[v["likes"]][0]).to_lower(), GS.FOLK.friends_text(v)]
+	var text := "%s, %d años%s. %s.\nAfecto: %d / 100 (%s) · Carácter: %s · Le gusta: %s\n%s" % [GS.full_name(v), int(v["age"]), " (anciano)" if GS.FOLK.is_elder(v) else "", SIM.job_name(v), int(v["affection"]), GS.LIFE.relation(v), GS.FOLK.PERS[GS.FOLK.pers(v)], String(GS.ITEMS[v["likes"]][0]).to_lower(), GS.FOLK.friends_text(v)]
 	if v.has("partner"):
 		text += "\n%s con %s." % ["Casado" if v["male"] else "Casada", v["partner"]]
 	elif v.has("suitor"):
@@ -1954,12 +1956,12 @@ func _hall_panel() -> void:
 	var opts := []
 	var text: String
 	if int(d["title"]) == 0:
-		text = "El concejo del pueblo se reúne aquí.\n\nPara ser elegido jefe necesitas %d de prestigio y una Casa de piedra.\nTu prestigio: %d.\n\nGana prestigio construyendo, formando familia y luchando por el rey." % [GS.CHIEF_PRESTIGE, int(d["prestige"])]
+		text = "El concejo del pueblo se reúne aquí.\n\n%s\n\nTu prestigio: %d." % [GS.LIFE.chief_text(), int(d["prestige"])]
 		opts.append(["Reclamar la jefatura del pueblo", func():
 			var err: String = GS.claim_chief()
 			if err != "":
 				_float(err, Color(1, 0.5, 0.4))
-			_hall_panel(), int(d["prestige"]) >= GS.CHIEF_PRESTIGE and int(d["house_level"]) >= 2])
+			_hall_panel(), GS.LIFE.chief_ok()])
 	else:
 		var can_tax: bool = int(d["taxed"]) != GS.season_index()
 		text = "Eres el jefe del pueblo.\nCuando el rey llame a las armas, llevarás a tus tropas (o a la milicia del pueblo si no tienes ejército).\nCuando el pueblo sea villa podrás reclutar soldados en el cuartel."
@@ -2002,6 +2004,7 @@ func _hall_panel() -> void:
 			opts.append(["Coronarte rey de la región (%d oro)" % GS.POL.CROWN_GOLD, func():
 				GS.POL.crown()
 				_close_panel(), GS.POL.can_crown()])
+	opts.insert(0, ["Tablón de encargos (%d)" % GS.LIFE.contracts().size(), func(): GS.LIFE.board(self)])
 	opts.append(["Cerrar", _close_panel])
 	_open_panel("Casa del Concejo", text, opts)
 

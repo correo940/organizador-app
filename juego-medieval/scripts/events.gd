@@ -21,6 +21,11 @@ static func day() -> void:
 		pool.append("cosecha")
 	if s in [2, 3]:
 		pool.append_array(["fiebre", "fiebre"])
+	pool.append_array(["forastero", "dote", "curandera"])
+	if s in [0, 1]:
+		pool.append("plaga")
+	if s == 1:
+		pool.append("pozo")
 	if int(d["title"]) == 1:
 		pool.append_array(["pleito", "pleito", "ladron", "peticion", "peticion"])
 	else:
@@ -45,6 +50,11 @@ static func trigger(id: String) -> void:
 		"caballero": GS.WORLD.knight_event()
 		"ladron": _thief()
 		"robo": _robbed()
+		"plaga": GS.LIFE.plague_fields()
+		"forastero": GS.LIFE.stranger()
+		"dote": GS.LIFE.dowry()
+		"curandera": GS.LIFE.healer()
+		"pozo": GS.LIFE.dry_well()
 
 
 static func _popup(title: String, text: String, options: Array) -> void:
