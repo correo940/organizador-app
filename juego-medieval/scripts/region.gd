@@ -183,7 +183,7 @@ func _process(delta: float) -> void:
 	M.set_daytime(env, tday)
 	M.moonlight(env, 0.4)
 	_town_lights(tday)
-	SFX.ambient("viento", -22.0)
+	SFX.ambient("pajaros", -24.0)
 	var want: Vector3 = party.position + Vector3(0, 55, 42) * zoom
 	cam.position = cam.position.lerp(want, minf(1.0, delta * 6.0)) if cam.position != Vector3.ZERO else want
 	cam.look_at(party.position + Vector3(0, 2, 0), Vector3.UP)

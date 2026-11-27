@@ -683,11 +683,13 @@ func market_panel() -> void:
 	var d = GS.data
 	var grid := GridContainer.new()
 	grid.columns = 5
-	grid.add_theme_constant_override("h_separation", 10)
-	for h in ["Producto", "Tienes", "", "", ""]:
+	grid.add_theme_constant_override("h_separation", 12)
+	grid.add_theme_constant_override("v_separation", 4)
+	for h in ["Producto", "Tienes", "Vender", "", "Comprar"]:
 		var l := Label.new()
 		l.text = h
-		l.add_theme_color_override("font_color", Color(0.9, 0.75, 0.4))
+		l.add_theme_color_override("font_color", Color(0.5, 0.1, 0.05))
+		l.add_theme_font_size_override("font_size", 15)
 		grid.add_child(l)
 	for k in GS.ITEMS:
 		var it: Array = GS.ITEMS[k]
@@ -728,13 +730,18 @@ func market_panel() -> void:
 			d["gold"] -= res[2] * 14
 			market_panel(), d["gold"] >= res[2] * 14))
 	var scroll := ScrollContainer.new()
-	scroll.custom_minimum_size = Vector2(760, 380)
+	scroll.custom_minimum_size = Vector2(640, 360)
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	scroll.add_child(grid)
 	var extra := VBoxContainer.new()
 	extra.add_child(scroll)
 	var w := int(d["weapon"])
 	var a := int(d["armor"])
-	var row := HBoxContainer.new()
+	var sep := HSeparator.new()
+	extra.add_child(sep)
+	var row := HFlowContainer.new()
+	row.add_theme_constant_override("h_separation", 8)
+	row.add_theme_constant_override("v_separation", 6)
 	if not "caña" in d["tools"]:
 		row.add_child(_btn("Caña de pescar (-6)", func():
 			d["gold"] -= 6
@@ -771,6 +778,7 @@ func market_panel() -> void:
 func _btn(text: String, cb: Callable, enabled := true) -> Button:
 	var b := Button.new()
 	b.text = text
+	b.theme_type_variation = "Chip"
 	b.disabled = not enabled
 	b.pressed.connect(cb)
 	return b

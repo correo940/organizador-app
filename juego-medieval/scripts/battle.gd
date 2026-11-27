@@ -129,7 +129,7 @@ func _ready() -> void:
 	battle_time = 0.42 if troll < 0.7 or siege.get("kind", "") == "torneo" else (0.78 if troll < 0.85 else 0.93)
 	M.set_daytime(env, battle_time)
 	M.moonlight(env, 0.3)
-	SFX.ambient("" if battle_time < 0.9 else "viento", -22.0)
+	SFX.ambient("" if battle_time < 0.9 else "grillos", -26.0)
 	var suffix: String = ["", "", "_Autumn", "_Snow"][int(d["season"])]
 	for i in (50 if SFX.settings.get("low", false) else 120):
 		var a := randf() * TAU

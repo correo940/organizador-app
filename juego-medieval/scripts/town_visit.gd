@@ -168,7 +168,7 @@ func _ready() -> void:
 	help_text = "WASD: andar · Shift: correr · Clic derecho: girar cámara · E: hablar · Esc: menú"
 	_build_hud()
 	SFX.music("aldea")
-	SFX.ambient("gente", -12.0)
+	SFX.ambient("pajaros", -20.0)
 	GS.notify.connect(func(_t): _refresh_log())
 	_refresh_log()
 

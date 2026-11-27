@@ -15,6 +15,7 @@ static func _name(k: String) -> String:
 static func _btn(text: String, cb: Callable, enabled := true) -> Button:
 	var b := Button.new()
 	b.text = text
+	b.theme_type_variation = "Chip"
 	b.disabled = not enabled
 	b.pressed.connect(cb)
 	return b
@@ -24,7 +25,7 @@ static func _lbl(text: String, header := false) -> Label:
 	var l := Label.new()
 	l.text = text
 	if header:
-		l.add_theme_color_override("font_color", Color(0.9, 0.75, 0.4))
+		l.add_theme_color_override("font_color", Color(0.5, 0.1, 0.05))
 	return l
 
 

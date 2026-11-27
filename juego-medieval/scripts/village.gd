@@ -1154,14 +1154,13 @@ func _update_civic() -> void:
 ## Sonido ambiente según la hora, la estación y el sitio; campana de misa los domingos.
 var bell_day := -1
 func _ambience(d: Dictionary, night: bool) -> void:
+	# Ambiente limpio: pájaros de día, grillos en las noches templadas y silencio en invierno.
 	if int(d["season"]) == 3:
-		SFX.ambient("viento", -14.0)
+		SFX.ambient("", -30.0)
 	elif night:
-		SFX.ambient("viento", -24.0)
-	elif player.position.distance_to(PLAZA) < 18.0:
-		SFX.ambient("gente", -12.0)
+		SFX.ambient("grillos", -24.0)
 	else:
-		SFX.ambient("pajaros", -15.0)
+		SFX.ambient("pajaros", -19.0)
 	if int(d["day"]) % 7 == 0 and float(d["time"]) > 0.3 and bell_day != int(d["total_days"]):
 		bell_day = int(d["total_days"])
 		SFX.play("campana", -6.0)
