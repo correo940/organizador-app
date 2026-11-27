@@ -958,22 +958,8 @@ func _open_panel(title: String, text: String, options: Array) -> void:
 		for c in d["children"].slice(0, 5):
 			people.append([Art.face_of(c, noble), "%s (%d)" % [c["name"], int(c["age"])]])
 		box.add_child(Art.portrait_row(people))
-	var b := Label.new()
-	b.text = text
-	b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	b.custom_minimum_size.x = 540
-	box.add_child(b)
-	var first: Button = null
-	for o in options:
-		var btn := Button.new()
-		btn.text = o[0]
-		btn.custom_minimum_size.y = 36
-		if o.size() > 2 and not o[2]:
-			btn.disabled = true
-		btn.pressed.connect(o[1])
-		box.add_child(btn)
-		if first == null and not btn.disabled:
-			first = btn
+	box.add_child(Art.panel_text(text, 580))
+	var first: Button = Art.panel_buttons(box, options)
 	panel.visible = true
 	if first:
 		first.grab_focus.call_deferred()

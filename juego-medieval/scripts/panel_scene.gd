@@ -91,33 +91,8 @@ func _open_panel(title: String, text: String, options: Array) -> void:
 		box.add_child(Art.picture(pic))
 	elif title == "El obispo":
 		box.add_child(Art.portrait_row([["res://assets/ui/retrato_obispo.png", "El obispo"]]))
-	var b := Label.new()
-	b.text = text
-	b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	b.custom_minimum_size.x = 560
-	box.add_child(b)
-	var first: Button = null
-	# Con muchas opciones, en dos columnas para que quepan en pantalla.
-	var holder: Container = box
-	if options.size() > 9:
-		var g := GridContainer.new()
-		g.columns = 2
-		g.add_theme_constant_override("h_separation", 8)
-		box.add_child(g)
-		holder = g
-	for o in options:
-		var btn := Button.new()
-		btn.text = o[0]
-		btn.custom_minimum_size.y = 34
-		if o.size() > 2 and not o[2]:
-			btn.disabled = true
-		btn.pressed.connect(o[1])
-		if holder != box:
-			btn.custom_minimum_size.x = 420
-			btn.clip_text = true
-		holder.add_child(btn)
-		if first == null and not btn.disabled:
-			first = btn
+	box.add_child(Art.panel_text(text, 580))
+	var first: Button = Art.panel_buttons(box, options)
 	panel.visible = true
 	if first:
 		first.grab_focus.call_deferred()

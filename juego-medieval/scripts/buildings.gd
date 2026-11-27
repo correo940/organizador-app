@@ -352,7 +352,7 @@ func build_panel(i: int) -> void:
 		if GS.has_building(id):
 			continue
 		var b = GS.BUILDINGS[id]
-		opts.append(["%s — %s" % [b["name"], GS.cost_text(b["cost"])], func():
+		opts.append(["%s (%s)" % [b["name"], GS.cost_text(b["cost"])], func():
 			var err: String = GS.construct(i, id)
 			if err != "":
 				v._float(err, Color(1, 0.5, 0.4))

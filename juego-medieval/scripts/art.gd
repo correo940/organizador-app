@@ -152,6 +152,72 @@ static func portrait_row(people: Array) -> HBoxContainer:
 	return row
 
 
+## Texto de un panel: si es largo va en una caja con barra de desplazamiento para no tapar los botones.
+static func panel_text(text: String, width: float) -> Control:
+	var b := Label.new()
+	b.text = text
+	b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	b.custom_minimum_size.x = width
+	if text.length() < 420 and text.count("\n") < 9:
+		return b
+	var sc := ScrollContainer.new()
+	sc.custom_minimum_size = Vector2(width + 16, 170)
+	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	sc.add_child(b)
+	return sc
+
+
+## Botones de un panel: con muchos, en dos columnas y con desplazamiento si no caben.
+static func panel_buttons(box: Container, options: Array) -> Button:
+	# "Cerrar" / "Volver" siempre fuera de la rejilla, abajo y a la vista.
+	var tail := []
+	while options.size() > 6 and String(options[-1][0]) in ["Cerrar", "Volver", "Salir"]:
+		tail.push_front(options[-1])
+		options = options.slice(0, options.size() - 1)
+	var holder: Container = box
+	if options.size() > 6:
+		var g := GridContainer.new()
+		g.columns = 2
+		g.add_theme_constant_override("h_separation", 8)
+		g.add_theme_constant_override("v_separation", 6)
+		if options.size() > 12:
+			var sc := ScrollContainer.new()
+			sc.custom_minimum_size = Vector2(0, 260)
+			sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+			box.add_child(sc)
+			sc.add_child(g)
+			g.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		else:
+			box.add_child(g)
+		holder = g
+	var first: Button = null
+	for o in options:
+		var btn := Button.new()
+		btn.text = o[0]
+		btn.custom_minimum_size.y = 34
+		btn.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		btn.tooltip_text = o[0]
+		if holder != box:
+			btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			btn.custom_minimum_size.x = 300
+			btn.add_theme_font_size_override("font_size", 14)
+		if o.size() > 2 and not o[2]:
+			btn.disabled = true
+		btn.pressed.connect(o[1])
+		holder.add_child(btn)
+		if first == null and not btn.disabled:
+			first = btn
+	for o in tail:
+		var cb := Button.new()
+		cb.text = o[0]
+		cb.custom_minimum_size.y = 34
+		cb.pressed.connect(o[1])
+		box.add_child(cb)
+		if first == null:
+			first = cb
+	return first
+
+
 ## Bloque de imagen para paneles.
 static func picture(path: String) -> TextureRect:
 	var tr := TextureRect.new()
