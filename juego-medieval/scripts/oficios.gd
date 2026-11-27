@@ -130,6 +130,9 @@ static func smith_panel(v) -> void:
 
 static func carpenter() -> String:
 	for v in GS.data["villagers"]:
+		if v["job"] == "carpintero":
+			return GS.full_name(v)
+	for v in GS.data["villagers"]:
 		if v["job"] == "leñador":
 			return GS.full_name(v)
 	return ""

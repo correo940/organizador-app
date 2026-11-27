@@ -564,7 +564,8 @@ func fish() -> void:
 	fish_cd = 1.4
 	GS.OFI.use_tool("caña")
 	v.player.play_once("Interact")
-	if randf() < 0.35:
+	GS.CHAR.practice("pesca")
+	if randf() < 0.35 + GS.CHAR.level("pesca") * 0.04:
 		GS.add("pescado", 1)
 		v._float("+1 pescado", Color(0.6, 0.85, 1.0))
 	else:

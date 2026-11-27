@@ -6,6 +6,9 @@ const SKILLS := {
 	"liderazgo": "Liderazgo: tus tropas pierden la moral un 4% más despacio por nivel",
 	"comercio": "Comercio: vendes un 3% más caro por nivel",
 	"diplomacia": "Diplomacia: +10% en las mejoras de relación por nivel",
+	"tala": "Tala: más madera por golpe y te cansas menos",
+	"canteria": "Cantería: más piedra y hierro por golpe y te cansas menos",
+	"pesca": "Pesca: pican más peces",
 }
 ## Armas: daño, alcance, pausa entre golpes y modelo.
 const WEAPONS := {

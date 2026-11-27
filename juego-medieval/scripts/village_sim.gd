@@ -10,10 +10,37 @@ const JOBS := {
 	"cazador": {"m": "Cazador", "f": "Cazadora", "out": {"carne": 1.0, "cuero": 0.3}},
 	"pastor": {"m": "Pastor", "f": "Pastora", "out": {"lana": 1.0, "leche": 2.0}},
 	"minero": {"m": "Minero", "f": "Minera", "out": {"hierro": 1.0, "piedra": 1.0}},
-	"panadero": {"m": "Panadero", "f": "Panadera", "in": {"trigo": 2}, "out": {"pan": 3.0}},
+	"molinero": {"m": "Molinero", "f": "Molinera", "in": {"trigo": 2}, "out": {"harina": 2.0}},
+	"panadero": {"m": "Panadero", "f": "Panadera", "in": {"harina": 2}, "out": {"pan": 3.0}},
 	"tejedor": {"m": "Tejedor", "f": "Tejedora", "in": {"lana": 2}, "out": {"tela": 1.0}},
 	"herrero": {"m": "Herrero", "f": "Herrera", "in": {"hierro": 2, "madera": 1}, "out": {"herramientas": 1.0}},
+	"carpintero": {"m": "Carpintero", "f": "Carpintera", "in": {"madera": 3}, "out": {"mueble": 0.5}},
+	"curtidor": {"m": "Curtidor", "f": "Curtidora", "in": {"cuero": 2}, "out": {"piel": 1.0}},
+	"sastre": {"m": "Sastre", "f": "Costurera", "in": {"tela": 1}, "out": {"ropa": 1.0}},
+	"cervecero": {"m": "Cervecero", "f": "Cervecera", "in": {"trigo": 2}, "out": {"cerveza": 2.0}},
+	"quesero": {"m": "Quesero", "f": "Quesera", "in": {"leche": 3}, "out": {"queso": 1.0}},
+	"apicultor": {"m": "Apicultor", "f": "Apicultora", "out": {"miel": 1.0}, "no_winter": true},
+	"alfarero": {"m": "Alfarero", "f": "Alfarera", "out": {"vasija": 1.5}},
+	"carbonero": {"m": "Carbonero", "f": "Carbonera", "in": {"madera": 3}, "out": {"carbon": 2.0}},
+	"tabernero": {"m": "Tabernero", "f": "Tabernera", "in": {"cerveza": 2}, "out": {}},
+	"curandero": {"m": "Curandero", "f": "Curandera", "out": {"remedio": 0.5}},
+	"guardia": {"m": "Guardia", "f": "Guardia", "out": {}},
 }
+## Rango en el oficio según la experiencia: aprendiz, oficial, maestro (y cuánto rinde).
+const RANKS := [["aprendiz", "aprendiza", 0.7], ["oficial", "oficiala", 1.0], ["maestro", "maestra", 1.4]]
+
+
+static func rank(v: Dictionary) -> int:
+	var xp := int(v.get("xp", 60))
+	return 0 if xp < 30 else (1 if xp < 100 else 2)
+
+
+static func rank_name(v: Dictionary) -> String:
+	return RANKS[rank(v)][0 if v["male"] else 1]
+
+
+static func masters(job: String) -> Array:
+	return GS.data["villagers"].filter(func(x): return x["job"] == job and rank(x) == 2)
 ## Terrenos del barrio nuevo (metros) y prosperidad necesaria para que se abran.
 const LANDS := [Vector2(30, 88), Vector2(48, 88), Vector2(66, 88), Vector2(84, 88), Vector2(102, 88), Vector2(14, 86)]
 const LAND_THRESH := [110, 170, 240, 320, 410, 510]
@@ -25,7 +52,9 @@ static func land_price(i: int) -> int:
 
 
 static func job_name(v: Dictionary) -> String:
-	return JOBS[v["job"]]["m" if v["male"] else "f"]
+	if v.has("learning"):
+		return "Aprendiendo a ser %s" % String(JOBS[v["learning"]["job"]]["m" if v["male"] else "f"]).to_lower()
+	return "%s (%s)" % [JOBS[v["job"]]["m" if v["male"] else "f"], rank_name(v)]
 
 
 ## Mercado del pueblo: existencias compartidas y demanda de los oficios.
@@ -221,9 +250,27 @@ static func day() -> void:
 	var produced := 0.0
 	var order := vil.duplicate()
 	order.shuffle()
+	var taverns := 0
 	for v in order:
+		if not v.has("xp"):
+			v["xp"] = randi_range(20, 130)
+		# Aprendiendo otro oficio con un maestro: no produce hasta terminar.
+		if v.has("learning"):
+			if int(d["total_days"]) >= int(v["learning"]["until"]):
+				v["job"] = v["learning"]["job"]
+				v["xp"] = 0
+				v.erase("learning")
+				GS.say("%s termina su aprendizaje y empieza como %s." % [GS.full_name(v), job_name(v).to_lower()])
+			continue
+		v["xp"] = int(v["xp"]) + 1
 		var j = JOBS[v["job"]]
-		var mult := (1.0 + (0.5 if int(v["tools"]) > 0 else 0.0)) * GS.TL.job_mult(v["job"])
+		var mult := (1.0 + (0.5 if int(v["tools"]) > 0 else 0.0)) * GS.TL.job_mult(v["job"]) * float(RANKS[rank(v)][2])
+		if v["job"] == "herrero":
+			# Con carbón el herrero forja el doble.
+			_acquire(v, "carbon", 1)
+			if vinv(v, "carbon") > 0:
+				vadd(v, "carbon", -1)
+				mult *= 2.0
 		if j.get("no_winter", false) and winter:
 			mult = 0.0
 		if winter and v["job"] == "pastor":
@@ -240,12 +287,28 @@ static func day() -> void:
 		for k in j["out"]:
 			var amount: float = float(j["out"][k]) * mult
 			if j.has("in"):
-				amount = float(j["out"][k]) * batches * (1.5 if int(v["tools"]) > 0 else 1.0)
+				amount = float(j["out"][k]) * batches * (1.5 if int(v["tools"]) > 0 else 1.0) * float(RANKS[rank(v)][2]) * (2.0 if v["job"] == "herrero" and mult > 1.9 else 1.0)
 			var acc: float = float(v["acc"].get(k, 0.0)) + amount
 			var whole := int(floor(acc))
 			v["acc"][k] = acc - whole
 			vadd(v, k, whole)
 			produced += whole * price(k)
+		if v["job"] == "tabernero" and batches > 0:
+			taverns += 1
+	# La taberna con cerveza alegra al pueblo.
+	if taverns > 0:
+		for v in vil:
+			v["mood"] = mini(100, int(v["mood"]) + 2 * taverns)
+	# En invierno, quien no tiene ropa de abrigo lo pasa mal.
+	if winter:
+		for v in vil:
+			if int(v.get("coat_year", 0)) != int(d["year"]):
+				_acquire(v, "ropa", 1)
+				if vinv(v, "ropa") > 0:
+					vadd(v, "ropa", -1)
+					v["coat_year"] = int(d["year"])
+				else:
+					v["mood"] = maxi(0, int(v["mood"]) - 3)
 	for v in vil:
 		var mouths: int = 1 + v["kids"].size()
 		var fed := _eat(v, mouths)
@@ -391,6 +454,7 @@ static func season() -> void:
 			if best != v["job"]:
 				var old := job_name(v)
 				v["job"] = best
+				v["xp"] = 0
 				GS.say("%s deja de ser %s y se hace %s." % [GS.full_name(v), old.to_lower(), job_name(v).to_lower()])
 
 

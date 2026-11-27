@@ -3,9 +3,10 @@ extends RefCounted
 ## obras públicas que se ven avanzar, y molino de viento y cantera que dan trabajo.
 
 const GUILDS := {
-	"artesanos": {"name": "Gremio de artesanos", "jobs": ["panadero", "tejedor", "herrero"]},
-	"labriegos": {"name": "Gremio de labriegos", "jobs": ["agricultor", "pastor"]},
-	"canteros": {"name": "Gremio de canteros y leñadores", "jobs": ["cantero", "minero", "leñador"]},
+	"artesanos": {"name": "Gremio de artesanos", "jobs": ["tejedor", "herrero", "carpintero", "curtidor", "sastre", "alfarero"]},
+	"labriegos": {"name": "Gremio de labriegos", "jobs": ["agricultor", "pastor", "apicultor"]},
+	"canteros": {"name": "Gremio de canteros y leñadores", "jobs": ["cantero", "minero", "leñador", "carbonero"]},
+	"vituallas": {"name": "Gremio de panaderos y taberneros", "jobs": ["molinero", "panadero", "cervecero", "quesero", "tabernero"]},
 }
 const WORKS := {
 	"empedrado": {"name": "Empedrar las calles", "cost": {"piedra": 80, "oro": 40}, "days": 6, "desc": "Calles limpias: el pueblo está más contento."},

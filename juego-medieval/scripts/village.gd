@@ -384,6 +384,8 @@ func _night_watch(d: Dictionary) -> void:
 		return
 	# Cuanto más lejos de la plaza (y sus faroles), más peligro.
 	var far := clampf(player.position.distance_to(PLAZA) / 60.0, 0.2, 1.5)
+	# Cada guardia del pueblo que patrulla de noche reduce el peligro.
+	far /= 1.0 + GS.data["villagers"].filter(func(x): return x["job"] == "guardia").size() * 0.8
 	night_risk += get_process_delta_time() * GS.speed * 0.012 * far
 	if randf() < night_risk * 0.02:
 		night_risk = 0.0
@@ -1714,6 +1716,10 @@ func _gather(type: String) -> void:
 		"tree":
 			var w := 2 if "hacha" in d["tools"] else 1
 			GS.OFI.use_tool("hacha")
+			GS.CHAR.practice("tala")
+			if randf() < GS.CHAR.level("tala") * 0.08:
+				w += 1
+			d["player"]["energy"] = minf(100.0, float(d["player"]["energy"]) + GS.CHAR.level("tala") * 0.06)
 			d["wood"] += w
 			cooldown = 0.9
 			_float("+%d madera" % w, Color(0.95, 0.75, 0.45))
@@ -1725,10 +1731,46 @@ func _gather(type: String) -> void:
 				return
 			GS.OFI.use_tool("pico")
 			var st := 2
+			GS.CHAR.practice("canteria")
+			if randf() < GS.CHAR.level("canteria") * 0.08:
+				st += 1
+			d["player"]["energy"] = minf(100.0, float(d["player"]["energy"]) + GS.CHAR.level("canteria") * 0.06)
 			d["stone"] += st
 			cooldown = 1.1
 			_float("+%d piedra" % st, Color(0.85, 0.85, 0.9))
 			SFX.play("picar")
+
+
+## Aprender un oficio: el vecino va con un maestro unos días (pagas tú) y luego empieza como aprendiz.
+func _learn_panel(i: int) -> void:
+	var d = GS.data
+	var v = d["villagers"][i]
+	var opts := []
+	var lines := ["¿Qué oficio quieres que aprenda %s? Ahora es %s." % [v["name"], SIM.job_name(v).to_lower()], "Con un maestro en el pueblo tarda 8 días y le pagas 25 de oro; sin maestro, 16 días y 40 de oro.", ""]
+	var have := {}
+	for x in d["villagers"]:
+		have[x["job"]] = int(have.get(x["job"], 0)) + 1
+	for j in SIM.JOBS:
+		if j == v["job"]:
+			continue
+		var has_master := not SIM.masters(j).is_empty()
+		var cost := 25 if has_master else 40
+		var days := 8 if has_master else 16
+		var tag := "nadie en el pueblo" if int(have.get(j, 0)) == 0 else "%d en el pueblo" % int(have[j])
+		opts.append(["%s (%s) — %d oro" % [SIM.JOBS[j]["m" if v["male"] else "f"], tag, cost], func():
+			# Si no está contento o no te aprecia, no quiere cambiar de vida.
+			if int(v["mood"]) < 35 or int(v["affection"]) < 25:
+				_open_panel(v["name"], "«¿Dejar mi oficio ahora? No, gracias.» (Necesita estar contento y apreciarte algo más.)", [["Volver", func(): _villager_panel(i)]])
+				return
+			d["gold"] = int(d["gold"]) - cost
+			for m in SIM.masters(j).slice(0, 1):
+				m["gold"] = int(m["gold"]) + cost
+			v["learning"] = {"job": j, "until": int(d["total_days"]) + days}
+			v["affection"] = mini(100, int(v["affection"]) + 5)
+			GS.say("%s empieza a aprender el oficio de %s." % [v["name"], String(SIM.JOBS[j]["m"]).to_lower()])
+			_villager_panel(i), int(d["gold"]) >= cost])
+	opts.append(["Volver", func(): _villager_panel(i)])
+	_open_panel("Aprender un oficio", "\n".join(lines), opts)
 
 
 func _house_panel() -> void:
@@ -1939,6 +1981,8 @@ func _villager_panel(i: int) -> void:
 		_float("¡Le encanta!", Color(1, 0.9, 0.6))
 		_villager_panel(i), GS.inv(lk) >= 1])
 	opts.append_array(GS.FOLK.elder_options(v, func(t): _open_panel(GS.full_name(v), t, [["Volver", func(): _villager_panel(i)]])))
+	if not v.has("learning"):
+		opts.append(["Proponerle que aprenda otro oficio…", func(): _learn_panel(i)])
 	opts.append(["Charlar (una vez al día)", func():
 		v["affection"] = mini(100, int(int(v["affection"]) + randi_range(6, 12) * GS.FOLK.chat_mult(v)))
 		d["talked"].append(v["name"])

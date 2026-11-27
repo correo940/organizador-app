@@ -56,6 +56,8 @@ const ITEMS := {
 	"lana": ["Lana", 6, 0], "cuero": ["Cuero", 9, 0],
 	"tela": ["Tela", 18, 0], "piel": ["Piel curtida", 22, 0], "queso": ["Queso", 12, 3],
 	"cerveza": ["Cerveza", 9, 1], "miel": ["Miel", 8, 2], "hierro": ["Hierro", 10, 0], "herramientas": ["Herramientas", 15, 0],
+	"ropa": ["Ropa de abrigo", 24, 0], "vasija": ["Vasijas de barro", 7, 0], "carbon": ["Carbón", 5, 0],
+	"remedio": ["Remedios de hierbas", 14, 0], "mueble": ["Muebles", 20, 0],
 }
 ## Orden en que la familia se come las cosas (primero lo perecedero y barato).
 const EAT_ORDER := ["bayas", "setas", "leche", "huevos", "manzana", "col", "zanahoria", "remolacha", "pescado", "calabaza", "carne", "miel", "queso", "pan"]
@@ -269,7 +271,14 @@ func next_day() -> void:
 	data["day"] += 1
 	data["talked"] = []
 	var p = data["player"]
-	if eat(int(ceil(family_size() * (0.85 if OFI.has("mesa") else 1.0)))):
+	# Remedios: si estás malo, te tomas uno.
+	if float(p["health"]) < 45.0 and inv("remedio") > 0:
+		take("remedio", 1)
+		p["health"] = minf(100.0, float(p["health"]) + 25.0)
+		say("Te tomas un remedio de hierbas. (+25 salud)")
+	# Vasijas de barro: en invierno la comida guardada se conserva mejor.
+	var store := 0.9 if int(data["season"]) == 3 and inv("vasija") >= 3 else 1.0
+	if eat(int(ceil(family_size() * (0.85 if OFI.has("mesa") else 1.0) * store))):
 		p["health"] = minf(100.0, p["health"] + 4.0 + (2.0 if has_building("hospital") else 0.0))
 	else:
 		p["health"] -= 15.0
