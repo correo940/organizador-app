@@ -1068,6 +1068,7 @@ func _process(delta: float) -> void:
 			lp.light_energy = dark
 	if snowfall:
 		snowfall.position = player.position + Vector3(0, 14, 0)
+	_update_me_marker(delta)
 	_ambience(d, night)
 	_update_civic()
 	_update_hud()
@@ -1164,6 +1165,59 @@ func _ambience(d: Dictionary, night: bool) -> void:
 	if int(d["day"]) % 7 == 0 and float(d["time"]) > 0.3 and bell_day != int(d["total_days"]):
 		bell_day = int(d["total_days"])
 		SFX.play("campana", -6.0)
+
+
+## Flecha dorada que flota sobre tu personaje y círculo a sus pies, para verte desde lejos.
+var me_marker: Node3D
+var me_ring: MeshInstance3D
+var me_t := 0.0
+func _update_me_marker(delta: float) -> void:
+	if me_marker == null:
+		var mat := StandardMaterial3D.new()
+		mat.albedo_color = Color(1.0, 0.82, 0.2)
+		mat.emission_enabled = true
+		mat.emission = Color(1.0, 0.7, 0.1)
+		mat.emission_energy_multiplier = 0.8
+		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		mat.no_depth_test = true
+		mat.render_priority = 10
+		me_marker = Node3D.new()
+		add_child(me_marker)
+		var cone := MeshInstance3D.new()
+		var cm := CylinderMesh.new()
+		cm.top_radius = 0.55
+		cm.bottom_radius = 0.0
+		cm.height = 0.9
+		cm.radial_segments = 4
+		cone.mesh = cm
+		cone.material_override = mat
+		me_marker.add_child(cone)
+		var stem := MeshInstance3D.new()
+		var sm := BoxMesh.new()
+		sm.size = Vector3(0.22, 0.6, 0.22)
+		stem.mesh = sm
+		stem.material_override = mat
+		stem.position = Vector3(0, 0.7, 0)
+		me_marker.add_child(stem)
+		me_ring = MeshInstance3D.new()
+		var tm := TorusMesh.new()
+		tm.inner_radius = 0.7
+		tm.outer_radius = 0.85
+		me_ring.mesh = tm
+		var rm := mat.duplicate()
+		rm.albedo_color = Color(1.0, 0.82, 0.2, 0.8)
+		rm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		rm.no_depth_test = false
+		me_ring.material_override = rm
+		add_child(me_ring)
+	me_t += delta
+	# Más grande cuanto más lejos está la cámara, para que siempre se vea.
+	var k := clampf(cam.dist / 25.0, 1.0, 3.0)
+	me_marker.scale = Vector3.ONE * k
+	me_marker.position = player.position + Vector3(0, 3.0 + k * 0.8 + sin(me_t * 3.0) * 0.25, 0)
+	me_marker.rotation.y += delta * 1.5
+	me_ring.position = player.position + Vector3(0, 0.06, 0)
+	me_ring.scale = Vector3.ONE * k * (1.0 + 0.08 * sin(me_t * 4.0))
 
 
 ## Orden actual del jugador: ir a un punto y, al llegar, hacer lo que había allí.
